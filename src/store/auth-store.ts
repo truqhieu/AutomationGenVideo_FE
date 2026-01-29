@@ -9,7 +9,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
@@ -31,11 +31,11 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginRequest) => {
         try {
           set({ isLoading: true, error: null });
-          
+
           console.log('Auth store: Calling login API...');
           const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
           console.log('Auth store: Login API response received', response.data);
-          
+
           const { access_token, user } = response.data;
 
           // Save to localStorage
@@ -48,11 +48,14 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
-          
+
           console.log('Auth store: Login successful, state updated');
         } catch (error: any) {
           console.error('Auth store: Login failed', error);
-          const errorMessage = error.response?.data?.message || 'Login failed';
+          let errorMessage = error.response?.data?.message || 'Login failed';
+          if (Array.isArray(errorMessage)) {
+            errorMessage = errorMessage.join(', ');
+          }
           set({ error: errorMessage, isLoading: false });
           throw error;
         }
@@ -61,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
       register: async (data: RegisterRequest) => {
         try {
           set({ isLoading: true, error: null });
-          
+
           const response = await apiClient.post<AuthResponse>('/auth/register', data);
           const { access_token, user } = response.data;
 
@@ -76,7 +79,10 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error: any) {
-          const errorMessage = error.response?.data?.message || 'Registration failed';
+          let errorMessage = error.response?.data?.message || 'Registration failed';
+          if (Array.isArray(errorMessage)) {
+            errorMessage = errorMessage.join(', ');
+          }
           set({ error: errorMessage, isLoading: false });
           throw error;
         }
@@ -85,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
-        
+
         set({
           user: null,
           token: null,
@@ -97,7 +103,7 @@ export const useAuthStore = create<AuthState>()(
       loadUser: async () => {
         try {
           const token = localStorage.getItem('auth_token');
-          
+
           if (!token) {
             set({ isAuthenticated: false, user: null, token: null });
             return;
@@ -118,7 +124,7 @@ export const useAuthStore = create<AuthState>()(
           // Token invalid or expired
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_user');
-          
+
           set({
             user: null,
             token: null,

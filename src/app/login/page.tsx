@@ -34,30 +34,28 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       clearError();
-      
+
       console.log('Attempting login with:', { email: data.email });
       await login(data);
-      console.log('Login successful, redirecting to dashboard...');
-      
-      // Wait a bit for store to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Get user from store to check role
+      console.log('Login successful');
+
+      // Get latest user state directly from store
       const { user } = useAuthStore.getState();
-      console.log('User after login:', user);
-      
-      // Redirect based on role
-      if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
-        console.log('Redirecting to manager dashboard');
-        router.push('/dashboard/manager');
+
+      if (user) {
+        // Redirect based on role
+        if (user.role === 'MANAGER' || user.role === 'ADMIN') {
+          router.push('/dashboard/manager');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
-        console.log('Redirecting to regular dashboard');
+        // Fallback if somehow user is missing but no error thrown
         router.push('/dashboard');
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      console.error('Error response:', err.response?.data);
-      // Error is already set in store, just log it
+      // Error is stored in the store by the login action
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +109,7 @@ export default function LoginPage() {
             >
               Đăng nhập
             </Button>
-            
+
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300"></div>
