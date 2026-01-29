@@ -18,7 +18,9 @@ import {
   FileText,
   Film,
   Users,
-  Activity
+  Activity,
+  Filter,
+  Upload
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -53,6 +55,20 @@ export default function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: 
         ]
     }] : []),
     ...(user?.role !== 'MANAGER' && user?.role !== 'ADMIN' ? [
+      { 
+          id: 'video-filter', 
+          icon: Filter, 
+          label: 'Lọc video',
+          menus: [
+              {
+                  section: 'DUPLICATE DETECTION',
+                  items: [
+                      { label: 'Upload & Check Duplicate', href: '/dashboard/video-filter', icon: Upload },
+                      { label: 'My Videos', href: '/dashboard/video-filter/my-videos', icon: Film },
+                  ]
+              }
+          ]
+      },
       { 
           id: 'facebook', 
           icon: Facebook, 
@@ -89,6 +105,8 @@ export default function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: 
   useEffect(() => {
     if (pathname.startsWith('/dashboard/manager') || pathname.startsWith('/dashboard/editor-management')) {
         setActivePlatform('user-management');
+    } else if (pathname.startsWith('/dashboard/video-filter')) {
+        setActivePlatform('video-filter');
     } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
         setActivePlatform('facebook');
     } else if (pathname.startsWith('/dashboard/ai')) {
