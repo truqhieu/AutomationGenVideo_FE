@@ -102,11 +102,13 @@ export default function TrackedChannelsPage() {
               avatar_url: data.profile.avatar_url,
               total_followers: data.profile.follower_count,
               total_likes: data.profile.total_likes,
-              total_videos: data.profile.total_videos,
+              // FIX: If we fetched 0 videos, force total_videos to 0 regardless of metadata
+              total_videos: (data.results && data.results.length === 0) ? 0 : (data.profile.total_videos || 0),
               // Calculate specific stats if missing
               total_views: data.profile.total_views || data.results?.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0) || 0,
               engagement_rate: data.profile.engagement_rate || 0
           };
+          console.log('✅ Payload prepared with forced check:', payload);
       }
       // 2. FALLBACK: RAW EXTRACTION (If profile missing but results exist)
       else if (data.success && data.results && data.results.length > 0) {
@@ -117,7 +119,7 @@ export default function TrackedChannelsPage() {
         // Use author-level stats from authorMeta
         const totalFollowers = authorMeta.fans || 0;
         const totalLikes = authorMeta.heart || 0;
-        const totalVideos = authorMeta.video || data.results.length;
+        const totalVideos = data.results.length === 0 ? 0 : (authorMeta.video || data.results.length);
         
         // Sum views from fetched videos (no total_views in authorMeta)
         const totalViews = data.results.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0);

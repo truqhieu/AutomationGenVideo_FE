@@ -7,33 +7,7 @@ export default function FollowerGrowthChart() {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Generate mock follower growth data
-    const generateMockData = () => {
-      const data = [];
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-      
-      let followers = 335000;
-      
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        
-        const dailyGrowth = Math.floor(Math.random() * 150) + 50; // 50-200 daily growth
-        followers += dailyGrowth;
-        
-        data.push({
-          date: date.toISOString().split('T')[0],
-          displayDate: `${date.getMonth() + 1}/${date.getDate()}`,
-          dailyGrowth,
-          followers,
-        });
-      }
-      
-      return data;
-    };
-
-    setChartData(generateMockData());
+    setChartData([]);
   }, []);
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -130,7 +104,7 @@ export default function FollowerGrowthChart() {
           </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center text-slate-400">
-            Loading...
+            No historical data available
           </div>
         )}
       </div>

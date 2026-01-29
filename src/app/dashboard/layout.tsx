@@ -11,6 +11,7 @@ import Button from '@/components/ui/button';
 import { UserRole } from '@/types/auth';
 
 import SmartSidebar from '@/components/layout/Sidebar';
+import SelectManagerModal from '@/components/SelectManagerModal';
 
 export default function DashboardLayout({
   children,
@@ -65,11 +66,13 @@ export default function DashboardLayout({
       <SmartSidebar 
         user={user} 
         onLogout={handleLogout} 
+        isPinned={sidebarOpen}
+        onTogglePin={() => setSidebarOpen(!sidebarOpen)}
       />
 
       {/* Main content */}
-      {/* Margin left matches the icon dock width (80px). The drawer (240px) overlays or pushes depending on preference, but floating overlay is smoother for auto-collapse */}
-      <div className="pl-[80px] transition-all duration-300">
+      {/* Dynamic padding based on sidebar state: 80px (collapsed) or 320px (pinned) */}
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'pl-[320px]' : 'pl-[80px]'}`}>
         {/* Header - Make it stick but transparent or matching? */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
           <div className="flex items-center justify-between px-6 py-4">
@@ -89,6 +92,9 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Select Manager Modal */}
+      <SelectManagerModal />
     </div>
   );
 }

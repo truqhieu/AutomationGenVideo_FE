@@ -39,8 +39,21 @@ export default function LoginPage() {
       await login(data);
       console.log('Login successful, redirecting to dashboard...');
       
-      // Use window.location.href for full page reload to ensure state is fresh
-      window.location.href = '/dashboard';
+      // Wait a bit for store to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get user from store to check role
+      const { user } = useAuthStore.getState();
+      console.log('User after login:', user);
+      
+      // Redirect based on role
+      if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
+        console.log('Redirecting to manager dashboard');
+        router.push('/dashboard/manager');
+      } else {
+        console.log('Redirecting to regular dashboard');
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       console.error('Error response:', err.response?.data);

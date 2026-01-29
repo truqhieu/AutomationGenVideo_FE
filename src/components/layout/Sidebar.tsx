@@ -16,16 +16,20 @@ import {
   HelpCircle,
   Pin,
   FileText,
-  Film
+  Film,
+  Users,
+  Activity
 } from 'lucide-react';
 
 interface SidebarProps {
   menuItems?: any[]; // Legacy props, we might ignore or map them
   user: any;
   onLogout: () => void;
+  isPinned: boolean;
+  onTogglePin: () => void;
 }
 
-export default function SmartSidebar({ user, onLogout }: SidebarProps) {
+export default function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   const pathname = usePathname();
   const [activePlatform, setActivePlatform] = useState<string>('facebook'); // Default to Facebook as it is the dashboard home
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
@@ -33,40 +37,59 @@ export default function SmartSidebar({ user, onLogout }: SidebarProps) {
 
   // Definitions of Platforms and their Sub-menus
   const platforms = [
-    { 
-        id: 'facebook', 
-        icon: Facebook, 
-        label: 'Facebook',
+    ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [{
+        id: 'user-management',
+        icon: Users,
+        label: 'Quản lý người dùng',
         menus: [
             {
                 section: 'MANAGEMENT',
                 items: [
-                    { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
-                    { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: FileText },
-                    { label: 'Search Reel', href: '/dashboard/facebook/search-reel', icon: Film },
+                    { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+                    { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
+                    { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
                 ]
             }
         ]
-    },
-    { 
-        id: 'tiktok', 
-        icon: Music2, // TikTok
-        label: 'TikTok',
-        menus: [
-            { 
-                section: 'ANALYTICS',
-                items: [
-                    { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
-                    { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
-                ]
-            }
-        ]
-    }
+    }] : []),
+    ...(user?.role !== 'MANAGER' && user?.role !== 'ADMIN' ? [
+      { 
+          id: 'facebook', 
+          icon: Facebook, 
+          label: 'Facebook',
+          menus: [
+              {
+                  section: 'MANAGEMENT',
+                  items: [
+                      { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
+                      { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: FileText },
+                      { label: 'Search Reel', href: '/dashboard/facebook/search-reel', icon: Film },
+                  ]
+              }
+          ]
+      },
+      { 
+          id: 'tiktok', 
+          icon: Music2, // TikTok
+          label: 'TikTok',
+          menus: [
+              { 
+                  section: 'ANALYTICS',
+                  items: [
+                      { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
+                      { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
+                  ]
+              }
+          ]
+      }
+    ] : [])
   ];
 
   // Auto-detect active platform based on URL
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
+    if (pathname.startsWith('/dashboard/manager') || pathname.startsWith('/dashboard/editor-management')) {
+        setActivePlatform('user-management');
+    } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
         setActivePlatform('facebook');
     } else if (pathname.startsWith('/dashboard/ai')) {
         setActivePlatform('tiktok');
@@ -140,11 +163,11 @@ export default function SmartSidebar({ user, onLogout }: SidebarProps) {
 
       {/* 2. SUB-MENU DRAWER (Right Panel) - Visible on Hover */}
       <div className={`w-[240px] h-full bg-[#0b1121] border-r border-slate-800 flex flex-col transition-all duration-300 transform origin-left 
-          ${(activePlatform && isSidebarHovered) ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 w-0 overflow-hidden'}`
+          ${(activePlatform && (isSidebarHovered || isPinned)) ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 w-0 overflow-hidden'}`
       }>
            
            {/* Header */}
-           <div className="h-20 flex items-center px-6 border-b border-slate-800 whitespace-nowrap overflow-hidden">
+           <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 whitespace-nowrap overflow-hidden">
                <div>
                    <h2 className="text-white font-bold text-lg flex items-center gap-2">
                        {currentPlatform?.label}
@@ -152,6 +175,15 @@ export default function SmartSidebar({ user, onLogout }: SidebarProps) {
                    </h2>
                    <p className="text-slate-500 text-xs mt-1">Video Intelligence</p>
                </div>
+               
+               {/* Pin/Unpin Button */}
+               <button 
+                  onClick={onTogglePin}
+                  className={`p-1.5 rounded-lg transition-colors ${isPinned ? 'text-blue-500 bg-blue-500/10' : 'text-slate-500 hover:text-white hover:bg-slate-700'}`}
+                  title={isPinned ? "Unpin sidebar" : "Pin sidebar to push content"}
+               >
+                  <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
+               </button>
            </div>
 
            {/* Menu Items */}
