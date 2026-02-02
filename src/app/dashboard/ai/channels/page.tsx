@@ -41,8 +41,9 @@ export default function TrackedChannelsPage() {
   const fetchTrackedChannels = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      // Using the NestJS endpoint
-      const response = await fetch('http://localhost:3000/tracked-channels', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      // Using the NestJS endpoint with platform filter to separate lists
+      const response = await fetch(`${apiUrl}/tracked-channels?platform=${platform.toUpperCase()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -67,14 +68,17 @@ export default function TrackedChannelsPage() {
   const fetchChannelProfile = async (username: string) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/ai/user-videos', {
+      // For Instagram: Only fetch profile stats (no posts) to speed up add channel
+      // Posts will be fetched when user views analytics
+      const maxResults = platform.toLowerCase() === 'instagram' ? 0 : 9999;
+      
+      const response = await fetch('http://localhost:3000/api/ai/user-videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           platform: platform.toLowerCase(),
           username: username.replace('@', ''),
-          max_results: 9999 // Fetch all videos for accurate stats
-
+          max_results: maxResults
         })
       });
       
@@ -149,7 +153,7 @@ export default function TrackedChannelsPage() {
       // Save to Backend
       console.log('💾 Saving Channel Payload:', payload);
       const token = localStorage.getItem('auth_token');
-      const saveResponse = await fetch('http://localhost:3000/tracked-channels', {
+      const saveResponse = await fetch('http://localhost:3000/api/tracked-channels', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -220,6 +224,27 @@ export default function TrackedChannelsPage() {
     if (num >= 1000000) return (num / 1000000).toFixed(3) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(3) + 'K';
     return num.toString();
+  };
+
+  // Helper to get proxied avatar URL for Instagram (bypass CORS/expiry)
+  const getAvatarUrl = (channel: ChannelProfile) => {
+    const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random&color=fff`;
+    
+    if (!channel.avatar_url) {
+      console.log(`⚠️ No avatar_url for ${channel.username}, using fallback`);
+      return fallbackUrl;
+    }
+    
+    // If it's an Instagram CDN URL, proxy it through our backend
+    if (channel.platform?.toUpperCase() === 'INSTAGRAM' && 
+        (channel.avatar_url.includes('cdninstagram.com') || channel.avatar_url.includes('instagram.com'))) {
+      const proxiedUrl = `http://localhost:3000/api/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
+      console.log(`🔄 Proxying Instagram avatar for ${channel.username}:`, proxiedUrl);
+      return proxiedUrl;
+    }
+    
+    console.log(`✅ Using direct avatar URL for ${channel.username}:`, channel.avatar_url);
+    return channel.avatar_url;
   };
 
   const platformName = platform === 'tiktok' ? 'TikTok' : platform === 'instagram' ? 'Instagram' : platform;
@@ -305,11 +330,11 @@ export default function TrackedChannelsPage() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="relative">
                     <img 
-                      src={channel.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random&color=fff`} 
+                      src={getAvatarUrl(channel)} 
                       alt={channel.display_name}
                       className="w-12 h-12 rounded-full object-cover border-2 border-slate-100"
                       onError={(e) => {
-                        // Fallback if the provided avatar_url fails
+                        // Fallback if the proxied avatar also fails
                         e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random&color=fff`;
                       }}
                     />

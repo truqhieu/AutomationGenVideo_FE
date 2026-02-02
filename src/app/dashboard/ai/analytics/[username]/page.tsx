@@ -2,7 +2,7 @@
 
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 
@@ -43,20 +43,37 @@ import {
 } from 'lucide-react';
 
 import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 
-import PerformanceChart from './PerformanceChart';
-
-import FollowerGrowthChart from './FollowerGrowthChart';
-
-import EngagementBreakdown from './EngagementBreakdown';
-
-import BestPostingTimes from './BestPostingTimes';
-
-import VideoDurationAnalysis from './VideoDurationAnalysis';
-
-import PostingStats from './PostingStats';
-
-import TopViralVideos from './TopViralVideos';
+// Dynamic imports for improved performance
+const PerformanceChart = dynamic(() => import('./PerformanceChart'), { 
+  loading: () => <div className="h-[300px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const FollowerGrowthChart = dynamic(() => import('./FollowerGrowthChart'), { 
+  loading: () => <div className="h-[300px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const EngagementBreakdown = dynamic(() => import('./EngagementBreakdown'), { 
+  loading: () => <div className="h-[300px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const BestPostingTimes = dynamic(() => import('./BestPostingTimes'), { 
+  loading: () => <div className="h-[300px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const VideoDurationAnalysis = dynamic(() => import('./VideoDurationAnalysis'), { 
+  loading: () => <div className="h-[300px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const PostingStats = dynamic(() => import('./PostingStats'), { 
+  loading: () => <div className="h-[150px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
+const TopViralVideos = dynamic(() => import('./TopViralVideos'), { 
+  loading: () => <div className="h-[400px] bg-slate-100/50 animate-pulse rounded-2xl" />,
+  ssr: false 
+});
 
 
 
@@ -73,6 +90,9 @@ export default function ChannelAnalyticsPage() {
   const username = (params.username as string) || '';
 
   const platform = searchParams.get('platform') || 'tiktok';
+  
+  // Debug: Log platform value
+  console.log('🔍 Analytics Page - URL params:', { username, platform, fullSearchParams: searchParams.toString() });
 
 
 
@@ -96,205 +116,143 @@ export default function ChannelAnalyticsPage() {
 
 
 
-  useEffect(() => {
+  const ignoreNextFetch = useRef(false);
 
-    if (username) {
-
-      fetchChannelData();
-
-    } else {
-
-      setError('Invalid channel username');
-
-      setLoading(false);
-
-    }
-
-  }, [username, platform]);
-
-
-
-  // Re-process stats for filtered date range
-
-  useEffect(() => {
-
-    if (videos.length > 0 && stats) {
-
-      const filtered = videos.filter(v => {
-
-        if (!v.published_at) return false;
-
-        const pubDate = new Date(v.published_at);
-
-        const start = startDate ? new Date(startDate) : null;
-
-        const end = endDate ? new Date(endDate) : null;
-
-
-
-        if (start) {
-
-            start.setHours(0, 0, 0, 0); 
-
-        }
-
-        if (end) {
-
-            end.setHours(23, 59, 59, 999);
-
-        }
-
-
-
-        if (start && pubDate < start) return false;
-
-        if (end && pubDate > end) return false;
-
-        return true;
-
-      });
-
-
-
-      // Recalculate stats for the filtered period
-
-      const newTotalLikes = filtered.reduce((sum, v) => sum + (Number(v?.likes_count) || 0), 0);
-
-      const newTotalViews = filtered.reduce((sum, v) => sum + (Number(v?.views_count) || 0), 0);
-
-      const newTotalComments = filtered.reduce((sum, v) => sum + (Number(v?.comments_count) || 0), 0);
-
-      const newTotalShares = filtered.reduce((sum, v) => sum + (Number(v?.shares_count) || 0), 0);
-
-      
-
-      const newAvgEngagement = newTotalViews > 0 
-
-        ? ((newTotalLikes + newTotalComments + newTotalShares) / newTotalViews) * 100 
-
-        : 0;
-
-
-
-      setStats((prev: any) => ({
-
-        ...prev,
-
-        // Update detailed stats based on filter
-
-        filteredLikes: newTotalLikes,
-
-        filteredViews: newTotalViews,
-
-        filteredComments: newTotalComments,
-
-        filteredShares: newTotalShares,
-
-        filteredVideoCount: filtered.length,
-
-        filteredEngagement: newAvgEngagement.toFixed(2),
-
-      }));
-
-    }
-
-  }, [startDate, endDate, videos]);
-
-
-
-
-
-  const fetchChannelData = async () => {
+  // Pass date params explicitly to avoid dependency loop
+  const fetchChannelData = useCallback(async (currentStart?: string, currentEnd?: string) => {
+    // Use passed args to ensure we use the values that triggered the effect
+    const effectiveStart = currentStart;
+    const effectiveEnd = currentEnd;
 
     setLoading(true);
-
     setError(null);
-
     try {
-
       const token = localStorage.getItem('auth_token');
-
       
-
       if (!username) {
-
         throw new Error('Username is required');
-
       }
 
-      
-
-      // Fetch tracked channel info
-
-      const channelResponse = await fetch(`http://localhost:3000/tracked-channels/by-username/${platform.toUpperCase()}/${encodeURIComponent(username)}`, {
-
-        headers: {
-
-          'Authorization': `Bearer ${token}`
-
-        }
-
-      });
-
-      
-
-      if (channelResponse.ok) {
-
-        const channelData = await channelResponse.json();
-
-        console.log('📊 Channel API Response:', channelData);
-
-        console.log('👥 Total Followers:', channelData.total_followers);
-
-        setProfile(channelData);
-
+      // Smart max_results calculation
+      let smartMaxResults = 50;
+      if (effectiveStart && effectiveEnd) {
+          const start = new Date(effectiveStart);
+          const end = new Date(effectiveEnd);
+          const timeDiff = end.getTime() - start.getTime();
+          // Ensure at least 1 day count even if start == end
+          const daysDiff = Math.max(Math.ceil(timeDiff / (1000 * 60 * 60 * 24)), 1);
+          
+          // User requested strict "days * 8" logic logic provided by user
+          // Removed the hard floor of 50. 
+          smartMaxResults = Math.min(daysDiff * 8, 300);
+          
+          // Minimum safety of 5 to avoid 0
+          smartMaxResults = Math.max(smartMaxResults, 5);
       }
 
-      
+      const requestBody = {
+        platform: (platform || 'tiktok').toLowerCase(),
+        username: username,
+        max_results: smartMaxResults,
+        start_date: effectiveStart || undefined,
+        end_date: effectiveEnd || undefined
+      };
 
-            {/* Videos Search Limit */}
+      console.log(`[${platform.toUpperCase()}] Fetching fresh data:`, requestBody);
+      console.log(`[${platform.toUpperCase()}] API URL: http://localhost:3000/api/ai/user-videos`);
 
-            {/* Previously 10000, explicitly verifying this remains high for full scan support */}
-
-             const videosResponse = await fetch(`http://localhost:3000/ai/videos/by-channel?platform=${platform.toUpperCase()}&username=${encodeURIComponent(username)}&limit=10000&sortBy=views&order=desc`, {
-
+      const response = await fetch(`http://localhost:3000/api/ai/user-videos`, {
+        method: 'POST',
         headers: {
-
-          'Authorization': `Bearer ${token}`
-
-        }
-
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
       });
 
+      console.log(`[${platform.toUpperCase()}] Response status:`, response.status);
       
-
-      const videosData = await videosResponse.json();
-
+      const data = await response.json();
+      console.log(`[${platform.toUpperCase()}] Response data:`, data);
       
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch videos');
+      }
 
-      if (videosData.success) {
+      const videoList = data.results || [];
+      setVideos(videoList);
 
-        processAnalytics(videosData.results || [], videosData.aggregate_stats);
+      if (data.profile) {
+        setProfile(data.profile);
+      }
 
-      } else {
+      processAnalytics(videoList);
 
-        throw new Error(videosData.error || 'Failed to fetch videos');
-
+      // Auto-clear filter after successful fetch if it was set
+      if (effectiveStart && effectiveEnd) {
+        ignoreNextFetch.current = true; // Block the effect from the state update below
+        setStartDate('');
+        setEndDate('');
+        console.log('✅ Filters auto-cleared, data preserved.');
       }
 
     } catch (error: any) {
-
       console.error('Error fetching analytics:', error);
-
       setError(error.message || 'Failed to load analytics');
-
     } finally {
-
       setLoading(false);
+    }
+  }, [username, platform]); 
 
+  // Set default 3-day filter for Instagram on initial load
+  useEffect(() => {
+    if (username && platform.toLowerCase() === 'instagram' && !startDate && !endDate) {
+      const today = new Date();
+      const threeDaysAgo = new Date(today);
+      threeDaysAgo.setDate(today.getDate() - 3);
+      
+      const formatDateForInput = (date: Date) => {
+        return date.toISOString().split('T')[0];
+      };
+      
+      const start = formatDateForInput(threeDaysAgo);
+      const end = formatDateForInput(today);
+      
+      console.log('📸 Instagram: Setting default 3-day filter', { start, end });
+      setStartDate(start);
+      setEndDate(end);
+    }
+  }, [username, platform]); // Only run when username or platform changes
+
+  // Initial fetch and Auto-fetch on date change
+  useEffect(() => {
+    // If we just auto-cleared, skip this effect run
+    if (ignoreNextFetch.current) {
+        ignoreNextFetch.current = false;
+        return;
     }
 
-  };
+    if (username) {
+      // For Instagram: only fetch when filter is set (default 3-day or user input)
+      // For other platforms: fetch immediately or when filter changes
+      const isInstagram = platform.toLowerCase() === 'instagram';
+      
+      if (isInstagram) {
+        // Instagram: Only fetch when both dates are set
+        if (startDate && endDate) {
+          fetchChannelData(startDate, endDate);
+        }
+      } else {
+        // Other platforms: fetch with or without filter
+        if ((startDate && endDate) || (!startDate && !endDate)) {
+          fetchChannelData(startDate, endDate);
+        }
+      }
+    }
+  }, [fetchChannelData, startDate, endDate, username, platform]);
+
+  // Legacy effect removal (handled by fetchChannelData now)
+  // useEffect(() => { if (username) fetchChannelData(); }, [username, platform]);
 
 
 
@@ -520,78 +478,15 @@ export default function ChannelAnalyticsPage() {
 
              {/* Right: Summary Modules */}
 
-             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full xl:w-auto">
-
-                 {/* Followers */}
-
-                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl min-w-[200px] border border-slate-100">
-
-                    <div>
-
-                        <p className="text-xs text-slate-400 font-medium uppercase mb-1">Followers</p>
-
-                        <p className="text-xl font-bold text-slate-800">{formatNumber(profile?.total_followers || 0)}</p>
-
-                    </div>
-
-                    <Users className="w-5 h-5 text-slate-300" />
-
-                 </div>
-
-
-
-                 {/* Total Likes */}
-
-                 <div className="flex items-center justify-between p-4 bg-pink-50/50 rounded-xl min-w-[200px] border border-pink-100">
-
-                    <div>
-
-                        <p className="text-xs text-pink-400 font-medium uppercase mb-1">Total Likes</p>
-
-                        <p className="text-xl font-bold text-slate-800">{formatNumber(stats?.totalLikes)}</p>
-
-                    </div>
-
-                    <Heart className="w-5 h-5 text-pink-300" />
-
-                 </div>
-
-
-
-                 {/* Videos */}
-
-                 <div className="flex items-center justify-between p-4 bg-purple-50/50 rounded-xl min-w-[200px] border border-purple-100">
-
-                    <div>
-
-                        <p className="text-xs text-purple-400 font-medium uppercase mb-1">Videos</p>
-
-                        <p className="text-xl font-bold text-slate-800">{formatNumber(stats?.videoCount)}</p>
-
-                    </div>
-
-                    <Video className="w-5 h-5 text-purple-300" />
-
-                 </div>
-
-
-
-                 {/* Processed/Analyzed */}
-
-                 <div className="flex items-center justify-between p-4 bg-emerald-50/50 rounded-xl min-w-[200px] border border-emerald-100">
-
-                    <div>
-
-                        <p className="text-xs text-emerald-500 font-medium uppercase mb-1">Processed</p>
-
-                        <p className="text-xl font-bold text-slate-800">{formatNumber(stats?.videoCount)}</p>
-
-                    </div>
-
-                    <CheckCircle2 className="w-5 h-5 text-emerald-300" />
-
-                 </div>
-
+             {/* Right: Back Button */}
+             <div className="flex items-center">
+                 <button 
+                    onClick={() => router.back()}
+                    className="group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-800 hover:text-white hover:border-slate-800 transition-all duration-300 shadow-sm hover:shadow-md"
+                 >
+                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" />
+                     <span className="font-medium">Quay lại</span>
+                 </button>
              </div>
 
          </div>
@@ -611,33 +506,22 @@ export default function ChannelAnalyticsPage() {
              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
 
                 <input 
-
                     type="date" 
-
                     value={startDate} 
-
-                    max={endDate}
-
+                    max={endDate || new Date().toISOString().split('T')[0]}
                     onChange={(e) => setStartDate(e.target.value)}
-
                     className="text-sm font-medium text-slate-600 outline-none bg-transparent"
-
                 />
 
                 <span className="text-slate-400">-</span>
 
                 <input 
-
                     type="date" 
-
                     value={endDate}
-
                     min={startDate} 
-
+                    max={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setEndDate(e.target.value)}
-
                     className="text-sm font-medium text-slate-600 outline-none bg-transparent"
-
                 />
 
              </div>

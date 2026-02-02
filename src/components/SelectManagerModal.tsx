@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Users, X, CheckCircle } from 'lucide-react';
 
@@ -18,12 +18,27 @@ export default function SelectManagerModal() {
   const [selectedManager, setSelectedManager] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Track if we already checked in this component lifecycle
+  const hasChecked = useRef(false);
 
   useEffect(() => {
+    // Only check once per component mount
+    if (hasChecked.current) return;
+    
     // Show modal if user is EDITOR or CONTENT and doesn't have a manager
+    // Only show on first login, not during navigation within dashboard
     if (user && (user.role === 'EDITOR' || user.role === 'CONTENT') && !user.manager_id) {
-      setShowModal(true);
-      fetchManagers();
+      // Check if modal was already shown/dismissed in this session
+      const modalDismissed = sessionStorage.getItem('manager_modal_dismissed');
+      
+      if (!modalDismissed) {
+        hasChecked.current = true;
+        setShowModal(true);
+        fetchManagers();
+      } else {
+        hasChecked.current = true;
+      }
     }
   }, [user]);
 
@@ -52,6 +67,12 @@ export default function SelectManagerModal() {
     }
   };
 
+  // Dismiss modal and save to sessionStorage to prevent showing again
+  const dismissModal = () => {
+    sessionStorage.setItem('manager_modal_dismissed', 'true');
+    setShowModal(false);
+  };
+
   const handleSelectManager = async () => {
     if (!selectedManager || !token) return;
 
@@ -71,6 +92,8 @@ export default function SelectManagerModal() {
         const data = await response.json();
         // Update user in store
         setUser({ ...user!, manager_id: selectedManager });
+        // Mark as dismissed so it won't show again in this session
+        sessionStorage.setItem('manager_modal_dismissed', 'true');
         setShowModal(false);
       } else {
         alert('Không thể chọn quản lý. Vui lòng thử lại.');
@@ -91,7 +114,7 @@ export default function SelectManagerModal() {
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
           <button
-            onClick={() => setShowModal(false)}
+            onClick={dismissModal}
             className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
           >
             <X className="w-6 h-6" />

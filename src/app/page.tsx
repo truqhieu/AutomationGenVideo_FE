@@ -12,6 +12,8 @@ export default function LandingPage() {
   const { isAuthenticated } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
 
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -45,19 +47,39 @@ export default function LandingPage() {
              {isAuthenticated ? (
                  <Link 
                     href="/dashboard"
-                    className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2"
+                    prefetch={true}
+                    onClick={() => setNavigatingTo('/dashboard')}
+                    className={`px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2 ${navigatingTo ? 'opacity-80 pointer-events-none' : ''}`}
                  >
-                    Vào Dashboard <ArrowRight className="w-4 h-4" />
+                    {navigatingTo === '/dashboard' ? (
+                        <>
+                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                           Đang tải...
+                        </>
+                    ) : (
+                        <>
+                           Vào Dashboard <ArrowRight className="w-4 h-4" />
+                        </>
+                    )}
                  </Link>
              ) : (
                  <>
-                    <Link href="/login" className="text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">
+                    <Link 
+                        href="/login" 
+                        prefetch={true}
+                        onClick={() => setNavigatingTo('/login')}
+                        className={`text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors flex items-center gap-2 ${navigatingTo ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                        {navigatingTo === '/login' && <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />}
                         Đăng nhập
                     </Link>
                     <Link 
                         href="/register" 
-                        className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                        prefetch={true}
+                        onClick={() => setNavigatingTo('/register')}
+                        className={`px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 ${navigatingTo ? 'opacity-80 pointer-events-none' : ''}`}
                     >
+                        {navigatingTo === '/register' && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Đăng ký
                     </Link>
                  </>
