@@ -29,7 +29,8 @@ export default function CollectionsPage() {
 
   const fetchCollections = async () => {
     try {
-      const response = await fetch('http://localhost:3000/ai/collections/');
+      const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/ai/collections/`);
       const data = await response.json();
       if (data.success) {
         setCollections(data.collections);
@@ -48,7 +49,8 @@ export default function CollectionsPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/ai/collections/', {
+      const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/ai/collections/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCollection)
@@ -69,7 +71,8 @@ export default function CollectionsPage() {
     if (!confirm(`Bạn có chắc muốn xóa bộ sưu tập "${name}"?`)) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/ai/collections/${id}/`, {
+      const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/ai/collections/${id}/`, {
         method: 'DELETE'
       });
       const data = await response.json();

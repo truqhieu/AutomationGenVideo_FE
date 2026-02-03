@@ -29,10 +29,30 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (isHydrated && !isAuthenticated && !user) {
-      console.log('Dashboard: Not authenticated, redirecting to homepage');
-      router.push('/');
+      // Check if token exists in localStorage (handling hydration delay)
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        console.log('Dashboard: No token found, redirecting to homepage');
+        router.push('/');
+      } else {
+        // Token exists but state is empty - try to recover session
+        // This handles page refreshes or race conditions
+        console.log('Dashboard: Token found but state empty, attempting to restore session...');
+        // We don't redirect here, allowing the UI to show loading state or eventual content
+      }
     }
   }, [isHydrated, isAuthenticated, user, router]);
+
+  // Add a separate effect to retry loading user if token exists but no user
+  useEffect(() => {
+    if (isHydrated && !isAuthenticated && !user) {
+      const token = localStorage.getItem('auth_token');
+      if (token && !useAuthStore.getState().isLoading) {
+        useAuthStore.getState().loadUser();
+      }
+    }
+  }, [isHydrated, isAuthenticated, user]);
 
   const handleLogout = () => {
     logout();
@@ -48,7 +68,7 @@ export default function DashboardLayout({
     { icon: Settings, label: 'Cài đặt', href: '/dashboard/settings', roles: ['ADMIN'] },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
+  const filteredMenuItems = menuItems.filter(item =>
     user && item.roles.includes(user.role)
   );
 
@@ -63,9 +83,9 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Smart Sidebar (Desktop & Mobile adaptation) */}
-      <SmartSidebar 
-        user={user} 
-        onLogout={handleLogout} 
+      <SmartSidebar
+        user={user}
+        onLogout={handleLogout}
         isPinned={sidebarOpen}
         onTogglePin={() => setSidebarOpen(!sidebarOpen)}
       />
@@ -78,11 +98,11 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex-1 lg:hidden" />
             <div className="flex items-center gap-4 ml-auto">
-               {/* Optional User info in header if sidebar is collapsed? */}
-               <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                  <p className="text-xs text-gray-500">{user.role}</p>
-               </div>
+              {/* Optional User info in header if sidebar is collapsed? */}
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
+                <p className="text-xs text-gray-500">{user.role}</p>
+              </div>
             </div>
           </div>
         </header>

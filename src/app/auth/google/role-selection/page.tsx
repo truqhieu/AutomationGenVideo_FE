@@ -23,7 +23,9 @@ const roles = [
   },
 ];
 
-export default function RoleSelectionPage() {
+import { Suspense } from 'react';
+
+function RoleSelectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loadUser } = useAuthStore();
@@ -82,69 +84,81 @@ export default function RoleSelectionPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Chọn vai trò của bạn
-          </h1>
-          <p className="text-gray-600">
-            Vui lòng chọn vai trò phù hợp với công việc của bạn
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-2xl mx-auto">
-          {roles.map((role) => (
-            <button
-              key={role.value}
-              onClick={() => setSelectedRole(role.value)}
-              disabled={isLoading}
-              type="button"
-              className={`relative z-10 p-6 rounded-xl border-2 transition-all ${
-                selectedRole === role.value
-                  ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
-                  : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-              } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}`}
-              style={{ pointerEvents: isLoading ? 'none' : 'auto' }}
-            >
-              <div className={`${role.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 mx-auto pointer-events-none`}>
-                <role.icon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 pointer-events-none">
-                {role.label}
-              </h3>
-              <p className="text-sm text-gray-600 pointer-events-none">{role.description}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex justify-center">
-          <button
-            onClick={handleRoleSelect}
-            disabled={!selectedRole || isLoading}
-            className={`px-8 py-3 rounded-lg font-medium transition-all ${
-              selectedRole && !isLoading
-                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? (
-              <span className="flex items-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Đang xử lý...
-              </span>
-            ) : (
-              'Tiếp tục'
-            )}
-          </button>
-        </div>
+    <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Chọn vai trò của bạn
+        </h1>
+        <p className="text-gray-600">
+          Vui lòng chọn vai trò phù hợp với công việc của bạn
+        </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-2xl mx-auto">
+        {roles.map((role) => (
+          <button
+            key={role.value}
+            onClick={() => setSelectedRole(role.value)}
+            disabled={isLoading}
+            type="button"
+            className={`relative z-10 p-6 rounded-xl border-2 transition-all ${
+              selectedRole === role.value
+                ? 'border-blue-500 bg-blue-50 shadow-lg scale-105'
+                : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-102'}`}
+            style={{ pointerEvents: isLoading ? 'none' : 'auto' }}
+          >
+            <div className={`${role.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4 mx-auto pointer-events-none`}>
+              <role.icon className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2 pointer-events-none">
+              {role.label}
+            </h3>
+            <p className="text-sm text-gray-600 pointer-events-none">{role.description}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-center">
+        <button
+          onClick={handleRoleSelect}
+          disabled={!selectedRole || isLoading}
+          className={`px-8 py-3 rounded-lg font-medium transition-all ${
+            selectedRole && !isLoading
+              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          {isLoading ? (
+            <span className="flex items-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              Đang xử lý...
+            </span>
+          ) : (
+            'Tiếp tục'
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function RoleSelectionPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Suspense fallback={
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+        <RoleSelectionContent />
+      </Suspense>
     </div>
   );
 }

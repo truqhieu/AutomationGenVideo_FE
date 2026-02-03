@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Users, X, CheckCircle } from 'lucide-react';
 
@@ -18,12 +18,27 @@ export default function SelectManagerModal() {
   const [selectedManager, setSelectedManager] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Track if we already checked in this component lifecycle
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Show modal if user is EDITOR and doesn't have a manager
-    if (user && user.role === 'EDITOR' && !user.manager_id) {
-      setShowModal(true);
-      fetchManagers();
+    // Only check once per component mount
+    if (hasChecked.current) return;
+    
+    // Show modal if user is EDITOR or CONTENT and doesn't have a manager
+    // Only show on first login, not during navigation within dashboard
+    if (user && (user.role === 'EDITOR' || user.role === 'CONTENT') && !user.manager_id) {
+      // Check if modal was already shown/dismissed in this session
+      const modalDismissed = sessionStorage.getItem('manager_modal_dismissed');
+      
+      if (!modalDismissed) {
+        hasChecked.current = true;
+        setShowModal(true);
+        fetchManagers();
+      } else {
+        hasChecked.current = true;
+      }
     }
   }, [user]);
 
@@ -52,6 +67,12 @@ export default function SelectManagerModal() {
     }
   };
 
+  // Dismiss modal and save to sessionStorage to prevent showing again
+  const dismissModal = () => {
+    sessionStorage.setItem('manager_modal_dismissed', 'true');
+    setShowModal(false);
+  };
+
   const handleSelectManager = async () => {
     if (!selectedManager || !token) return;
 
@@ -71,6 +92,8 @@ export default function SelectManagerModal() {
         const data = await response.json();
         // Update user in store
         setUser({ ...user!, manager_id: selectedManager });
+        // Mark as dismissed so it won't show again in this session
+        sessionStorage.setItem('manager_modal_dismissed', 'true');
         setShowModal(false);
       } else {
         alert('Không thể chọn quản lý. Vui lòng thử lại.');
@@ -89,7 +112,13 @@ export default function SelectManagerModal() {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
+          <button
+            onClick={dismissModal}
+            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold mb-2">Chọn Quản Lý Của Bạn</h2>
@@ -126,11 +155,10 @@ export default function SelectManagerModal() {
                   <button
                     key={manager.id}
                     onClick={() => setSelectedManager(manager.id)}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedManager === manager.id
-                        ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                        : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                    }`}
+                    className={`p-4 rounded-xl border-2 transition-all text-left ${selectedManager === manager.id
+                      ? 'border-indigo-600 bg-indigo-50 shadow-md'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">

@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 
-export default function GoogleCallbackPage() {
+import { Suspense } from 'react';
+
+function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loadUser } = useAuthStore();
@@ -35,11 +37,24 @@ export default function GoogleCallbackPage() {
   }, [searchParams, router, loadUser]);
 
   return (
+    <div className="p-8 text-center">
+      <h2 className="text-2xl font-bold mb-4">Authenticating...</h2>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+    </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Authenticating...</h2>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-      </div>
+      <Suspense fallback={
+        <div className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      }>
+        <GoogleCallbackContent />
+      </Suspense>
     </div>
   );
 }

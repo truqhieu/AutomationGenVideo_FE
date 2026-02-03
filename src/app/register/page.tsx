@@ -50,20 +50,28 @@ export default function RegisterPage() {
     try {
       setIsLoading(true);
       clearError();
-      
-      // Prepare payload - backend will auto-assign manager for EDITOR and CONTENT
-      const payload: any = {
-        full_name: data.full_name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-      };
-      
-      await registerUser(payload);
-      router.push('/dashboard');
+
+      console.log('Attempting registration:', { email: data.email, role: data.role });
+
+      await registerUser(data);
+      console.log('Registration successful');
+
+      // Get latest user state directly from store
+      const { user } = useAuthStore.getState();
+
+      if (user) {
+        // Redirect based on role
+        if (user.role === 'MANAGER' || user.role === 'ADMIN') {
+          router.push('/dashboard/manager');
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       console.error('Registration error:', err);
-      // Error handled by store or thrown above
+      // Error handled by store
     } finally {
       setIsLoading(false);
     }
