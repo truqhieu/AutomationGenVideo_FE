@@ -20,7 +20,9 @@ import {
   Users,
   Activity,
   Filter,
-  Upload
+  Upload,
+  Scissors,
+  ImagePlus
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -94,6 +96,13 @@ export default function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: 
                   items: [
                       { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
                       { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
+                  ]
+              },
+              {
+                  section: 'EDIT VIDEO',
+                  items: [
+                      { label: 'Photo to Video', href: '/dashboard/ai/photo-to-video', icon: ImagePlus },
+                      { label: 'Mix Video', href: '/dashboard/ai/mix-video', icon: Scissors },
                   ]
               }
           ]
