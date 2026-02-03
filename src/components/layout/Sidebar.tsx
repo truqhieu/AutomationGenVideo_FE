@@ -9,6 +9,7 @@ import {
   Facebook,
   Instagram,
   Music2, // Using as TikTok placeholder
+  Music, // Using as Douyin icon
   LayoutGrid,
   CreditCard,
   HelpCircle,
@@ -20,7 +21,8 @@ import {
   Filter,
   Upload,
   Mic,
-  Video
+  Video,
+  BookOpen // Xiaohongshu icon
 } from 'lucide-react';
 
 
@@ -61,6 +63,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       return 'tiktok';
     } else if (pathname.startsWith('/dashboard/instagram')) {
       return 'instagram';
+    } else if (pathname.startsWith('/dashboard/douyin')) {
+      return 'douyin';
+    } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
+      return 'xiaohongshu';
     } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
       return 'facebook';
     }
@@ -141,6 +147,32 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
               }
           ]
       },
+      { 
+          id: 'douyin', 
+          icon: Music,
+          label: 'Douyin',
+          menus: [
+              { 
+                  section: 'RESEARCH',
+                  items: [
+                      { label: 'Search Videos', href: '/dashboard/douyin', icon: Search },
+                  ]
+              }
+          ]
+      },
+      { 
+          id: 'xiaohongshu', 
+          icon: BookOpen,
+          label: 'Xiaohongshu',
+          menus: [
+              { 
+                  section: 'RESEARCH',
+                  items: [
+                      { label: 'Search Notes', href: '/dashboard/xiaohongshu', icon: Search },
+                  ]
+              }
+          ]
+      },
       {
           id: 'ai-studio',
           icon: Mic,
@@ -155,7 +187,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           ]
       }
     ] : [])
-  ], [user?.role]);
+  ], [user?.role]); // Dependency on primitive string ensures stability
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
@@ -268,13 +300,13 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         style={{
           width: isDrawerVisible ? '240px' : '0px',
           opacity: isDrawerVisible ? 1 : 0,
-          transform: isDrawerVisible ? 'translate3d(0, 0, 0)' : 'translate3d(-100%, 0, 0)',
+          transform: isDrawerVisible ? 'translate3d(0, 0, 0)' : 'translate3d(-5%, 0, 0)', // Reduced translation distance for faster feel
           transition: prefersReducedMotion 
             ? 'none' 
-            : `transform ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1), width ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1)`,
-          willChange: isDrawerVisible ? 'transform, opacity, width' : 'auto',
-          backfaceVisibility: 'hidden', // Prevent flickering
-          WebkitFontSmoothing: 'antialiased', // Smoother text rendering
+            : `all ${prefersReducedMotion ? '0ms' : '200ms'} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, // Faster cubic-bezier
+          willChange: isDrawerVisible ? 'width, opacity, transform' : 'auto',
+          backfaceVisibility: 'hidden',
+          WebkitFontSmoothing: 'antialiased',
         }}
       >
            

@@ -26,6 +26,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -48,6 +49,10 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
+      // Ensure the error is set in the store so it displays in the UI
+      // UseAuthStore handles this, but we want to make sure the UI reflects it without reload
+      // Clear password field
+      setValue('password', '');
     } finally {
       setIsLoading(false);
     }
@@ -58,8 +63,8 @@ export default function LoginPage() {
       
       {/* Background Ambience */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse-slow"></div>
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] animate-pulse-slow delay-1000"></div>
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-3xl animate-pulse-slow will-change-transform"></div>
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl animate-pulse-slow delay-1000 will-change-transform"></div>
       </div>
 
       <div className="container px-4 mx-auto relative z-10 flex flex-col items-center">
@@ -173,7 +178,11 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-slate-500 text-sm">
               Chưa có tài khoản?{' '}
-              <Link href="/register" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+              <Link 
+                href="/register" 
+                className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                onClick={() => clearError()}
+              >
                 Đăng ký ngay
               </Link>
             </p>

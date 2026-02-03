@@ -260,7 +260,18 @@ export default function InstagramAnalyticsPage() {
                   type="date" 
                   value={endDate}
                   min={startDate} 
-                  max={new Date().toISOString().split('T')[0]}
+                  max={(() => {
+                    // Calculate max date: min(today, startDate + 14 days)
+                    const today = new Date().toISOString().split('T')[0];
+                    if (!startDate) return today;
+                    
+                    const start = new Date(startDate);
+                    const maxEnd = new Date(start);
+                    maxEnd.setDate(start.getDate() + 14);
+                    
+                    const maxEndStr = maxEnd.toISOString().split('T')[0];
+                    return maxEndStr < today ? maxEndStr : today;
+                  })()}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="px-4 py-3 border border-slate-200 rounded-xl text-slate-600 font-medium focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
@@ -361,7 +372,18 @@ export default function InstagramAnalyticsPage() {
                     type="date" 
                     value={endDate}
                     min={startDate} 
-                    max={new Date().toISOString().split('T')[0]}
+                    max={(() => {
+                      // Calculate max date: min(today, startDate + 14 days)
+                      const today = new Date().toISOString().split('T')[0];
+                      if (!startDate) return today;
+                      
+                      const start = new Date(startDate);
+                      const maxEnd = new Date(start);
+                      maxEnd.setDate(start.getDate() + 14);
+                      
+                      const maxEndStr = maxEnd.toISOString().split('T')[0];
+                      return maxEndStr < today ? maxEndStr : today;
+                    })()}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="text-sm font-medium text-slate-600 outline-none bg-transparent"
                 />

@@ -47,7 +47,7 @@ export default function LandingPage() {
              {isAuthenticated ? (
                  <Link 
                     href="/dashboard"
-                    prefetch={true}
+                    prefetch={false}
                     onClick={() => setNavigatingTo('/dashboard')}
                     className={`px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2 ${navigatingTo ? 'opacity-80 pointer-events-none' : ''}`}
                  >
@@ -92,8 +92,8 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 overflow-hidden relative">
          {/* Background Decoration */}
          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-bl from-blue-50 to-transparent -z-10 rounded-bl-[100px]" />
-         <div className="absolute top-40 left-20 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
-         <div className="absolute top-40 right-20 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
+         <div className="absolute top-40 left-20 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob will-change-transform" />
+         <div className="absolute top-40 right-20 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000 will-change-transform" />
 
          <div className="container mx-auto px-6 max-w-7xl">
             <div className="flex flex-col lg:flex-row items-center gap-16">

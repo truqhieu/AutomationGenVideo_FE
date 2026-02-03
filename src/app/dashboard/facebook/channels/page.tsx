@@ -315,12 +315,10 @@ export default function FacebookChannelsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredChannels.map((channel, idx) => (
-                  <motion.div
+                  <div
                     key={channel.id || idx}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:translate-y-[-4px] transition-all group relative overflow-hidden"
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden flex flex-col h-full"
+                    style={{ willChange: 'transform' }}
                   >
                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button 
@@ -329,7 +327,7 @@ export default function FacebookChannelsPage() {
                                 handleRefreshChannel(channel);
                             }}
                             disabled={refreshingIds.has(channel.username) || processing}
-                            className="bg-white/90 backdrop-blur p-2 rounded-lg text-blue-600 shadow-sm border border-blue-100 hover:bg-blue-50"
+                            className="bg-white/90 p-2 rounded-lg text-blue-600 shadow-sm border border-blue-100 hover:bg-blue-50 transition-colors"
                             title="Làm mới dữ liệu"
                         >
                             <RotateCcw className={`w-4 h-4 ${refreshingIds.has(channel.username) ? 'animate-spin' : ''}`} />
@@ -343,6 +341,8 @@ export default function FacebookChannelsPage() {
                           src={channel.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=1877F2&color=fff`} 
                           alt={channel.display_name}
                           className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-50 shadow-md"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=1877F2&color=fff`;
                           }}
@@ -352,7 +352,7 @@ export default function FacebookChannelsPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-bold text-slate-900 truncate text-lg">{channel.display_name}</h3>
+                        <h3 className="font-bold text-slate-900 truncate text-lg" title={channel.display_name}>{channel.display_name}</h3>
                         <p className="text-sm text-slate-500 truncate font-medium flex items-center gap-1">
                            @{channel.username}
                         </p>
@@ -361,7 +361,7 @@ export default function FacebookChannelsPage() {
                     </div>
 
                     {/* Stats Grid - Show Followers only */}
-                    <div className="grid grid-cols-1 gap-3 mb-6">
+                    <div className="grid grid-cols-1 gap-3 mb-6 mt-auto">
                         <div className="bg-blue-50 rounded-2xl p-3 border border-blue-100 flex flex-col items-center justify-center text-center">
                             <span className="text-xs text-blue-500 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
                             <span className="text-blue-900 font-black text-lg">
@@ -378,7 +378,7 @@ export default function FacebookChannelsPage() {
                       <span>Xem Chi Tiết</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </>

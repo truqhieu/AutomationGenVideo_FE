@@ -57,6 +57,10 @@ export default function FacebookAnalyticsPage() {
   const [startDate, setStartDate] = useState(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   
+  // Temporary date states for user selection (before applying)
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+  
   const startDateRef = useRef(startDate);
   const endDateRef = useRef(endDate);
   const ignoreNextFetch = useRef(false);
@@ -66,7 +70,7 @@ export default function FacebookAnalyticsPage() {
     endDateRef.current = endDate;
   }, [startDate, endDate]);
 
-  const fetchData = useCallback(async (currentStart?: string, currentEnd?: string) => {
+  const fetchData = useCallback(async (currentStart?: string, currentEnd?: string, forceRefresh: boolean = false) => {
     if (!username) return;
     
     const effectiveStart = currentStart ?? startDateRef.current;
@@ -75,24 +79,19 @@ export default function FacebookAnalyticsPage() {
     setLoading(true);
     setError('');
     
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
     try {
-      let smartMaxResults = 50; 
-      const hasDateFilter = !!(effectiveStart && effectiveEnd);
-
-      if (hasDateFilter) {
-          const start = new Date(effectiveStart!);
-          const end = new Date(effectiveEnd!);
-          const timeDiff = end.getTime() - start.getTime();
-          const daysDiff = Math.max(Math.ceil(timeDiff / (1000 * 60 * 60 * 24)), 1);
+      // Calculate smart max_results based on date range
+      let smartMaxResults = 100; // Default
+      
+      if (effectiveStart && effectiveEnd) {
+          const start = new Date(effectiveStart);
+          const end = new Date(effectiveEnd);
+          const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           
-          // Dynamic calculation: Estimate ~10 posts/day + Buffer.
-          // This creates a "Safe High Limit" so Apify doesn't stop by count BEFORE hitting the date.
-          // The "Smart Stop" (maxPostDate) on Backend will handle the actual stopping point.
-          smartMaxResults = daysDiff * 20; 
-          smartMaxResults = Math.max(smartMaxResults, 50); // Minimum 50 for very short ranges
-          
+          // Estimate ~20 posts per day (conservative)
+          smartMaxResults = daysDiff * 20;
           console.log(`📊 Date range: ${effectiveStart} to ${effectiveEnd} (${daysDiff} days) -> Max Limit: ${smartMaxResults}`);
       } else {
          // Default if no range: fetch last 30 items
@@ -110,7 +109,7 @@ export default function FacebookAnalyticsPage() {
             max_results: smartMaxResults,
             start_date: effectiveStart || undefined,
             end_date: effectiveEnd || undefined,
-            force_refresh: false // Default to DB cache. Update only via specific action if implemented later.
+            force_refresh: forceRefresh // Use parameter instead of hardcoded false
         })
       });
       
@@ -119,6 +118,11 @@ export default function FacebookAnalyticsPage() {
       }
       
       const result = await response.json();
+      
+      // Check if data is being updated in background
+      if (result.is_updating) {
+        console.log('📊 Showing cached data, will update in background');
+      }
       
       if (result.profile) {
         setProfile(result.profile);
@@ -159,10 +163,19 @@ export default function FacebookAnalyticsPage() {
         // Auto-expand visible count if data is loaded to avoid "hidden" items feeling
         setVisibleCount(prev => Math.max(prev, mappedData.length)); 
 
+        // Show info message if data is being updated
+        if (result.is_updating && result.message) {
+          console.log(`ℹ️ ${result.message}`);
+          // You can add a toast notification here if you have a toast library
+        }
+
+        const hasDateFilter = !!(effectiveStart && effectiveEnd);
         if (hasDateFilter) {
             ignoreNextFetch.current = true;
             setStartDate('');
             setEndDate('');
+            setTempStartDate('');
+            setTempEndDate('');
             startDateRef.current = '';
             endDateRef.current = '';
             console.log('✅ Filters auto-cleared, data preserved.');
@@ -181,19 +194,34 @@ export default function FacebookAnalyticsPage() {
     }
   }, [username]);
 
-  // Auto-fetch logic
-  useEffect(() => {
-     if (ignoreNextFetch.current) {
-         ignoreNextFetch.current = false;
-         return;
-     }
+  // REMOVED auto-fetch on date change
+  // Users must click "Apply" button to trigger fetch
 
-     if (username) {
-        if ((startDate && endDate) || (!startDate && !endDate)) {
-            fetchData(startDate, endDate);
-        }
+  // Initial fetch on mount
+  useEffect(() => {
+     if (username && !hasFetched) {
+         fetchData(startDate, endDate);
      }
-  }, [startDate, endDate, fetchData, username]);
+  }, [username]); // Only run once on mount
+
+  // Manual apply filter function
+  const handleApplyFilter = () => {
+      // Basic validation (calendar already limits to 14 days)
+      if (tempStartDate && tempEndDate) {
+          const start = new Date(tempStartDate);
+          const end = new Date(tempEndDate);
+          
+          if (start > end) {
+              alert('⚠️ Ngày bắt đầu phải trước ngày kết thúc.');
+              return;
+          }
+      }
+      
+      console.log('🔄 Manual filter applied:', { tempStartDate, tempEndDate });
+      setStartDate(tempStartDate);
+      setEndDate(tempEndDate);
+      fetchData(tempStartDate, tempEndDate);
+  };
 
   // Combined stats for "All" tab
   const filteredData = useMemo(() => {
@@ -372,7 +400,7 @@ export default function FacebookAnalyticsPage() {
                         </button>
                     </div>
 
-                    {/* Date Range Picker - Moved here */}
+                    {/* Date Range Picker with Apply Button */}
                     <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 h-[52px]">
                         <div className="px-4 flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider border-r border-slate-100 h-full">
                             <BarChart3 className="w-4 h-4" />
@@ -381,21 +409,39 @@ export default function FacebookAnalyticsPage() {
                         <div className="flex items-center gap-2 px-2">
                              <input 
                                 type="date" 
-                                value={startDate}
-                                max={endDate || new Date().toISOString().split('T')[0]}
-                                onChange={(e) => setStartDate(e.target.value)}
+                                value={tempStartDate}
+                                max={tempEndDate || new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setTempStartDate(e.target.value)}
                                 className="bg-transparent text-slate-700 font-bold text-sm px-2 py-1.5 focus:outline-none cursor-pointer hover:bg-slate-50 rounded-lg transition-colors"
                             />
                             <span className="text-slate-300">|</span>
                             <input 
                                 type="date" 
-                                value={endDate}
-                                min={startDate}
-                                max={new Date().toISOString().split('T')[0]}
-                                onChange={(e) => setEndDate(e.target.value)}
+                                value={tempEndDate}
+                                min={tempStartDate}
+                                max={(() => {
+                                    // Calculate max date: min(today, startDate + 14 days)
+                                    const today = new Date().toISOString().split('T')[0];
+                                    if (!tempStartDate) return today;
+                                    
+                                    const start = new Date(tempStartDate);
+                                    const maxEnd = new Date(start);
+                                    maxEnd.setDate(start.getDate() + 14);
+                                    
+                                    const maxEndStr = maxEnd.toISOString().split('T')[0];
+                                    return maxEndStr < today ? maxEndStr : today;
+                                })()}
+                                onChange={(e) => setTempEndDate(e.target.value)}
                                 className="bg-transparent text-slate-700 font-bold text-sm px-2 py-1.5 focus:outline-none cursor-pointer hover:bg-slate-50 rounded-lg transition-colors"
                             />
                         </div>
+                        <button
+                            onClick={handleApplyFilter}
+                            disabled={!tempStartDate || !tempEndDate}
+                            className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all ml-1"
+                        >
+                            Áp dụng
+                        </button>
                     </div>
                 </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Video, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient from '@/lib/api-client';
 
 interface ChannelProfile {
   username: string;
@@ -40,37 +41,34 @@ export default function TrackedChannelsPage() {
 
   const fetchTrackedChannels = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      // Using the NestJS endpoint with platform filter to separate lists
-      const response = await fetch(`${apiUrl}/tracked-channels?platform=${platform.toUpperCase()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Using apiClient which automatically adds Authorization header via interceptor
+      const response = await apiClient.get(`/tracked-channels?platform=${platform.toUpperCase()}`);
       
-      if (response.status === 401) {
-        // Token expired or invalid (e.g. after DB reset)
-        // console.warn('Session expired. Please login again.');
-        // router.push('/login');
-        return;
+      if (response.data) {
+        setChannels(response.data);
       }
-      
-      if (response.ok) {
-        const data = await response.json();
-        setChannels(data);
+    } catch (error: any) {
+      // apiClient interceptor handles 401 automatically (redirects to login)
+      if (error.response?.status !== 401) {
+        console.error('Error fetching tracked channels:', error);
       }
-    } catch (error) {
-      console.error('Error fetching tracked channels:', error);
     }
   };
 
   const fetchChannelProfile = async (username: string) => {
     setLoading(true);
     try {
-      // For Instagram: Only fetch profile stats (no posts) to speed up add channel
-      // Posts will be fetched when user views analytics
-      const maxResults = platform.toLowerCase() === 'instagram' ? 0 : 9999;
+      // Optimize fetch strategy per platform:
+      // - Instagram: 0 posts (profile only, very fast ~2s)
+      // - Facebook: 30 posts (enough for stats, fast ~5-10s)
+      // - TikTok: 9999 posts (needed for accurate total_videos count)
+      let maxResults = 9999; // Default for TikTok
+      
+      if (platform.toLowerCase() === 'instagram') {
+        maxResults = 0; // Profile only
+      } else if (platform.toLowerCase() === 'facebook') {
+        maxResults = 30; // Quick sample for stats
+      }
       
       const response = await fetch('http://localhost:3000/api/ai/user-videos', {
         method: 'POST',
@@ -150,30 +148,26 @@ export default function TrackedChannelsPage() {
         return;
       }
 
-      // Save to Backend
+      // Save to Backend using apiClient (automatically adds Authorization header)
       console.log('💾 Saving Channel Payload:', payload);
-      const token = localStorage.getItem('auth_token');
-      const saveResponse = await fetch('http://localhost:3000/api/tracked-channels', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-      });
-
-      if (saveResponse.status === 401) {
-          // Token expired
-          return;
-      }
-
-      if (saveResponse.ok) {
+      try {
+        const saveResponse = await apiClient.post('/tracked-channels', payload);
+        
+        if (saveResponse.data) {
           await fetchTrackedChannels();
           setShowAddModal(false);
           setUsernameInput('');
-      } else {
-          const errorData = await saveResponse.json();
-          alert(errorData.message || 'Failed to save channel');
+        }
+      } catch (saveError: any) {
+        // apiClient interceptor handles 401 automatically (redirects to login)
+        if (saveError.response?.status === 401) {
+          console.error('Unauthorized: Failed to save channel. Token might be invalid.');
+          alert('Session expired or unauthorized. Please log in again.');
+        } else {
+          const errorMessage = saveError.response?.data?.message || 'Failed to save channel';
+          alert(errorMessage);
+        }
+        return;
       }
     } catch (error) {
       console.error('Error fetching channel:', error);
