@@ -252,6 +252,53 @@ export default function ChannelAnalyticsPage() {
     }
   }, [fetchChannelData, startDate, endDate, username, platform]);
 
+  // Auto-analyze recent videos when viewing dashboard (background task)
+  useEffect(() => {
+    const analyzeRecent = async () => {
+      if (!username || !platform) return;
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const aiServiceUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+
+        // Get channel ID
+        const res = await fetch(`${baseUrl}/tracked-channels?platform=${platform.toUpperCase()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) return;
+
+        const channels = await res.json();
+        const channel = channels.find((c: any) => c.username?.toLowerCase() === username.toLowerCase());
+
+        if (!channel?.id) {
+          console.log('Channel not found, skipping analysis');
+          return;
+        }
+
+        // Call AI Service in background
+        console.log(`🔍 Starting background analysis for: ${username}`);
+
+        fetch(`${aiServiceUrl}/api/channels/analyze-recent/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel_id: channel.id })
+        }).then(r => r.json())
+          .then(data => {
+            if (data.analyzed > 0) console.log(`✅ Analyzed ${data.analyzed} videos`);
+          })
+          .catch(err => console.warn('Analysis failed:', err));
+
+      } catch (err) {
+        console.warn('Failed to trigger analysis:', err);
+      }
+    };
+
+    const timer = setTimeout(analyzeRecent, 2000);
+    return () => clearTimeout(timer);
+  }, [username, platform]);
+
   // Legacy effect removal (handled by fetchChannelData now)
   // useEffect(() => { if (username) fetchChannelData(); }, [username, platform]);
 
@@ -509,8 +556,34 @@ export default function ChannelAnalyticsPage() {
             <input
               type="date"
               value={startDate}
-              max={endDate || new Date().toISOString().split('T')[0]}
-              onChange={(e) => setStartDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const newStart = e.target.value;
+                setStartDate(newStart);
+
+                // Auto-adjust end date if it exceeds 14 days from new start or is before new start
+                if (newStart) {
+                  const start = new Date(newStart);
+                  const maxEnd = new Date(start);
+                  maxEnd.setDate(start.getDate() + 14);
+
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const maxEndStr = maxEnd.toISOString().split('T')[0];
+                  const finalMax = maxEndStr < todayStr ? maxEndStr : todayStr;
+
+                  // If end date is not set, set it automatically to start date (1 day range)
+                  if (!endDate) {
+                    setEndDate(newStart);
+                  }
+                  // If end date exists but invalid (before start or > 14 days)
+                  else {
+                    const currentEnd = new Date(endDate);
+                    if (currentEnd < start || currentEnd > new Date(finalMax)) {
+                      setEndDate(finalMax);
+                    }
+                  }
+                }
+              }}
               className="text-sm font-medium text-slate-600 outline-none bg-transparent"
             />
 
@@ -520,7 +593,15 @@ export default function ChannelAnalyticsPage() {
               type="date"
               value={endDate}
               min={startDate}
-              max={new Date().toISOString().split('T')[0]}
+              max={(() => {
+                if (!startDate) return new Date().toISOString().split('T')[0];
+                const start = new Date(startDate);
+                const maxEnd = new Date(start);
+                maxEnd.setDate(start.getDate() + 14);
+                const todayStr = new Date().toISOString().split('T')[0];
+                const maxEndStr = maxEnd.toISOString().split('T')[0];
+                return maxEndStr < todayStr ? maxEndStr : todayStr;
+              })()}
               onChange={(e) => setEndDate(e.target.value)}
               className="text-sm font-medium text-slate-600 outline-none bg-transparent"
             />
