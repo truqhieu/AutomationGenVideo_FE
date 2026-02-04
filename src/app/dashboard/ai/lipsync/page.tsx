@@ -36,38 +36,38 @@ export default function LipsyncPage() {
   const [voiceId, setVoiceId] = useState('c6fb81520dcd42e0a02be231046a8639');
   const [avatarId, setAvatarId] = useState('4a4cbf45415048f79c6c7968e353a359'); // Default to user's private avatar
   const [avatarStyle, setAvatarStyle] = useState('normal');
-  
+
   // List of Featured Avatars
   const AVATARS = [
-    { 
-       id: '4a4cbf45415048f79c6c7968e353a359', 
-       name: 'HuyKa (Video Avatar)', 
-       type: 'Instant',
-       desc: 'Avatar video có cử chỉ tay' 
-    },
-    { 
-       id: 'Angela_natural_standing_ar_3', 
-       name: 'Angela (Expressive)', 
-       type: 'Standard',
-       desc: 'Có cử chỉ tay tự nhiên' 
-    },
-    { 
-       id: 'Tyler_casual_sitting_sofa_front', 
-       name: 'Tyler (Casual Sofa)', 
-       type: 'Standard',
-       desc: 'Ngồi ghế sofa, cử chỉ thoại' 
-    },
-    { 
-       id: 'Anna_public_20240108', 
-       name: 'Anna (White T-shirt)', 
-       type: 'Standard',
-       desc: 'Phù hợp bản tin, review' 
+    {
+      id: '4a4cbf45415048f79c6c7968e353a359',
+      name: 'HuyKa (Video Avatar)',
+      type: 'Instant',
+      desc: 'Avatar video có cử chỉ tay'
     },
     {
-       id: 'joshua_casual_standing_front',
-       name: 'Joshua (Casual Standing)',
-       type: 'Standard',
-       desc: 'MC Nam đứng, có cử chỉ tay'
+      id: 'Angela_natural_standing_ar_3',
+      name: 'Angela (Expressive)',
+      type: 'Standard',
+      desc: 'Có cử chỉ tay tự nhiên'
+    },
+    {
+      id: 'Tyler_casual_sitting_sofa_front',
+      name: 'Tyler (Casual Sofa)',
+      type: 'Standard',
+      desc: 'Ngồi ghế sofa, cử chỉ thoại'
+    },
+    {
+      id: 'Anna_public_20240108',
+      name: 'Anna (White T-shirt)',
+      type: 'Standard',
+      desc: 'Phù hợp bản tin, review'
+    },
+    {
+      id: 'joshua_casual_standing_front',
+      name: 'Joshua (Casual Standing)',
+      type: 'Standard',
+      desc: 'MC Nam đứng, có cử chỉ tay'
     }
   ];
 
@@ -85,22 +85,23 @@ export default function LipsyncPage() {
     if (!aiTopic.trim()) return;
 
     setIsGeneratingScript(true);
-    
+
     try {
-      const response = await fetch('http://localhost:3000/api/heygen-video/generate-script', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/heygen-video/generate-script`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic: aiTopic, tone: aiTone })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success && data.data?.script) {
-         setText(data.data.script);
-         setIsAiDialogOpen(false);
+        setText(data.data.script);
+        setIsAiDialogOpen(false);
       } else {
-         console.error('AI Gen Error:', data);
-         alert(`Lỗi AI: ${data.error || 'Không thể tạo kịch bản'}`);
+        console.error('AI Gen Error:', data);
+        alert(`Lỗi AI: ${data.error || 'Không thể tạo kịch bản'}`);
       }
     } catch (e) {
       console.error(e);
@@ -121,7 +122,8 @@ export default function LipsyncPage() {
     setVideoStatus(null);
 
     try {
-      const response = await fetch('http://localhost:3000/api/heygen-video/generate', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/heygen-video/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,28 +156,29 @@ export default function LipsyncPage() {
   };
 
 
-// ... inside return ...
+  // ... inside return ...
 
-            {/* Avatar Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="avatar">Người mẫu (Avatar)</Label>
-              <Select
-                value={avatarId}
-                onChange={(e) => setAvatarId(e.target.value)}
-                id="avatar"
-              >
-                {AVATARS.map((av) => (
-                    <option key={av.id} value={av.id}>
-                        {av.name} - {av.desc}
-                    </option>
-                ))}
-              </Select>
-            </div>
+  {/* Avatar Selection */ }
+  <div className="space-y-2">
+    <Label htmlFor="avatar">Người mẫu (Avatar)</Label>
+    <Select
+      value={avatarId}
+      onChange={(e) => setAvatarId(e.target.value)}
+      id="avatar"
+    >
+      {AVATARS.map((av) => (
+        <option key={av.id} value={av.id}>
+          {av.name} - {av.desc}
+        </option>
+      ))}
+    </Select>
+  </div>
 
   const pollVideoStatus = async (videoId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/heygen-video/status/${videoId}`);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${baseUrl}/heygen-video/status/${videoId}`);
         const data = await response.json();
 
         if (data.success) {
@@ -261,7 +264,7 @@ export default function LipsyncPage() {
                         id="topic"
                         placeholder="Ví dụ: Giới thiệu nhẫn kim cương..."
                         value={aiTopic}
-                        onChange={(e:any) => setAiTopic(e.target.value)}
+                        onChange={(e: any) => setAiTopic(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -278,20 +281,20 @@ export default function LipsyncPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button 
-                        onClick={handleGenerateScript} 
-                        disabled={isGeneratingScript || !aiTopic.trim()}
-                        className="w-full sm:w-auto"
+                    <Button
+                      onClick={handleGenerateScript}
+                      disabled={isGeneratingScript || !aiTopic.trim()}
+                      className="w-full sm:w-auto"
                     >
                       {isGeneratingScript ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Đang viết...
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Đang viết...
                         </>
                       ) : (
                         <>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Tạo kịch bản
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Tạo kịch bản
                         </>
                       )}
                     </Button>
@@ -306,7 +309,7 @@ export default function LipsyncPage() {
                 id="text"
                 placeholder="Xin chào! Tôi là đại diện thương hiệu Viễn Chí Bảo..."
                 value={text}
-                onChange={(e:any) => setText(e.target.value)}
+                onChange={(e: any) => setText(e.target.value)}
                 rows={6}
                 className="resize-none"
               />
@@ -428,8 +431,8 @@ export default function LipsyncPage() {
                 </div>
               ) : videoStatus.status === 'processing' && (
                 <div className="flex items-center gap-2 text-blue-600 animate-pulse">
-                   <Loader2 className="h-4 w-4 animate-spin" />
-                   <span className="text-sm">Đang xử lý trên máy chủ HeyGen (Có thể mất 2-5 phút)...</span>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Đang xử lý trên máy chủ HeyGen (Có thể mất 2-5 phút)...</span>
                 </div>
               )}
 
@@ -467,8 +470,8 @@ export default function LipsyncPage() {
               {videoStatus.error && (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    {typeof videoStatus.error === 'string' 
-                      ? videoStatus.error 
+                    {typeof videoStatus.error === 'string'
+                      ? videoStatus.error
                       : (videoStatus.error as any).message || JSON.stringify(videoStatus.error)}
                   </AlertDescription>
                 </Alert>

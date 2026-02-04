@@ -26,7 +26,7 @@ export default function TrackedChannelsPage() {
   const router = useRouter();
   const [platform, setPlatform] = useState('tiktok');
   const [channels, setChannels] = useState<ChannelProfile[]>([]);
-  
+
   // Add Channel Modal States
   const [showAddModal, setShowAddModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
@@ -43,7 +43,7 @@ export default function TrackedChannelsPage() {
     try {
       // Using apiClient which automatically adds Authorization header via interceptor
       const response = await apiClient.get(`/tracked-channels?platform=${platform.toUpperCase()}`);
-      
+
       if (response.data) {
         setChannels(response.data);
       }
@@ -63,14 +63,15 @@ export default function TrackedChannelsPage() {
       // - Facebook: 30 posts (enough for stats, fast ~5-10s)
       // - TikTok: 9999 posts (needed for accurate total_videos count)
       let maxResults = 9999; // Default for TikTok
-      
+
       if (platform.toLowerCase() === 'instagram') {
         maxResults = 0; // Profile only
       } else if (platform.toLowerCase() === 'facebook') {
         maxResults = 30; // Quick sample for stats
       }
-      
-      const response = await fetch('http://localhost:3000/api/ai/user-videos', {
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/ai/user-videos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,10 +80,10 @@ export default function TrackedChannelsPage() {
           max_results: maxResults
         })
       });
-      
+
       const data = await response.json();
       console.log('API Response:', data);
-      
+
       if (!response.ok) {
         if (response.status === 429) {
           alert('API quota exceeded. Please try again later.');
@@ -91,44 +92,44 @@ export default function TrackedChannelsPage() {
         alert(data.error || 'API Error. Please try again.');
         return;
       }
-      
+
       let payload: any = {};
-      
+
       // 1. DATA FROM BACKEND PROFILE (Preferred)
       if (data.profile) {
-          console.log('✅ Using Backend Profile Data:', data.profile);
-          payload = {
-              platform: platform.toUpperCase(),
-              username: data.profile.username,
-              display_name: data.profile.display_name,
-              avatar_url: data.profile.avatar_url,
-              total_followers: data.profile.follower_count,
-              total_likes: data.profile.total_likes,
-              // FIX: If we fetched 0 videos, force total_videos to 0 regardless of metadata
-              total_videos: (data.results && data.results.length === 0) ? 0 : (data.profile.total_videos || 0),
-              // Calculate specific stats if missing
-              total_views: data.profile.total_views || data.results?.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0) || 0,
-              engagement_rate: data.profile.engagement_rate || 0
-          };
-          console.log('✅ Payload prepared with forced check:', payload);
+        console.log('✅ Using Backend Profile Data:', data.profile);
+        payload = {
+          platform: platform.toUpperCase(),
+          username: data.profile.username,
+          display_name: data.profile.display_name,
+          avatar_url: data.profile.avatar_url,
+          total_followers: data.profile.follower_count,
+          total_likes: data.profile.total_likes,
+          // FIX: If we fetched 0 videos, force total_videos to 0 regardless of metadata
+          total_videos: (data.results && data.results.length === 0) ? 0 : (data.profile.total_videos || 0),
+          // Calculate specific stats if missing
+          total_views: data.profile.total_views || data.results?.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0) || 0,
+          engagement_rate: data.profile.engagement_rate || 0
+        };
+        console.log('✅ Payload prepared with forced check:', payload);
       }
       // 2. FALLBACK: RAW EXTRACTION (If profile missing but results exist)
       else if (data.success && data.results && data.results.length > 0) {
         console.log('⚠️ Profile missing, extracting from first video...');
         const firstVideo = data.results[0];
         const authorMeta = firstVideo.raw_data?.authorMeta || {};
-        
+
         // Use author-level stats from authorMeta
         const totalFollowers = authorMeta.fans || 0;
         const totalLikes = authorMeta.heart || 0;
         const totalVideos = data.results.length === 0 ? 0 : (authorMeta.video || data.results.length);
-        
+
         // Sum views from fetched videos (no total_views in authorMeta)
         const totalViews = data.results.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0);
-        
+
         // Calculate engagement rate
-        const engagementRate = totalFollowers > 0 
-          ? (totalLikes / totalFollowers) * 100 
+        const engagementRate = totalFollowers > 0
+          ? (totalLikes / totalFollowers) * 100
           : 0;
 
         payload = {
@@ -152,7 +153,7 @@ export default function TrackedChannelsPage() {
       console.log('💾 Saving Channel Payload:', payload);
       try {
         const saveResponse = await apiClient.post('/tracked-channels', payload);
-        
+
         if (saveResponse.data) {
           await fetchTrackedChannels();
           setShowAddModal(false);
@@ -180,37 +181,37 @@ export default function TrackedChannelsPage() {
 
   const handleAddChannel = () => {
     if (!usernameInput.trim()) return;
-    
+
     let username = usernameInput.trim();
     // Auto-add @ if not present
     if (!username.startsWith('@')) {
       username = '@' + username;
     }
-    
+
     fetchChannelProfile(username);
   };
 
   const handleRefreshChannel = async (channel: ChannelProfile) => {
     // Add to refreshing set
     setRefreshingIds(prev => new Set(prev).add(channel.username));
-    
+
     try {
-        // Reuse the fetchChannelProfile logic but adapted for update
-        await fetchChannelProfile(channel.username);
-        
-        // After success, remove from refreshing set
-        setRefreshingIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(channel.username);
-            return newSet;
-        });
+      // Reuse the fetchChannelProfile logic but adapted for update
+      await fetchChannelProfile(channel.username);
+
+      // After success, remove from refreshing set
+      setRefreshingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(channel.username);
+        return newSet;
+      });
     } catch (error) {
-        console.error("Refresh failed", error);
-        setRefreshingIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(channel.username);
-            return newSet;
-        });
+      console.error("Refresh failed", error);
+      setRefreshingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(channel.username);
+        return newSet;
+      });
     }
   };
 
@@ -223,20 +224,21 @@ export default function TrackedChannelsPage() {
   // Helper to get proxied avatar URL for Instagram (bypass CORS/expiry)
   const getAvatarUrl = (channel: ChannelProfile) => {
     const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random&color=fff`;
-    
+
     if (!channel.avatar_url) {
       console.log(`⚠️ No avatar_url for ${channel.username}, using fallback`);
       return fallbackUrl;
     }
-    
+
     // If it's an Instagram CDN URL, proxy it through our backend
-    if (channel.platform?.toUpperCase() === 'INSTAGRAM' && 
-        (channel.avatar_url.includes('cdninstagram.com') || channel.avatar_url.includes('instagram.com'))) {
-      const proxiedUrl = `http://localhost:3000/api/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
+    if (channel.platform?.toUpperCase() === 'INSTAGRAM' &&
+      (channel.avatar_url.includes('cdninstagram.com') || channel.avatar_url.includes('instagram.com'))) {
+      const proxyBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const proxiedUrl = `${proxyBaseUrl}/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
       console.log(`🔄 Proxying Instagram avatar for ${channel.username}:`, proxiedUrl);
       return proxiedUrl;
     }
-    
+
     console.log(`✅ Using direct avatar URL for ${channel.username}:`, channel.avatar_url);
     return channel.avatar_url;
   };
@@ -263,7 +265,7 @@ export default function TrackedChannelsPage() {
                 <p className="text-slate-500">Monitor and track your {platformName} channel performance</p>
               </div>
             </div>
-            
+
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-5 py-3 bg-black hover:bg-slate-800 text-white rounded-lg font-semibold transition-all shadow-lg"
@@ -288,7 +290,7 @@ export default function TrackedChannelsPage() {
               </div>
               <p className="text-sm text-slate-400">Total tracking accounts</p>
             </div>
-            
+
             {/* Search Channels */}
             <div className="relative">
               <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -323,8 +325,8 @@ export default function TrackedChannelsPage() {
                 {/* Header: Avatar & Name */}
                 <div className="flex items-center gap-3 mb-6">
                   <div className="relative">
-                    <img 
-                      src={getAvatarUrl(channel)} 
+                    <img
+                      src={getAvatarUrl(channel)}
                       alt={channel.display_name}
                       className="w-12 h-12 rounded-full object-cover border-2 border-slate-100"
                       onError={(e) => {
@@ -338,14 +340,14 @@ export default function TrackedChannelsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-slate-900 truncate text-sm">{channel.display_name}</h3>
+                      <h3 className="font-bold text-slate-900 truncate text-sm">{channel.display_name}</h3>
                     </div>
                     <p className="text-xs text-slate-500 truncate">@{channel.username}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => {
-                        e.stopPropagation();
-                        handleRefreshChannel(channel);
+                      e.stopPropagation();
+                      handleRefreshChannel(channel);
                     }}
                     disabled={refreshingIds.has(channel.username) || loading}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors disabled:opacity-50"
@@ -363,18 +365,18 @@ export default function TrackedChannelsPage() {
                         <Users className="w-3.5 h-3.5" />
                         <span className="uppercase font-semibold">FOLLOWERS</span>
                       </div>
-                      <p 
-                        className="text-2xl font-bold text-slate-900 cursor-help" 
+                      <p
+                        className="text-2xl font-bold text-slate-900 cursor-help"
                         title="Followers count"
                       >
                         {formatNumber(channel.total_followers || 0)}
                       </p>
-                    </div>  
+                    </div>
                     <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-xs font-semibold">
                       Live
                     </div>
                   </div>
-                  
+
                   {/* Simple Line Chart (Visual placeholder since we only have one data point for history currently) */}
                   <div className="h-16 relative">
                     <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none">
@@ -407,7 +409,7 @@ export default function TrackedChannelsPage() {
                     </div>
                     <p className="text-lg font-bold text-slate-900">{channel.total_videos?.toLocaleString() || 0}</p>
                   </div>
-                  
+
                   <div className="bg-slate-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
                       <Heart className="w-3.5 h-3.5 text-red-500" />
@@ -417,7 +419,7 @@ export default function TrackedChannelsPage() {
                       {formatNumber(typeof channel.total_likes === 'string' ? parseInt(channel.total_likes) : channel.total_likes || 0)}
                     </p>
                   </div>
-                  
+
                   <div className="bg-slate-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
                       <Eye className="w-3.5 h-3.5 text-teal-500" />
@@ -425,7 +427,7 @@ export default function TrackedChannelsPage() {
                     </div>
                     <p className="text-lg font-bold text-slate-900">{formatNumber(channel.total_views || 0)}</p>
                   </div>
-                  
+
                   <div className="bg-slate-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
                       <TrendingUp className="w-3.5 h-3.5 text-orange-500" />
