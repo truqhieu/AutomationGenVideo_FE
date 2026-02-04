@@ -61,13 +61,15 @@ export default function TrackedChannelsPage() {
       // Optimize fetch strategy per platform:
       // - Instagram: 0 posts (profile only, very fast ~2s)
       // - Facebook: 30 posts (enough for stats, fast ~5-10s)
-      // - TikTok: 9999 posts (needed for accurate total_videos count)
-      let maxResults = 9999; // Default for TikTok
+      // - TikTok: 5 posts (Metadata only. Total count from authorMeta. Fast ~5s)
+      let maxResults = 5; // Default (Small number triggers fast mode)
 
       if (platform.toLowerCase() === 'instagram') {
         maxResults = 0; // Profile only
       } else if (platform.toLowerCase() === 'facebook') {
         maxResults = 30; // Quick sample for stats
+      } else if (platform.toLowerCase() === 'tiktok') {
+        maxResults = 5; // Explicitly set low limit for TikTok
       }
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
