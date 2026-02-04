@@ -108,11 +108,19 @@ export default function ChannelAnalyticsPage() {
 
 
 
-  // Date range state
+  // Date helpers
+  const formatDateForInput = (date: Date) => date.toISOString().split('T')[0];
+  const getThreeDaysAgo = () => {
+    const d = new Date(); d.setDate(d.getDate() - 3); return formatDateForInput(d);
+  };
 
-  const [startDate, setStartDate] = useState<string>('');
+  // Date range state (Input UI)
+  const [startDate, setStartDate] = useState<string>(getThreeDaysAgo());
+  const [endDate, setEndDate] = useState<string>(formatDateForInput(new Date()));
 
-  const [endDate, setEndDate] = useState<string>('');
+  // Applied Filter State (Triggers API)
+  const [appliedStartDate, setAppliedStartDate] = useState<string>(getThreeDaysAgo());
+  const [appliedEndDate, setAppliedEndDate] = useState<string>(formatDateForInput(new Date()));
 
 
 
@@ -189,13 +197,8 @@ export default function ChannelAnalyticsPage() {
 
       processAnalytics(videoList);
 
-      // Auto-clear filter after successful fetch if it was set
-      if (effectiveStart && effectiveEnd) {
-        ignoreNextFetch.current = true; // Block the effect from the state update below
-        setStartDate('');
-        setEndDate('');
-        console.log('✅ Filters auto-cleared, data preserved.');
-      }
+      // Filter preserved.
+
 
     } catch (error: any) {
       console.error('Error fetching analytics:', error);
@@ -205,52 +208,19 @@ export default function ChannelAnalyticsPage() {
     }
   }, [username, platform]);
 
-  // Set default 3-day filter for Instagram on initial load
+  // Trigger fetch when APPLIED dates (or username/platform) change
   useEffect(() => {
-    if (username && platform.toLowerCase() === 'instagram' && !startDate && !endDate) {
-      const today = new Date();
-      const threeDaysAgo = new Date(today);
-      threeDaysAgo.setDate(today.getDate() - 3);
-
-      const formatDateForInput = (date: Date) => {
-        return date.toISOString().split('T')[0];
-      };
-
-      const start = formatDateForInput(threeDaysAgo);
-      const end = formatDateForInput(today);
-
-      console.log('📸 Instagram: Setting default 3-day filter', { start, end });
-      setStartDate(start);
-      setEndDate(end);
-    }
-  }, [username, platform]); // Only run when username or platform changes
-
-  // Initial fetch and Auto-fetch on date change
-  useEffect(() => {
-    // If we just auto-cleared, skip this effect run
-    if (ignoreNextFetch.current) {
-      ignoreNextFetch.current = false;
-      return;
-    }
-
     if (username) {
-      // For Instagram: only fetch when filter is set (default 3-day or user input)
-      // For other platforms: fetch immediately or when filter changes
-      const isInstagram = platform.toLowerCase() === 'instagram';
-
-      if (isInstagram) {
-        // Instagram: Only fetch when both dates are set
-        if (startDate && endDate) {
-          fetchChannelData(startDate, endDate);
-        }
-      } else {
-        // Other platforms: fetch with or without filter
-        if ((startDate && endDate) || (!startDate && !endDate)) {
-          fetchChannelData(startDate, endDate);
-        }
-      }
+      // This runs on mount (with default 3-day applied) and when user clicks Apply
+      console.log(`� Fetching data. Applied Range: ${appliedStartDate} to ${appliedEndDate}`);
+      fetchChannelData(appliedStartDate, appliedEndDate);
     }
-  }, [fetchChannelData, startDate, endDate, username, platform]);
+  }, [fetchChannelData, username, platform, appliedStartDate, appliedEndDate]);
+
+  const handleApplyFilter = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+  };
 
   // Auto-analyze recent videos when viewing dashboard (background task)
   useEffect(() => {
@@ -607,6 +577,14 @@ export default function ChannelAnalyticsPage() {
             />
 
           </div>
+
+          <button
+            onClick={handleApplyFilter}
+            disabled={loading}
+            className="px-4 py-2 bg-black text-white text-sm font-medium rounded-xl hover:bg-slate-800 disabled:opacity-50 shadow-sm transition-all"
+          >
+            Áp dụng
+          </button>
 
           <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-medium shadow-sm transition-colors">
 
