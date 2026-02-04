@@ -73,10 +73,25 @@ export default function LandingPage() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-full text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            className={`relative w-14 h-7 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'
+                                }`}
                             aria-label="Toggle Dark Mode"
                         >
-                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                            <div className="flex justify-between items-center w-full h-full px-1 text-[10px] font-bold">
+                                <span className={`transition-opacity duration-300 ${isDarkMode ? 'opacity-100 text-white' : 'opacity-0'}`}>ON</span>
+                                <span className={`transition-opacity duration-300 ${!isDarkMode ? 'opacity-100 text-slate-500' : 'opacity-0'}`}>OFF</span>
+                            </div>
+                            <motion.div
+                                className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center z-10"
+                                animate={{ x: isDarkMode ? 28 : 0 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            >
+                                {isDarkMode ? (
+                                    <Moon size={12} className="text-slate-900 fill-slate-900/20" />
+                                ) : (
+                                    <Sun size={12} className="text-orange-500 fill-orange-500/20" />
+                                )}
+                            </motion.div>
                         </button>
 
                         {isAuthenticated ? (
