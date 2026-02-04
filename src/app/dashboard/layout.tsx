@@ -61,11 +61,11 @@ export default function DashboardLayout({
     setIsLoggingOut(true);
     // 1. Navigate immediately to give "instant" feel
     router.replace('/');
-    
+
     // 2. Clear auth state after a small delay to allow navigation to start
     // This prevents the Dashboard from unmounting into a Loading Spinner immediately
     setTimeout(() => {
-        logout();
+      logout();
     }, 500);
   };
 
@@ -124,7 +124,8 @@ export default function DashboardLayout({
       </div>
 
       {/* Select Manager Modal */}
-      <SelectManagerModal />
+      {/* Select Manager Modal - TEMPORARILY DISABLED as per user request */}
+      {/* <SelectManagerModal /> */}
     </div>
   );
 }
