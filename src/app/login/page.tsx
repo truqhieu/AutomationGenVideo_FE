@@ -39,12 +39,11 @@ export default function LoginPage() {
       await login(data);
       const { user } = useAuthStore.getState();
       if (user) {
-        // TEMPORARILY DISABLED MANAGER REDIRECT
-        // if (user.role === 'MANAGER' || user.role === 'ADMIN') {
-        //   router.push('/dashboard/manager');
-        // } else {
-        router.push('/dashboard');
-        // }
+        if (user.role === 'MANAGER' || user.role === 'ADMIN') {
+          router.push('/dashboard/manager');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         router.push('/dashboard');
       }
