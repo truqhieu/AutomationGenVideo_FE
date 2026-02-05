@@ -64,6 +64,7 @@ export default function FacebookAnalyticsPage() {
     const startDateRef = useRef(startDate);
     const endDateRef = useRef(endDate);
     const ignoreNextFetch = useRef(false);
+    const isFetchingRef = useRef(false); // Prevent duplicate calls
 
     useEffect(() => {
         startDateRef.current = startDate;
@@ -73,6 +74,14 @@ export default function FacebookAnalyticsPage() {
     const fetchData = useCallback(async (currentStart?: string, currentEnd?: string, forceRefresh: boolean = false) => {
         if (!username) return;
 
+        // Prevent duplicate concurrent calls
+        if (isFetchingRef.current) {
+            console.log('⚠️ Already fetching, skipping duplicate call');
+            return;
+        }
+
+        isFetchingRef.current = true;
+
         const effectiveStart = currentStart ?? startDateRef.current;
         const effectiveEnd = currentEnd ?? endDateRef.current;
 
@@ -80,6 +89,8 @@ export default function FacebookAnalyticsPage() {
         setError('');
 
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+        let timeoutId: NodeJS.Timeout | undefined;
 
         try {
             // Calculate smart max_results based on date range
@@ -98,6 +109,12 @@ export default function FacebookAnalyticsPage() {
                 smartMaxResults = 30;
             }
 
+            console.log(`🔍 Fetching data with forceRefresh=${forceRefresh}, start=${effectiveStart}, end=${effectiveEnd}`);
+
+            const controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort(), 3600000); // 3600s = 1 hour timeout
+
+
             const response = await fetch(`${baseUrl}/ai/user-videos`, {
                 method: 'POST',
                 headers: {
@@ -110,8 +127,11 @@ export default function FacebookAnalyticsPage() {
                     start_date: effectiveStart || undefined,
                     end_date: effectiveEnd || undefined,
                     force_refresh: forceRefresh // Use parameter instead of hardcoded false
-                })
+                }),
+                signal: controller.signal // Add abort signal for timeout
             });
+
+            clearTimeout(timeoutId); // Clear timeout if request completes
 
             if (!response.ok) {
                 throw new Error(`Lỗi kết nối: ${response.status} ${response.statusText}`);
@@ -181,20 +201,31 @@ export default function FacebookAnalyticsPage() {
             }
 
         } catch (err: any) {
-            setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu');
-            console.error(err);
+            clearTimeout(timeoutId); // Clear timeout on error
+
+            if (err.name === 'AbortError') {
+                setError('Request timeout sau 1 giờ. Vui lòng thử lại hoặc giảm phạm vi ngày.');
+                console.error('⏱️ Request timeout after 3600s');
+            } else {
+                setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu');
+                console.error(err);
+            }
         } finally {
             setLoading(false);
+            isFetchingRef.current = false; // Reset flag
         }
     }, [username]);
 
     // REMOVED auto-fetch on date change
     // Users must click "Apply" button to trigger fetch
 
-    // Initial fetch on mount
+    // Initial fetch on mount - ALWAYS FORCE REFRESH
     useEffect(() => {
+        console.log(`📍 useEffect triggered: username=${username}, hasFetched=${hasFetched}, startDate=${startDate}, endDate=${endDate}`);
         if (username && !hasFetched) {
-            fetchData(startDate, endDate);
+            console.log('🔄 Initial load: Force refreshing data from Facebook...');
+            console.log(`🔄 Calling fetchData(${startDate}, ${endDate}, true)`);
+            fetchData(startDate, endDate, true); // force_refresh = true
         }
     }, [username]); // Only run once on mount
 
@@ -250,18 +281,54 @@ export default function FacebookAnalyticsPage() {
         };
     }, [filteredData]);
 
-    // Chart data for All view
+    // Chart data for All view - AGGREGATE BY DATE
     const chartData = useMemo(() => {
-        return filteredData
-            .sort((a, b) => a.timestamp - b.timestamp)
-            .map(item => ({
-                date: new Date(item.timestamp * 1000).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-                likes: item.likes,
-                comments: item.comments,
-                shares: item.shares,
-                views: item.views,
-                engagement: item.likes + item.comments + item.shares
-            }));
+        // Group by date and aggregate metrics
+        const dateMap = new Map<string, {
+            date: string;
+            likes: number;
+            comments: number;
+            shares: number;
+            views: number;
+            engagement: number;
+            count: number;
+        }>();
+
+        filteredData.forEach(item => {
+            const dateKey = new Date(item.timestamp * 1000).toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+
+            if (!dateMap.has(dateKey)) {
+                dateMap.set(dateKey, {
+                    date: dateKey,
+                    likes: 0,
+                    comments: 0,
+                    shares: 0,
+                    views: 0,
+                    engagement: 0,
+                    count: 0
+                });
+            }
+
+            const existing = dateMap.get(dateKey)!;
+            existing.likes += item.likes;
+            existing.comments += item.comments;
+            existing.shares += item.shares;
+            existing.views += item.views;
+            existing.engagement += (item.likes + item.comments + item.shares);
+            existing.count += 1;
+        });
+
+        // Convert to array and sort by date
+        return Array.from(dateMap.values())
+            .sort((a, b) => {
+                const dateA = new Date(a.date.split('/').reverse().join('-'));
+                const dateB = new Date(b.date.split('/').reverse().join('-'));
+                return dateA.getTime() - dateB.getTime();
+            });
     }, [filteredData]);
 
     return (
@@ -298,8 +365,11 @@ export default function FacebookAnalyticsPage() {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-40 animate-pulse">
                         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-                        <p className="text-slate-500 font-medium">Đang kết nối tới Facebook...</p>
+                        <p className="text-slate-500 font-medium">🔄 Đang cập nhật dữ liệu mới nhất từ Facebook...</p>
                         <p className="text-xs text-slate-400 mt-2">Việc này có thể mất vài phút với dữ liệu lớn</p>
+                        <div className="mt-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-700 font-medium">💡 Đang quét posts mới nhất, không dùng cache</p>
+                        </div>
                     </div>
                 ) : error ? (
                     <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-dashed border-red-200">
@@ -308,7 +378,7 @@ export default function FacebookAnalyticsPage() {
                         </div>
                         <h3 className="text-slate-800 font-bold text-lg mb-2">Đã xảy ra lỗi</h3>
                         <p className="text-slate-500 mb-6">{error}</p>
-                        <button onClick={() => fetchData()} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">Thử lại</button>
+                        <button onClick={() => fetchData(startDate, endDate, true)} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">Thử lại</button>
                     </div>
                 ) : !hasFetched ? (
                     <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-500">
@@ -317,7 +387,7 @@ export default function FacebookAnalyticsPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
                             <button
-                                onClick={() => { setActiveTab('all'); fetchData(); }}
+                                onClick={() => { setActiveTab('all'); fetchData(startDate, endDate, true); }}
                                 className="col-span-1 md:col-span-2 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-purple-200 transition-all group text-left relative overflow-hidden"
                             >
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -332,7 +402,7 @@ export default function FacebookAnalyticsPage() {
 
                             <div className="grid grid-cols-2 gap-6 w-full col-span-1 md:col-span-2">
                                 <button
-                                    onClick={() => { setActiveTab('video'); fetchData(); }}
+                                    onClick={() => { setActiveTab('video'); fetchData(startDate, endDate, true); }}
                                     className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all group text-left relative overflow-hidden"
                                 >
                                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -342,7 +412,7 @@ export default function FacebookAnalyticsPage() {
                                 </button>
 
                                 <button
-                                    onClick={() => { setActiveTab('post'); fetchData(); }}
+                                    onClick={() => { setActiveTab('post'); fetchData(startDate, endDate, true); }}
                                     className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-emerald-200 transition-all group text-left relative overflow-hidden"
                                 >
                                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">

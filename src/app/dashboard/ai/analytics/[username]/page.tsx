@@ -726,7 +726,7 @@ export default function ChannelAnalyticsPage() {
 
             label="Followers"
 
-            value={profile?.total_followers || 0}
+            value={profile?.follower_count || profile?.followers || profile?.total_followers || 0}
 
             change={0.0}
 

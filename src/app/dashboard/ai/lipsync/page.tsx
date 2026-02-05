@@ -367,6 +367,7 @@ export default function LipsyncPage() {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden aspect-[9/16] sm:aspect-video lg:aspect-[3/4] xl:aspect-[4/5] relative group">
 
                 {/* Content or Placeholder */}
+                {/* Content or Placeholder */}
                 {videoStatus?.video_url && videoStatus?.status === 'completed' ? (
                   <video
                     src={videoStatus.video_url}
@@ -377,17 +378,34 @@ export default function LipsyncPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-slate-900 to-slate-950">
-                    {loading ? (
-                      <div className="flex flex-col items-center">
-                        <div className="relative w-20 h-20 mb-6">
+                    {loading || (videoStatus && videoStatus.status !== 'completed' && videoStatus.status !== 'failed') ? (
+                      <div className="flex flex-col items-center w-full max-w-md">
+                        <div className="relative w-24 h-24 mb-6">
                           <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
                           <div className="absolute inset-0 border-4 border-t-purple-500 border-r-blue-500 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <Loader2 className="w-8 h-8 text-white animate-pulse" />
+                            <span className="text-sm font-bold text-white">{videoStatus?.progress || 0}%</span>
                           </div>
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Đang khởi tạo...</h3>
-                        <p className="text-slate-400 text-sm max-w-xs">{videoStatus?.status === 'processing' ? 'Đang render video trên cloud server. Vui lòng chờ 2-5 phút.' : 'Đang gửi yêu cầu...'}</p>
+                        <h3 className="text-xl font-bold text-white mb-2">
+                          {videoStatus?.status === 'processing' ? 'Đang tạo video...' : 'Đang xử lý...'}
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-6">
+                          {videoStatus?.status === 'processing'
+                            ? 'Hệ thống đang render video. Vui lòng không tắt trình duyệt.'
+                            : 'Đang gửi yêu cầu đến máy chủ AI...'}
+                        </p>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500 ease-out"
+                            style={{ width: `${videoStatus?.progress || 0}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 text-xs text-slate-500 font-mono">
+                          STATUS: {(videoStatus?.status || 'PENDING').toUpperCase()}
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -400,22 +418,6 @@ export default function LipsyncPage() {
                         </p>
                       </>
                     )}
-                  </div>
-                )}
-
-                {/* Status Overlay (If processing but user navigates away or similar) */}
-                {loading && videoStatus?.status && videoStatus.status !== 'completed' && (
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-slate-950/90 border-t border-slate-800">
-                    <div className="flex justify-between text-xs font-mono text-slate-400 mb-2">
-                      <span>STATUS: {videoStatus.status.toUpperCase()}</span>
-                      <span>{videoStatus.progress || 0}%</span>
-                    </div>
-                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500 transition-all duration-1000 ease-out"
-                        style={{ width: `${videoStatus.progress || 10}%` }}
-                      />
-                    </div>
                   </div>
                 )}
               </div>
