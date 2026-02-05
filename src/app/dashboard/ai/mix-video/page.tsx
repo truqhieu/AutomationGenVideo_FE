@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Scissors, Upload, Loader2, Film, Download, Trash2 } from 'lucide-react';
+import { Scissors, Upload, Loader2, Film, Download, Trash2, Music } from 'lucide-react';
 import Button from '@/components/ui/button';
 
 const AI_API_URL = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:8001';
@@ -20,7 +20,7 @@ const PARTS_LABELS = [
 
 const SIZE_PRESETS: { label: string; width: number; height: number }[] = [
   { label: '9:16 (dọc)', width: 720, height: 1280 },
-  { label: '1:1 (vuông)', width: 1080, height: 1080 },
+  { label: '16:9 (ngang)', width: 1280, height: 720 },
 ];
 
 export default function MixVideoPage() {
@@ -44,7 +44,13 @@ export default function MixVideoPage() {
   const [outputLimitMode, setOutputLimitMode] = useState<'natural' | 'limit'>('natural');
   const [outputLimitValue, setOutputLimitValue] = useState<number>(10);
   const [thumbnails, setThumbnails] = useState<(string | null)[]>([]);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
+  const [videoFolders, setVideoFolders] = useState<File[][]>(Array(10).fill([]));
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [currentFolderIndex, setCurrentFolderIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (files.length === 0) {
@@ -117,23 +123,93 @@ export default function MixVideoPage() {
     e.target.value = '';
   };
 
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    if (!/\.(mp3|wav|m4a|aac|ogg)$/i.test(selected.name)) {
+      setError('Định dạng audio không hợp lệ (hỗ trợ mp3, wav, m4a, aac, ogg).');
+      return;
+    }
+    setAudioFile(selected);
+
+    // Get audio duration
+    const url = URL.createObjectURL(selected);
+    const audio = new Audio(url);
+    audio.onloadedmetadata = () => {
+      setAudioDuration(audio.duration);
+      URL.revokeObjectURL(url);
+    };
+
+    setError('');
+    setResult(null);
+    e.target.value = '';
+  };
+
+  const handleFolderFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (currentFolderIndex === null) return;
+    const selected = e.target.files;
+    if (!selected?.length) return;
+    const list = Array.from(selected).filter((f) =>
+      /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(f.name)
+    );
+    setVideoFolders((prev) => {
+      const next = [...prev];
+      next[currentFolderIndex] = [...next[currentFolderIndex], ...list];
+      return next;
+    });
+    e.target.value = '';
+  };
+
+  const removeFolderFile = (folderIdx: number, fileIdx: number) => {
+    setVideoFolders((prev) => {
+      const next = [...prev];
+      next[folderIdx] = next[folderIdx].filter((_, i) => i !== fileIdx);
+      return next;
+    });
+  };
+
+  const clearFolder = (index: number) => {
+    setVideoFolders((prev) => {
+      const next = [...prev];
+      next[index] = [];
+      return next;
+    });
+  };
+
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
     setResult(null);
   };
 
   const handleMix = async () => {
-    if (files.length < REQUIRED_FILES) {
-      setError(`Chọn đúng ${REQUIRED_FILES} video theo thứ tự 7 phần (xem mô tả bên dưới).`);
-      return;
+    if (audioFile) {
+      if (videoFolders.some(f => f.length === 0)) {
+        setError('Vui lòng upload ít nhất 1 video vào mỗi ô trong số 10 ô bên dưới.');
+        return;
+      }
+    } else {
+      if (files.length < REQUIRED_FILES) {
+        setError(`Chọn đúng ${REQUIRED_FILES} video theo thứ tự 7 phần (xem mô tả bên dưới).`);
+        return;
+      }
     }
+
     setLoading(true);
     setProgressPercent(0);
     setError('');
     setResult(null);
     try {
       const formData = new FormData();
-      files.slice(0, REQUIRED_FILES).forEach((f) => formData.append('videos', f));
+      if (audioFile) {
+        formData.append('audio', audioFile);
+        videoFolders.forEach((folder, i) => {
+          folder.forEach(file => {
+            formData.append(`folder_${i}`, file);
+          });
+        });
+      } else {
+        files.slice(0, REQUIRED_FILES).forEach((f) => formData.append('videos', f));
+      }
       formData.append('width', String(width));
       formData.append('height', String(height));
       if (outputLimitMode === 'limit' && outputLimitValue > 0) {
@@ -209,6 +285,19 @@ export default function MixVideoPage() {
   };
 
   /** Nhãn hiển thị cho từng vị trí upload: phần nào, và với phần 3/4/5 thì trên hay dưới */
+  const fileIndexToPartLabelLong = (index: number): string => {
+    if (index === 0) return 'Sản phẩm';
+    if (index === 1) return 'HuyK';
+    if (index === 2) return 'Chế tác (Above)';
+    if (index === 3) return 'Chế tác (Below)';
+    if (index === 4) return 'Chế tác (Above)';
+    if (index === 5) return 'HuyK (Above)';
+    if (index === 6) return 'HuyK (Above)';
+    if (index === 7) return 'Chế tác (Below)';
+    if (index === 8) return 'Sản phẩm HT';
+    return 'Outtrol';
+  };
+
   const fileIndexToPartLabel = (index: number): string => {
     if (index === 0) return 'Phần 1';
     if (index === 1) return 'Phần 2';
@@ -255,9 +344,18 @@ export default function MixVideoPage() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-slate-700">
-            <Film className="w-5 h-5" />
-            <span className="font-medium">Chọn video để mix</span>
-            <span className="text-slate-500 text-sm">({files.length}/{REQUIRED_FILES})</span>
+            {audioFile ? (
+              <>
+                <Music className="w-5 h-5 text-blue-600" />
+                <span className="font-medium">Cấu trúc 10 segments theo Audio</span>
+              </>
+            ) : (
+              <>
+                <Film className="w-5 h-5" />
+                <span className="font-medium">Chọn video để mix</span>
+                <span className="text-slate-500 text-sm">({files.length}/{REQUIRED_FILES})</span>
+              </>
+            )}
           </div>
           <input
             ref={inputRef}
@@ -266,6 +364,14 @@ export default function MixVideoPage() {
             multiple
             className="hidden"
             onChange={handleFileChange}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            accept=".mp4,.mov,.avi,.mkv,.webm,.m4v"
+            multiple
+            className="hidden"
+            onChange={handleFolderFilesChange}
           />
           <div className="space-y-2">
             <p className="text-sm font-medium text-slate-700">Tỉ lệ khung hình output</p>
@@ -278,41 +384,16 @@ export default function MixVideoPage() {
                     setWidth(preset.width);
                     setHeight(preset.height);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-sm border ${
-                    width === preset.width && height === preset.height
-                      ? 'bg-blue-100 border-blue-500 text-blue-700'
-                      : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${width === preset.width && height === preset.height
+                    ? 'bg-blue-100 border-blue-500 text-blue-700'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
                 >
                   {preset.label}
                 </button>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                Chiều rộng (px):
-                <input
-                  type="number"
-                  min={2}
-                  max={4096}
-                  value={width}
-                  onChange={(e) => setWidth(Math.max(2, Math.min(4096, Number(e.target.value) || 720)))}
-                  className="w-24 px-2 py-1 rounded border border-slate-300 text-slate-800"
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                Chiều cao (px, 0 = tự động):
-                <input
-                  type="number"
-                  min={0}
-                  max={4096}
-                  value={height || ''}
-                  onChange={(e) => setHeight(Math.max(0, Math.min(4096, Number(e.target.value) || 0)))}
-                  placeholder="0"
-                  className="w-24 px-2 py-1 rounded border border-slate-300 text-slate-800"
-                />
-              </label>
-            </div>
+
           </div>
 
           <div className="space-y-2">
@@ -326,7 +407,7 @@ export default function MixVideoPage() {
                   onChange={() => setOutputLimitMode('natural')}
                   className="text-blue-600"
                 />
-                <span className="text-slate-700">FULL MAX</span>
+                <span className="text-slate-700">Không giới hạn</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -354,59 +435,135 @@ export default function MixVideoPage() {
             </p>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => inputRef.current?.click()}
-            className="w-full py-6 border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/50"
-          >
-            <Upload className="w-5 h-5 mr-2" />
-            Thêm video từ máy
-          </Button>
 
-          {files.length > 0 && (
-            <ul className="space-y-2 max-h-[420px] overflow-y-auto">
-              {files.map((f, i) => (
-                <li
-                  key={`${f.name}-${i}`}
-                  className="flex items-center gap-3 py-2 px-3 bg-slate-50 rounded-lg text-sm"
+
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-slate-700">
+              <Music className="w-5 h-5" />
+              <span className="font-medium">AUDIO</span>
+            </div>
+
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept=".mp3,.wav,.m4a,.aac,.ogg"
+              className="hidden"
+              onChange={handleAudioChange}
+            />
+
+            {!audioFile ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => audioInputRef.current?.click()}
+                className="w-full py-4 border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/50"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Thêm nhạc từ máy
+              </Button>
+            ) : (
+              <div className="flex items-center gap-3 py-3 px-4 bg-blue-50 rounded-xl border border-blue-100 group">
+                <div className="shrink-0 w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-md">
+                  <Music className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-blue-900 font-medium text-sm truncate">{audioFile.name}</p>
+                  <p className="text-blue-600/70 text-xs mt-0.5">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAudioFile(null)}
+                  className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                  aria-label="Xóa nhạc"
                 >
-                  <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center">
-                    {thumbnails[i] ? (
-                      <img
-                        src={thumbnails[i]!}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Film className="w-8 h-8 text-slate-400" />
-                    )}
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {audioFile ? (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              {videoFolders.map((folder, i) => (
+                <div
+                  key={i}
+                  className={`relative p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer 
+                    ${folder.length > 0 ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-slate-50 border-slate-200 border-dashed hover:border-blue-300 hover:bg-slate-100'}`}
+                  onClick={() => {
+                    setCurrentFolderIndex(i);
+                    setTimeout(() => folderInputRef.current?.click(), 0);
+                  }}
+                >
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mt-2">
+                    {fileIndexToPartLabelLong(i)}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-slate-500 font-medium">{fileIndexToPartLabel(i)}</p>
-                    <p className="truncate text-slate-700 text-xs mt-0.5">{f.name}</p>
+
+                  <div className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                    <Film className="w-3 h-3" />
+                    {folder.length} video
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    className="p-1 text-slate-400 hover:text-red-600 shrink-0"
-                    aria-label="Xóa"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </li>
+
+                  {folder.length > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearFolder(i);
+                      }}
+                      className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               ))}
-            </ul>
+            </div>
+          ) : (
+            <>
+              {files.length > 0 && (
+                <ul className="space-y-2 max-h-[420px] overflow-y-auto">
+                  {files.map((f, i) => (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="flex items-center gap-3 py-2 px-3 bg-slate-50 rounded-lg text-sm"
+                    >
+                      <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center">
+                        {thumbnails[i] ? (
+                          <img
+                            src={thumbnails[i]!}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Film className="w-8 h-8 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-slate-500 font-medium">{fileIndexToPartLabel(i)}</p>
+                        <p className="truncate text-slate-700 text-xs mt-0.5">{f.name}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="p-1 text-slate-400 hover:text-red-600 shrink-0"
+                        aria-label="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg font-medium border border-red-100">{error}</p>
           )}
 
           <Button
             onClick={handleMix}
-            disabled={loading || files.length !== REQUIRED_FILES}
-            className="w-full"
+            disabled={loading || (audioFile ? videoFolders.some(f => f.length === 0) : files.length !== REQUIRED_FILES)}
+            className="w-full py-6"
           >
             {loading ? (
               <>

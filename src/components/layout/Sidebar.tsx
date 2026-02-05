@@ -20,7 +20,9 @@ import {
   Filter,
   Upload,
   Mic,
-  Video
+  Video,
+  Scissors,
+  Sparkles
 } from 'lucide-react';
 
 
@@ -57,6 +59,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       return 'video-filter';
     } else if (pathname.startsWith('/dashboard/ai/lipsync')) {
       return 'ai-studio';
+    } else if (pathname.startsWith('/dashboard/ai/mix-video')) {
+      return 'mix-video';
+    } else if (pathname.startsWith('/dashboard/ai/gen-content')) {
+      return 'gen-content';
     } else if (pathname.startsWith('/dashboard/ai')) {
       return 'tiktok';
     } else if (pathname.startsWith('/dashboard/instagram')) {
@@ -138,38 +144,44 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
               { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
               { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
             ]
-          },
+          }
+        ]
+      },
+      {
+        id: 'ai-studio',
+        icon: Mic,
+        label: 'AI Studio',
+        menus: [
+          {
+            section: 'CREATION TOOLS',
+            items: [
+              { label: 'Motion Control (Lipsync)', href: '/dashboard/ai/lipsync', icon: Video },
+            ]
+          }
+        ]
+      },
+      {
+        id: 'mix-video',
+        icon: Scissors,
+        label: 'Mix Video',
+        menus: [
           {
             section: 'EDIT VIDEO',
             items: [
-              { label: 'Photo to Video', href: '/dashboard/ai/photo-to-video', icon: ImagePlus },
               { label: 'Mix Video', href: '/dashboard/ai/mix-video', icon: Scissors },
             ]
           }
         ]
       },
       {
-        id: 'ai-studio',
-        icon: Mic,
-        label: 'AI Studio',
+        id: 'gen-content',
+        icon: Sparkles,
+        label: 'Gen Content',
         menus: [
           {
-            section: 'CREATION TOOLS',
+            section: 'AI GENERATION',
             items: [
-              { label: 'Motion Control (Lipsync)', href: '/dashboard/ai/lipsync', icon: Video },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'ai-studio',
-        icon: Mic,
-        label: 'AI Studio',
-        menus: [
-          {
-            section: 'CREATION TOOLS',
-            items: [
-              { label: 'Motion Control (Lipsync)', href: '/dashboard/ai/lipsync', icon: Video },
+              { label: 'Gen Content', href: '/dashboard/ai/gen-content', icon: Sparkles },
             ]
           }
         ]
