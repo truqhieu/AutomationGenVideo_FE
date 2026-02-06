@@ -86,7 +86,8 @@ export default function FacebookAnalyzer() {
     const maxPosts = 9999;
 
     try {
-      const response = await fetch('http://localhost:8000/api/video-management/facebook/analyze/', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/video-management/facebook/analyze/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,7 +160,7 @@ export default function FacebookAnalyzer() {
     if (!result) return null;
 
     let postsToShow: (FacebookPost | FacebookVideo | FacebookImage)[] = [];
-    
+
     if (activeTab === 'all') {
       postsToShow = result.posts || [];
     } else if (activeTab === 'videos') {
@@ -247,41 +248,41 @@ export default function FacebookAnalyzer() {
           {/* Input Section */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-3 space-y-2">
-                    <Label htmlFor="facebook-url">URL Facebook</Label>
-                    <Input
-                      id="facebook-url"
-                      type="url"
-                      placeholder="https://www.facebook.com/..."
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
-                      disabled={loading}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="time-range">Thời gian</Label>
-                    <select
-                        id="time-range"
-                        className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        value={timeRange}
-                        onChange={(e) => setTimeRange(e.target.value)}
-                        disabled={loading}
-                    >
-                        <option value="yesterday">Hôm qua</option>
-                        <option value="7_days">7 ngày qua</option>
-                        <option value="30_days">30 ngày qua</option>
-                    </select>
-                </div>
+              <div className="md:col-span-3 space-y-2">
+                <Label htmlFor="facebook-url">URL Facebook</Label>
+                <Input
+                  id="facebook-url"
+                  type="url"
+                  placeholder="https://www.facebook.com/..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time-range">Thời gian</Label>
+                <select
+                  id="time-range"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="yesterday">Hôm qua</option>
+                  <option value="7_days">7 ngày qua</option>
+                  <option value="30_days">30 ngày qua</option>
+                </select>
+              </div>
             </div>
-            
-            <Button 
-                onClick={handleAnalyze} 
-                disabled={!url.trim()}
-                isLoading={loading}
-                className="w-full"
+
+            <Button
+              onClick={handleAnalyze}
+              disabled={!url.trim()}
+              isLoading={loading}
+              className="w-full"
             >
-                {loading ? 'Đang phân tích dữ liệu...' : 'Bắt đầu Thống kê'}
+              {loading ? 'Đang phân tích dữ liệu...' : 'Bắt đầu Thống kê'}
             </Button>
           </div>
 
@@ -357,33 +358,30 @@ export default function FacebookAnalyzer() {
               <div className="flex gap-2 border-b">
                 <button
                   onClick={() => setActiveTab('all')}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === 'all'
+                  className={`px-4 py-2 font-medium transition-colors ${activeTab === 'all'
                       ? 'border-b-2 border-blue-600 text-blue-600'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <FileText className="inline h-4 w-4 mr-1" />
                   Tất cả ({result.posts_count})
                 </button>
                 <button
                   onClick={() => setActiveTab('videos')}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === 'videos'
+                  className={`px-4 py-2 font-medium transition-colors ${activeTab === 'videos'
                       ? 'border-b-2 border-red-600 text-red-600'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <Video className="inline h-4 w-4 mr-1" />
                   Videos ({result.metadata.videos_count || 0})
                 </button>
                 <button
                   onClick={() => setActiveTab('images')}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === 'images'
+                  className={`px-4 py-2 font-medium transition-colors ${activeTab === 'images'
                       ? 'border-b-2 border-green-600 text-green-600'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <ImageIcon className="inline h-4 w-4 mr-1" />
                   Hình ảnh ({result.metadata.images_count || 0})

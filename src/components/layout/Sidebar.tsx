@@ -9,6 +9,7 @@ import {
   Facebook,
   Instagram,
   Music2, // Using as TikTok placeholder
+  Music, // Using as Douyin icon
   LayoutGrid,
   CreditCard,
   HelpCircle,
@@ -17,12 +18,10 @@ import {
   Film,
   Users,
   Activity,
-  Filter,
-  Upload,
   Mic,
   Video,
   Scissors,
-  Sparkles
+  BookOpen // Xiaohongshu icon
 } from 'lucide-react';
 
 
@@ -55,18 +54,16 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   const activePlatform = useMemo(() => {
     if (pathname.startsWith('/dashboard/manager') || pathname.startsWith('/dashboard/editor-management')) {
       return 'user-management';
-    } else if (pathname.startsWith('/dashboard/video-filter')) {
-      return 'video-filter';
     } else if (pathname.startsWith('/dashboard/ai/lipsync')) {
       return 'ai-studio';
-    } else if (pathname.startsWith('/dashboard/ai/mix-video')) {
-      return 'mix-video';
-    } else if (pathname.startsWith('/dashboard/ai/gen-content')) {
-      return 'gen-content';
     } else if (pathname.startsWith('/dashboard/ai')) {
       return 'tiktok';
     } else if (pathname.startsWith('/dashboard/instagram')) {
       return 'instagram';
+    } else if (pathname.startsWith('/dashboard/douyin')) {
+      return 'douyin';
+    } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
+      return 'xiaohongshu';
     } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
       return 'facebook';
     }
@@ -91,20 +88,6 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       ]
     }] : []),
     ...(user?.role !== 'MANAGER' && user?.role !== 'ADMIN' ? [
-      {
-        id: 'video-filter',
-        icon: Filter,
-        label: 'Lọc video',
-        menus: [
-          {
-            section: 'DUPLICATE DETECTION',
-            items: [
-              { label: 'Upload & Check Duplicate', href: '/dashboard/video-filter', icon: Upload },
-              { label: 'My Videos', href: '/dashboard/video-filter/my-videos', icon: Film },
-            ]
-          }
-        ]
-      },
       {
         id: 'facebook',
         icon: Facebook,
@@ -148,6 +131,32 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         ]
       },
       {
+        id: 'douyin',
+        icon: Music,
+        label: 'Douyin',
+        menus: [
+          {
+            section: 'RESEARCH',
+            items: [
+              { label: 'Search Videos', href: '/dashboard/douyin', icon: Search },
+            ]
+          }
+        ]
+      },
+      {
+        id: 'xiaohongshu',
+        icon: BookOpen,
+        label: 'Xiaohongshu',
+        menus: [
+          {
+            section: 'RESEARCH',
+            items: [
+              { label: 'Search Notes', href: '/dashboard/xiaohongshu', icon: Search },
+            ]
+          }
+        ]
+      },
+      {
         id: 'ai-studio',
         icon: Mic,
         label: 'AI Studio',
@@ -172,22 +181,9 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             ]
           }
         ]
-      },
-      {
-        id: 'gen-content',
-        icon: Sparkles,
-        label: 'Gen Content',
-        menus: [
-          {
-            section: 'AI GENERATION',
-            items: [
-              { label: 'Gen Content', href: '/dashboard/ai/gen-content', icon: Sparkles },
-            ]
-          }
-        ]
       }
     ] : [])
-  ], [user?.role]);
+  ], [user?.role]); // Dependency on primitive string ensures stability
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 

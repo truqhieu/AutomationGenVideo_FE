@@ -30,7 +30,7 @@ export default function SelectManagerModal() {
     // Only show on first login, not during navigation within dashboard
     if (user && (user.role === 'EDITOR' || user.role === 'CONTENT') && !user.manager_id) {
       // Check if modal was already shown/dismissed in this session
-      const modalDismissed = sessionStorage.getItem('manager_modal_dismissed');
+      const modalDismissed = localStorage.getItem('manager_modal_dismissed');
       
       if (!modalDismissed) {
         hasChecked.current = true;
@@ -69,7 +69,7 @@ export default function SelectManagerModal() {
 
   // Dismiss modal and save to sessionStorage to prevent showing again
   const dismissModal = () => {
-    sessionStorage.setItem('manager_modal_dismissed', 'true');
+    localStorage.setItem('manager_modal_dismissed', 'true');
     setShowModal(false);
   };
 
@@ -93,7 +93,7 @@ export default function SelectManagerModal() {
         // Update user in store
         setUser({ ...user!, manager_id: selectedManager });
         // Mark as dismissed so it won't show again in this session
-        sessionStorage.setItem('manager_modal_dismissed', 'true');
+        localStorage.setItem('manager_modal_dismissed', 'true');
         setShowModal(false);
       } else {
         alert('Không thể chọn quản lý. Vui lòng thử lại.');

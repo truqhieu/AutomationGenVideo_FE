@@ -48,7 +48,8 @@ export default function CollectionDetailPage() {
 
   const fetchCollection = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/ai/collections/${params.id}/`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/ai/collections/${params.id}/`);
       const data = await response.json();
       if (data.success) {
         setCollection(data.collection);
@@ -65,11 +66,11 @@ export default function CollectionDetailPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/ai/collections/${params.id}/remove-video/${videoId}/`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/ai/collections/${params.id}/remove-video/${videoId}/`,
         { method: 'DELETE' }
       );
       const data = await response.json();
-      
+
       if (data.success) {
         fetchCollection();
       }

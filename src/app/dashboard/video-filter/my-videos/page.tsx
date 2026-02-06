@@ -34,7 +34,8 @@ export default function MyVideosPage() {
   const fetchMyVideos = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:3001/api/videos/my-videos', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/videos/my-videos`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

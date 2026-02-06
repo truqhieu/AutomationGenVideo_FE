@@ -22,13 +22,16 @@ export default function DashboardLayout({
   const { user, isAuthenticated, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
-  }, []);
+    // Prefetch homepage for faster logout transition
+    router.prefetch('/');
+  }, [router]);
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated && !user) {
+    if (isHydrated && !isAuthenticated && !user && !isLoggingOut) {
       // Check if token exists in localStorage (handling hydration delay)
       const token = localStorage.getItem('auth_token');
 
@@ -42,21 +45,28 @@ export default function DashboardLayout({
         // We don't redirect here, allowing the UI to show loading state or eventual content
       }
     }
-  }, [isHydrated, isAuthenticated, user, router]);
+  }, [isHydrated, isAuthenticated, user, router, isLoggingOut]);
 
   // Add a separate effect to retry loading user if token exists but no user
   useEffect(() => {
-    if (isHydrated && !isAuthenticated && !user) {
+    if (isHydrated && !isAuthenticated && !user && !isLoggingOut) {
       const token = localStorage.getItem('auth_token');
       if (token && !useAuthStore.getState().isLoading) {
         useAuthStore.getState().loadUser();
       }
     }
-  }, [isHydrated, isAuthenticated, user]);
+  }, [isHydrated, isAuthenticated, user, isLoggingOut]);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    // 1. Navigate immediately to give "instant" feel
+    router.replace('/');
+
+    // 2. Clear auth state after a small delay to allow navigation to start
+    // This prevents the Dashboard from unmounting into a Loading Spinner immediately
+    setTimeout(() => {
+      logout();
+    }, 500);
   };
 
   const menuItems = [
@@ -114,7 +124,8 @@ export default function DashboardLayout({
       </div>
 
       {/* Select Manager Modal */}
-      <SelectManagerModal />
+      {/* Select Manager Modal - TEMPORARILY DISABLED as per user request */}
+      {/* <SelectManagerModal /> */}
     </div>
   );
 }

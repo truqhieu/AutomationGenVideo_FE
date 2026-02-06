@@ -34,7 +34,10 @@ apiClient.interceptors.response.use(
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
-        window.location.href = '/login';
+        // Check if the error came from the login endpoint itself
+        if (!error.config?.url?.includes('/auth/login')) {
+             window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

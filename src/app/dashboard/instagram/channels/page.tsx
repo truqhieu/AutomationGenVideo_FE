@@ -306,12 +306,9 @@ export default function InstagramChannelsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredChannels.map((channel, idx) => (
-                  <motion.div
+                  <div
                     key={channel.id || idx}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:translate-y-[-4px] transition-all group relative overflow-hidden"
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden flex flex-col h-full"
                   >
                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button 
@@ -320,7 +317,7 @@ export default function InstagramChannelsPage() {
                                 handleRefreshChannel(channel);
                             }}
                             disabled={refreshingIds.has(channel.username) || processing}
-                            className="bg-white/90 backdrop-blur p-2 rounded-lg text-pink-600 shadow-sm border border-pink-100 hover:bg-pink-50"
+                            className="bg-white/90 p-2 rounded-lg text-pink-600 shadow-sm border border-pink-100 hover:bg-pink-50 transition-colors"
                             title="Làm mới dữ liệu"
                         >
                             <RotateCcw className={`w-4 h-4 ${refreshingIds.has(channel.username) ? 'animate-spin' : ''}`} />
@@ -335,6 +332,8 @@ export default function InstagramChannelsPage() {
                           alt={channel.display_name}
                           referrerPolicy="no-referrer"
                           className="w-16 h-16 rounded-full object-cover border-2 border-pink-100 shadow-md ring-2 ring-pink-50"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`;
                           }}
@@ -344,7 +343,7 @@ export default function InstagramChannelsPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-bold text-slate-900 truncate text-lg">{channel.display_name}</h3>
+                        <h3 className="font-bold text-slate-900 truncate text-lg" title={channel.display_name}>{channel.display_name}</h3>
                         <p className="text-sm text-slate-500 truncate font-medium flex items-center gap-1">
                            @{channel.username}
                         </p>
@@ -353,7 +352,7 @@ export default function InstagramChannelsPage() {
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="grid grid-cols-2 gap-3 mb-6 mt-auto">
                         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
                             <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
                             <span className="text-purple-900 font-black text-lg block">
@@ -376,7 +375,7 @@ export default function InstagramChannelsPage() {
                       <span>Xem Chi Tiết</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </>
