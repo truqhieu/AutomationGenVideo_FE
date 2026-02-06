@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Button from '@/components/ui/button';
 import { Textarea } from '../../../../components/ui/textarea'; // Keep original path
 import Input from '@/components/ui/input';
@@ -16,11 +17,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { VoiceLibrary } from './components/VoiceLibrary';
+import { VoiceCloneDialog } from './components/VoiceCloneDialog';
 
 // Define Types
 interface VideoStatus {
@@ -34,6 +36,9 @@ interface VideoStatus {
 }
 
 export default function LipsyncPage() {
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'create';
+
   // --- State Management ---
   const [text, setText] = useState('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
@@ -50,13 +55,29 @@ export default function LipsyncPage() {
     { id: 'joshua_casual_standing_front', name: 'Joshua', type: 'Standard', desc: 'MC Nam đứng', color: 'bg-indigo-500' }
   ];
 
-  const VOICES = [
-    { id: 'c6fb81520dcd42e0a02be231046a8639', name: 'Nam Minh', region: 'VN - Nam', type: 'neutral' },
-    { id: '4286c03d11f44af093e379fc7e2cafa6', name: 'Châu', region: 'VN - Nữ', type: 'sweet' },
-    { id: '9a247a37f3c04e6aa934171998b9659c', name: 'Hoài', region: 'VN - Nữ', type: 'professional' },
-    { id: 'en-US-female-1', name: 'English Female', region: 'US - Female', type: 'standard' },
-    { id: 'en-US-male-1', name: 'English Male', region: 'US - Male', type: 'standard' },
-  ];
+
+  const [voices, setVoices] = useState<any[]>([]);
+  // Dialog state for the small "Add Voice" link in the creation tab
+  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
+
+  // Fetch voices on mount
+  useEffect(() => {
+    fetchVoices();
+  }, []);
+
+  const fetchVoices = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/heygen-video/voices`);
+      const data = await response.json();
+      if (data.success) {
+        setVoices(data.data.voices);
+      }
+    } catch (e) {
+      console.error("Failed to fetch voices", e);
+    }
+  };
+
 
   const STYLES = [
     { id: 'normal', name: 'Normal', icon: User },
@@ -198,7 +219,38 @@ export default function LipsyncPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* --- TABS --- */}
+        <div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-1">
+          <Button
+            variant="ghost"
+            onClick={() => window.history.pushState(null, '', '/dashboard/ai/lipsync?tab=create')}
+            className={`rounded-none border-b-2 px-6 h-12 font-medium transition-all ${currentTab === 'create' ? 'border-blue-500 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-400 hover:text-white'}`}
+          >
+            <Video className="w-4 h-4 mr-2" /> Tạo Video
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => window.history.pushState(null, '', '/dashboard/ai/lipsync?tab=voice')}
+            className={`rounded-none border-b-2 px-6 h-12 font-medium transition-all ${currentTab === 'voice' ? 'border-purple-500 text-purple-400 bg-purple-500/5' : 'border-transparent text-slate-400 hover:text-white'}`}
+          >
+            <Mic className="w-4 h-4 mr-2" /> Voice Library
+          </Button>
+        </div>
+
+        {/* --- VOICE LIBRARY TAB --- */}
+        {currentTab === 'voice' && (
+          <VoiceLibrary
+            voices={voices}
+            onSelectVoice={(id) => {
+              setVoiceId(id);
+              window.history.pushState(null, '', '/dashboard/ai/lipsync?tab=create');
+            }}
+            onRefresh={fetchVoices}
+          />
+        )}
+
+        {/* --- CREATE VIDEO TAB (Original Content) --- */}
+        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start ${currentTab !== 'create' ? 'hidden' : ''}`}>
 
           {/* --- LEFT COLUMN: INPUTS & SETTINGS --- */}
           <div className="lg:col-span-7 space-y-8">
@@ -301,15 +353,39 @@ export default function LipsyncPage() {
 
                 {/* Voice */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-semibold text-slate-400 uppercase tracking-wider ml-1">Giọng đọc</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold text-slate-400 uppercase tracking-wider ml-1">Giọng đọc</Label>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 text-blue-400 hover:text-blue-300 text-xs hover:bg-transparent"
+                      onClick={() => setIsVoiceDialogOpen(true)}
+                    >
+                      + Thêm giọng mới
+                    </Button>
+
+                    <VoiceCloneDialog
+                      open={isVoiceDialogOpen}
+                      onOpenChange={setIsVoiceDialogOpen}
+                      onSuccess={fetchVoices}
+                    />
+                  </div>
                   <select
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-200 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px] bg-no-repeat bg-[right_1.5rem_center]"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-200 appearane-none"
                     value={voiceId}
                     onChange={(e) => setVoiceId(e.target.value)}
                   >
-                    {VOICES.map(v => (
-                      <option key={v.id} value={v.id}>{v.name} ({v.region})</option>
-                    ))}
+                    <optgroup label="Hệ thống (Natural)">
+                      {voices.filter(v => !v.is_cloned).map(v => (
+                        <option key={v.id || v.voice_id} value={v.id || v.voice_id}>{v.name} ({v.language})</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Giọng Clone (Của tôi)">
+                      {voices.filter(v => v.is_cloned).map(v => (
+                        <option key={v.voice_id} value={v.voice_id}>⭐ {v.name}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -414,7 +490,7 @@ export default function LipsyncPage() {
                         </div>
                         <h3 className="text-2xl font-bold text-white mb-2">{currentAvatar?.name}</h3>
                         <p className="text-slate-400 text-sm mb-8 px-4">
-                          Sẵn sàng tạo video với giọng <span className="text-blue-400 font-semibold">{VOICES.find(v => v.id === voiceId)?.name}</span>.
+                          Sẵn sàng tạo video với giọng <span className="text-blue-400 font-semibold">{voices.find(v => (v.id || v.voice_id) === voiceId)?.name || 'được chọn'}</span>.
                         </p>
                       </>
                     )}

@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -20,7 +22,8 @@ import {
   Activity,
   Mic,
   Video,
-  BookOpen // Xiaohongshu icon
+  BookOpen, // Xiaohongshu icon
+  Volume2
 } from 'lucide-react';
 
 
