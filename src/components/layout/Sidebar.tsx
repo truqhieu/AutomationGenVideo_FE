@@ -24,7 +24,8 @@ import {
   Video,
   Scissors,
   BookOpen, // Xiaohongshu icon
-  Volume2
+  Volume2,
+  ClipboardCheck
 } from 'lucide-react';
 
 
@@ -67,6 +68,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       return 'douyin';
     } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
       return 'xiaohongshu';
+    } else if (pathname.startsWith('/dashboard/checklist')) {
+      return 'checklist';
     } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
       return 'facebook';
     }
@@ -91,6 +94,19 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       ]
     }] : []),
     ...(user?.role !== 'MANAGER' && user?.role !== 'ADMIN' ? [
+      {
+        id: 'checklist',
+        icon: ClipboardCheck,
+        label: 'Checklist',
+        menus: [
+          {
+            section: 'BÁO CÁO',
+            items: [
+              { label: 'Báo cáo ngày', href: '/dashboard/checklist', icon: ClipboardCheck },
+            ]
+          }
+        ]
+      },
       {
         id: 'facebook',
         icon: Facebook,
