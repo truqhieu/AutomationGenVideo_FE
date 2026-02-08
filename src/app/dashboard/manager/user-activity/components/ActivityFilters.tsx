@@ -8,9 +8,14 @@ const teams = [
     'Team ADS', 'Team K0', 'Team K1', 'Team K2'
 ];
 
-const ActivityFilters = () => {
-    const [activeTeam, setActiveTeam] = React.useState('All');
-    const [selectedDate, setSelectedDate] = React.useState(new Date());
+interface ActivityFiltersProps {
+    activeTeam: string;
+    setActiveTeam: (team: string) => void;
+    selectedDate: Date;
+    setSelectedDate: (date: Date) => void;
+}
+
+const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedDate }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = React.useState(false);
 
 

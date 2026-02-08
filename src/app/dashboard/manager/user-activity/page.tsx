@@ -32,11 +32,86 @@ const mockUsers: UserActivity[] = [
 const UserActivityPage = () => {
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'report'>('performance');
+    const [reports, setReports] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(false);
 
-    const mockReports = [
-        { id: '1', name: 'Bùi Minh Quyết', team: 'Team K2', avatar: 'https://i.pravatar.cc/150?u=1', status: 'submitted' as const, checklist: { fb: true, ig: true, captionHashtag: true, tiktok: true, youtube: true, reportLink: true }, videoCount: 4, questions: [{ question: 'NGHỈ QUÁ CÓ MỚI SÁNG TẠO GÌ ĐƯỢC SỬ DỤNG VÀO CÔNG VIỆC CỦA MÌNH KHÔNG?', answer: 'Không có gì' }, { question: 'HÔM QUA CÓ GẶP MẤN SÁNG TẠO GÌ ĐƯỢC SỬ DỤNG VÀO CÔNG VIỆC CỦA MÌNH KHÔNG?', answer: 'Không có gì' }] },
-        { id: '2', name: 'Chung Đỗ', team: 'Global JP4', avatar: 'https://i.pravatar.cc/150?u=2', status: 'pending' as const, checklist: { fb: false, ig: false, captionHashtag: false, tiktok: false, youtube: false, reportLink: false }, videoCount: 0, questions: [] },
-    ];
+    // Filter states
+    const [activeTeam, setActiveTeam] = React.useState('All');
+    const [selectedDate, setSelectedDate] = React.useState(new Date());
+
+    React.useEffect(() => {
+        if (activeTab === 'report') {
+            fetchReports();
+        }
+    }, [activeTab]);
+
+    const fetchReports = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/report`);
+            const data = await response.json();
+
+            // Map backend data to frontend interface
+            const mappedReports = data.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                team: item.team,
+                avatar: item.avatar,
+                status: item.status,
+                submittedAt: item.submitted_at, // Keep raw date for filtering
+                checklist: {
+                    fb: item.checklist?.fb || false,
+                    ig: item.checklist?.ig || false,
+                    tiktok: item.checklist?.tiktok || false,
+                    youtube: item.checklist?.youtube || false,
+                    zalo: item.checklist?.zalo || false,
+                    lark: item.checklist?.lark || false,
+                    reportLink: item.checklist?.reportLink || false,
+                    captionHashtag: item.checklist?.caption_hashtag || false,
+                },
+                videoCount: item.video_source_count || 0,
+                questions: [
+                    { question: 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?', answer: item.questions?.q1 || 'Không có' },
+                    { question: 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?', answer: item.questions?.q2 || 'Không có' },
+                    { question: 'BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?', answer: item.questions?.q3 || 'Không có' },
+                    { question: 'BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?', answer: item.questions?.q4 || 'Không có' },
+                    { question: 'BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)', answer: item.questions?.q5 || 'Không có' },
+                ]
+            }));
+            setReports(mappedReports);
+        } catch (error) {
+            console.error('Failed to fetch reports:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter Logic
+    const filteredReports = React.useMemo(() => {
+        return reports.filter(report => {
+            // Filter by Team
+            if (activeTeam !== 'All') {
+                // Approximate matching or exact matching depending on data
+                // Data has "Team ADS", "Global - JP1", etc.
+                if (report.team !== activeTeam) return false;
+            }
+
+            // Filter by Date
+            if (selectedDate) {
+                const reportDate = new Date(report.submittedAt);
+                // Compare Year, Month, Day
+                if (
+                    reportDate.getDate() !== selectedDate.getDate() ||
+                    reportDate.getMonth() !== selectedDate.getMonth() ||
+                    reportDate.getFullYear() !== selectedDate.getFullYear()
+                ) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [reports, activeTeam, selectedDate]);
 
     return (
         <div className="min-h-screen bg-[#f1f5f9] p-6 space-y-8">
@@ -91,7 +166,12 @@ const UserActivityPage = () => {
             </header>
 
             {/* Filters */}
-            <ActivityFilters />
+            <ActivityFilters
+                activeTeam={activeTeam}
+                setActiveTeam={setActiveTeam}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+            />
 
             {activeTab === 'performance' ? (
                 <>
@@ -117,9 +197,19 @@ const UserActivityPage = () => {
                 <>
                     {/* Report Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {mockReports.map((report) => (
-                            <ReportCard key={report.id} report={report} />
-                        ))}
+                        {loading ? (
+                            <div className="col-span-full flex justify-center py-12">
+                                <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+                            </div>
+                        ) : filteredReports.length > 0 ? (
+                            filteredReports.map((report) => (
+                                <ReportCard key={report.id} report={report} />
+                            ))
+                        ) : (
+                            <div className="col-span-full text-center text-gray-400 italic py-12">
+                                Không tìm thấy báo cáo nào cho {activeTeam !== 'All' ? `team ${activeTeam}` : ''} ngày {selectedDate.toLocaleDateString('vi-VN')}.
+                            </div>
+                        )}
                     </div>
                 </>
             )}
