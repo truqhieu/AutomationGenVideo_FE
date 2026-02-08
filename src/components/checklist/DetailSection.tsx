@@ -5,34 +5,21 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { FileText } from 'lucide-react';
 
-const detailItems = [
-    {
-        question: "SỐ VIDEO EDIT SỬ DỤNG >50% SOURCE TỰ QUAY?",
-        placeholder: "Ví dụ..."
-    },
-    {
-        question: "1. NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CÁI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?",
-        placeholder: "Ví dụ..."
-    },
-    {
-        question: "2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?",
-        placeholder: "Ví dụ..."
-    },
-    {
-        question: "3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?",
-        placeholder: "Ví dụ..."
-    },
-    {
-        question: "4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?",
-        placeholder: "Ví dụ..."
-    },
-    {
-        question: "5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)",
-        placeholder: "Ví dụ..."
-    }
+export const DETAIL_ITEMS = [
+    { question: "SỐ VIDEO EDIT SỬ DỤNG >50% SOURCE TỰ QUAY?", placeholder: "Ví dụ..." },
+    { question: "1. NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CÁI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?", placeholder: "Ví dụ..." },
+    { question: "2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?", placeholder: "Ví dụ..." },
+    { question: "3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?", placeholder: "Ví dụ..." },
+    { question: "4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?", placeholder: "Ví dụ..." },
+    { question: "5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)", placeholder: "Ví dụ..." },
 ];
 
-const DetailSection = () => {
+interface DetailSectionProps {
+    values: string[];
+    onChange: (index: number, value: string) => void;
+}
+
+const DetailSection = ({ values, onChange }: DetailSectionProps) => {
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
@@ -42,14 +29,16 @@ const DetailSection = () => {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
-                {detailItems.map((item, index) => (
+                {DETAIL_ITEMS.map((item, index) => (
                     <div key={index} className="space-y-2">
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-tight">
                             {item.question}
                         </label>
                         <Textarea
+                            value={values[index] ?? ''}
+                            onChange={(e) => onChange(index, e.target.value)}
                             placeholder={item.placeholder}
-                            className="min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm resize-none"
+                            className="min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none"
                         />
                     </div>
                 ))}

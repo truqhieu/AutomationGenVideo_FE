@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ClipboardCheck } from 'lucide-react';
 
-const checklistItems = [
+export const CHECKLIST_ITEMS = [
     "Bạn đã đăng video lên FB chưa?",
     "Bạn đã đăng video lên Tiktok chưa?",
     "Bạn đã đăng video lên IG chưa?",
@@ -18,7 +18,12 @@ const checklistItems = [
     "Bạn đã báo cáo đầy đủ thông tin công việc trên lark chưa?",
 ];
 
-const ChecklistSection = () => {
+interface ChecklistSectionProps {
+    values: boolean[];
+    onChange: (index: number, checked: boolean) => void;
+}
+
+const ChecklistSection = ({ values, onChange }: ChecklistSectionProps) => {
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
@@ -28,9 +33,14 @@ const ChecklistSection = () => {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
-                {checklistItems.map((item, index) => (
+                {CHECKLIST_ITEMS.map((item, index) => (
                     <div key={index} className="flex items-start gap-3 group cursor-pointer">
-                        <Checkbox id={`check-${index}`} className="mt-1 border-gray-300 w-6 h-6 rounded-md group-hover:border-blue-500 transition-colors" />
+                        <Checkbox
+                            id={`check-${index}`}
+                            checked={values[index] ?? false}
+                            onChange={(e) => onChange(index, e.target.checked)}
+                            className="mt-1 border-gray-300 w-6 h-6 rounded-md group-hover:border-blue-500 transition-colors cursor-pointer accent-blue-600"
+                        />
                         <label
                             htmlFor={`check-${index}`}
                             className="text-gray-700 font-medium leading-relaxed group-hover:text-blue-600 cursor-pointer transition-colors"
