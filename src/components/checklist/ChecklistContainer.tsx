@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import { Send } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
@@ -44,10 +45,23 @@ const ChecklistContainer = () => {
     }, [checks, details]);
 
     const handleSubmit = async () => {
+        const { user } = useAuthStore.getState();
+        if (!user) {
+            setMessage({ type: 'error', text: 'Vui lòng đăng nhập để gửi báo cáo.' });
+            return;
+        }
+
         setMessage(null);
         setLoading(true);
         try {
             const payload = buildPayload();
+            // Thêm thông tin user vào payload
+            const fullPayload = {
+                ...payload,
+                userEmail: user.email,
+                userName: user.full_name,
+            };
+
             // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng cùng base với AI/mix-video (start.bat mặc định port 8001)
             const djangoBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:8001';
             const base = djangoBase.replace(/\/$/, '');
@@ -55,7 +69,7 @@ const ChecklistContainer = () => {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(fullPayload),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
@@ -68,7 +82,7 @@ const ChecklistContainer = () => {
                 setMessage({ type: 'error', text: parts.join(' ') });
                 return;
             }
-            setMessage({ type: 'success', text: data.message || 'Đã lưu báo cáo vào Lark Bitable.' });
+            setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
             setChecks(initialChecks());
             setDetails(initialDetails());
         } catch (e) {

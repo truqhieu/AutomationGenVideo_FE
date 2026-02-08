@@ -294,9 +294,22 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
             <CreditCard className="w-5 h-5" />
           </button>
-          <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-            <Settings className="w-5 h-5" />
-          </button>
+
+          {/* Settings - Link to checklist settings for Manager/Admin */}
+          {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+            <Link
+              href="/dashboard/manager/checklist-settings"
+              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
+              title="Cấu hình Checklist"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
+          ) : (
+            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
+
           <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
             <HelpCircle className="w-5 h-5" />
           </button>
