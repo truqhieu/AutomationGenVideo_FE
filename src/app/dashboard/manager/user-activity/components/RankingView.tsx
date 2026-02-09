@@ -10,8 +10,28 @@ interface RankingUser {
     value: string;
 }
 
-const RankingView = () => {
-    const trafficRanking: RankingUser[] = [
+const getAvatarUrl = (url: string | null, name: string) => {
+    if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+
+    if (url.includes('drive.google.com')) {
+        // Extract ID from various Drive formats
+        const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+        }
+    }
+    return url;
+};
+
+interface RankingViewProps {
+    rankings?: {
+        traffic: RankingUser[];
+        revenue: RankingUser[];
+    };
+}
+
+const RankingView = ({ rankings }: RankingViewProps) => {
+    const defaultTraffic: RankingUser[] = [
         { rank: 1, name: 'Quang Đạt', avatar: 'https://i.pravatar.cc/150?u=r1', value: '580,266' },
         { rank: 2, name: 'Nguyễn Toàn', avatar: 'https://i.pravatar.cc/150?u=r2', value: '222,026' },
         { rank: 3, name: 'Nguyễn Phương Thảo', avatar: 'https://i.pravatar.cc/150?u=r3', value: '159,988' },
@@ -19,13 +39,16 @@ const RankingView = () => {
         { rank: 5, name: 'Nguyễn Văn Đạt', avatar: 'https://i.pravatar.cc/150?u=r5', value: '11,552' },
     ];
 
-    const revenueRanking: RankingUser[] = [
+    const defaultRevenue: RankingUser[] = [
         { rank: 1, name: 'Nguyễn Phương Thảo', avatar: 'https://i.pravatar.cc/150?u=r3', value: '0' },
         { rank: 2, name: 'Nguyễn Quốc Huy', avatar: 'https://i.pravatar.cc/150?u=r4', value: '0' },
         { rank: 3, name: 'Nguyễn Toàn', avatar: 'https://i.pravatar.cc/150?u=r2', value: '0' },
         { rank: 4, name: 'Nguyễn Văn Đạt', avatar: 'https://i.pravatar.cc/150?u=r5', value: '0' },
         { rank: 5, name: 'Quang Đạt', avatar: 'https://i.pravatar.cc/150?u=r1', value: '0' },
     ];
+
+    const trafficRanking = rankings?.traffic || defaultTraffic;
+    const revenueRanking = rankings?.revenue || defaultRevenue;
 
     const getMedalEmoji = (rank: number) => {
         switch (rank) {
@@ -69,9 +92,12 @@ const RankingView = () => {
                                 )}
                             </div>
                             <img
-                                src={user.avatar}
+                                src={getAvatarUrl(user.avatar, user.name)}
                                 alt={user.name}
                                 className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                                onError={(e) => {
+                                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+                                }}
                             />
                             <span className="font-semibold text-gray-900">{user.name}</span>
                         </div>

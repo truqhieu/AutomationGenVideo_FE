@@ -17,6 +17,19 @@ interface UserActivity {
     monthlyProgress: number;
 }
 
+const getAvatarUrl = (url: string | null, name: string) => {
+    if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+
+    if (url.includes('drive.google.com')) {
+        // Extract ID from various Drive formats
+        const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+        }
+    }
+    return url;
+};
+
 const UserActivityCard = ({ data }: { data: UserActivity }) => {
     const isPending = data.reportStatus === 'CHƯA BÁO CÁO';
 
@@ -31,7 +44,14 @@ const UserActivityCard = ({ data }: { data: UserActivity }) => {
 
                 {/* Profile Info */}
                 <div className="w-16 h-16 rounded-full border-2 border-red-500 p-0.5 mb-2 overflow-hidden bg-gray-100">
-                    <img src={data.avatar} alt={data.name} className="w-full h-full object-cover rounded-full" />
+                    <img
+                        src={getAvatarUrl(data.avatar, data.name)}
+                        alt={data.name}
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => {
+                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=random`;
+                        }}
+                    />
                 </div>
 
                 <h4 className="text-sm font-bold text-gray-900 tracking-tight">{data.name}</h4>
@@ -68,8 +88,8 @@ const UserActivityCard = ({ data }: { data: UserActivity }) => {
 
                 {/* Report Status Button */}
                 <button className={`w-auto px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest mb-6 border shadow-sm ${isPending
-                        ? 'bg-red-500 text-white border-red-500'
-                        : 'bg-white text-blue-500 border-blue-500'
+                    ? 'bg-red-500 text-white border-red-500'
+                    : 'bg-white text-blue-500 border-blue-500'
                     }`}>
                     {data.reportStatus}
                 </button>

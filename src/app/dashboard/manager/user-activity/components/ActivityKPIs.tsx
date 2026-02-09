@@ -3,28 +3,45 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const ActivityKPIs = () => {
+interface ActivityKPIsProps {
+    summary?: {
+        totalVideoTarget: number;
+        totalVideoCompleted: number;
+        totalTrafficTarget: number;
+        totalTrafficCompleted: number;
+        totalRevenueTarget: number;
+        totalRevenueCompleted: number;
+    };
+}
+
+const ActivityKPIs = ({ summary }: ActivityKPIsProps) => {
+    const formatNumber = (num: number) => {
+        return new Intl.NumberFormat('vi-VN').format(num);
+    };
+
+    const calculatePercentage = (current: number, target: number) => {
+        if (!target) return 0;
+        return Math.min(100, Math.round((current / target) * 100));
+    };
+
     const kpis = [
         {
             title: 'MỤC TIÊU VIDEO',
-            value: '804',
-            total: '4.350 Video',
-            percentage: 18,
-            color: 'red',
+            value: formatNumber(summary?.totalVideoCompleted || 0),
+            total: `${formatNumber(summary?.totalVideoTarget || 0)} Video`,
+            percentage: calculatePercentage(summary?.totalVideoCompleted || 0, summary?.totalVideoTarget || 0),
         },
         {
             title: 'TỔNG TRAFFIC',
-            value: '20.261.543',
-            total: '357.000.000',
-            percentage: 6,
-            color: 'red',
+            value: formatNumber(summary?.totalTrafficCompleted || 0),
+            total: formatNumber(summary?.totalTrafficTarget || 0),
+            percentage: calculatePercentage(summary?.totalTrafficCompleted || 0, summary?.totalTrafficTarget || 0),
         },
         {
             title: 'TỔNG DOANH THU',
-            value: '719.513.500',
-            total: '11.978.250.000',
-            percentage: 6,
-            color: 'red',
+            value: formatNumber(summary?.totalRevenueCompleted || 0),
+            total: formatNumber(summary?.totalRevenueTarget || 0),
+            percentage: calculatePercentage(summary?.totalRevenueCompleted || 0, summary?.totalRevenueTarget || 0),
         }
     ];
 
@@ -57,10 +74,12 @@ const ActivityKPIs = () => {
                                         fill="transparent"
                                         strokeDasharray={175.92}
                                         strokeDashoffset={175.92 * (1 - kpi.percentage / 100)}
-                                        className="text-red-500"
+                                        className={kpi.percentage >= 100 ? "text-green-500" : "text-red-500"}
                                     />
                                 </svg>
-                                <span className="absolute text-sm font-bold text-red-600">{kpi.percentage}%</span>
+                                <span className={`absolute text-sm font-bold ${kpi.percentage >= 100 ? "text-green-600" : "text-red-600"}`}>
+                                    {kpi.percentage}%
+                                </span>
                             </div>
 
                             <div className="text-right">
@@ -72,14 +91,15 @@ const ActivityKPIs = () => {
                         {/* Horizontal Progress Bar */}
                         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-red-500 rounded-full"
+                                className={`h-full rounded-full ${kpi.percentage >= 100 ? "bg-green-500" : "bg-red-500"}`}
                                 style={{ width: `${kpi.percentage}%` }}
                             />
                         </div>
                     </CardContent>
                 </Card>
-            ))}
-        </div>
+            ))
+            }
+        </div >
     );
 };
 

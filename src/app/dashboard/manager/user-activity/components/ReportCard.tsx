@@ -26,22 +26,21 @@ interface EmployeeReport {
     }[];
 }
 
-const getGoogleDriveDirectLink = (url: string) => {
-    if (!url) return '';
-    // Format 1: https://drive.google.com/file/d/FILE_ID/view...
-    const match = url.match(/\/d\/(.+?)\//);
-    if (match && match[1]) {
-        // Use the thumbnail endpoint which allows resizing and often serves faster/cleaner for UI
-        // sz=w1000 requests a width of 1000px (high quality)
-        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+const getAvatarUrl = (url: string | null, name: string) => {
+    if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+
+    if (url.includes('drive.google.com')) {
+        // Extract ID from various Drive formats
+        const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+        }
     }
     return url;
 };
 
 const ReportCard = ({ report }: { report: EmployeeReport }) => {
-    const avatarSrc = report.avatar && report.avatar.includes('drive.google.com')
-        ? getGoogleDriveDirectLink(report.avatar)
-        : (report.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(report.name)}&background=random`);
+    const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
     return (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full flex flex-col">

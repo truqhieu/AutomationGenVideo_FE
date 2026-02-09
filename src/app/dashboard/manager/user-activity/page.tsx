@@ -16,23 +16,27 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
-const mockUsers: UserActivity[] = [
-    { name: 'Bùi Minh Quyết', team: 'TEAM K2', avatar: 'https://i.pravatar.cc/150?u=1', time: '07:00 07-02', dailyGoal: 6, done: 0, traffic: '138.586', revenue: '61.849.000', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 18 },
-    { name: 'Chung Đỗ', team: 'GLOBAL JP4', avatar: 'https://i.pravatar.cc/150?u=2', time: '07:00 07-02', dailyGoal: 3, done: 0, traffic: '423.789', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 22 },
-    { name: 'Cường Đoàn Thạch', team: 'GLOBAL JP4', avatar: 'https://i.pravatar.cc/150?u=3', time: '07:00 07-02', dailyGoal: 6, done: 0, traffic: '0', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 13 },
-    { name: 'Huyền Trang', team: 'TEAM K2', avatar: 'https://i.pravatar.cc/150?u=4', time: '07:00 07-02', dailyGoal: 6, done: 0, traffic: '2.074.800', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 17 },
-    { name: 'Hằng Minh', team: 'GLOBAL JP2', avatar: 'https://i.pravatar.cc/150?u=5', time: '07:00 07-02', dailyGoal: 3, done: 0, traffic: '1.287.229', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 20 },
-    { name: 'Khuc Quan', team: 'GLOBAL JP3', avatar: 'https://i.pravatar.cc/150?u=6', time: '07:00 07-02', dailyGoal: 5, done: 0, traffic: '214.690', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 20 },
-    { name: 'Lương Lý Đức', team: 'GLOBAL JP2', avatar: 'https://i.pravatar.cc/150?u=7', time: '07:00 07-02', dailyGoal: 4, done: 0, traffic: '63.216', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 22 },
-    { name: 'Lệnh Ngọc Khánh', team: 'GLOBAL JP2', avatar: 'https://i.pravatar.cc/150?u=8', time: 'Chưa báo cáo', dailyGoal: 0, done: 0, traffic: '0', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 0 },
-    { name: 'Nguyễn An', team: 'TEAM K1', avatar: 'https://i.pravatar.cc/150?u=9', time: '07:00 07-02', dailyGoal: 6, done: 0, traffic: '1.048.471', revenue: '20.810.000', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 18 },
-    { name: 'Nguyễn Bá Tuấn Anh', team: 'TEAM K0', avatar: 'https://i.pravatar.cc/150?u=10', time: '07:00 07-02', dailyGoal: 4, done: 0, traffic: '0', revenue: '0', reportStatus: 'CHƯA BÁO CÁO', monthlyProgress: 20 },
-];
+const getAvatarUrl = (url: string | null, name: string) => {
+    if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+
+    if (url.includes('drive.google.com')) {
+        // Extract ID from various Drive formats
+        const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+        }
+    }
+    return url;
+};
+
+
 
 const UserActivityPage = () => {
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'report'>('performance');
     const [reports, setReports] = React.useState<any[]>([]);
+    const [summary, setSummary] = React.useState<any>(null);
+    const [rankings, setRankings] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(false);
 
     // Filter states
@@ -40,25 +44,48 @@ const UserActivityPage = () => {
     const [selectedDate, setSelectedDate] = React.useState(new Date());
 
     React.useEffect(() => {
-        if (activeTab === 'report') {
-            fetchReports();
-        }
-    }, [activeTab]);
+        fetchReports();
+    }, [selectedDate, activeTeam]); // Fetch data whenever filters change, regardless of tab
 
     const fetchReports = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/report`);
+            // Build query params for the new API
+            const params = new URLSearchParams();
+            if (selectedDate) {
+                // Format date as YYYY-MM-DD
+                const year = selectedDate.getFullYear();
+                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(selectedDate.getDate()).padStart(2, '0');
+                params.append('date', `${year}-${month}-${day}`);
+            }
+            if (activeTeam !== 'All') {
+                params.append('team', activeTeam);
+            }
+
+            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/user-activity?${params.toString()}`;
+            const response = await fetch(url);
             const data = await response.json();
 
+            // Handle new response format { reports, summary, rankings }
+            const reportsList = data.reports || data;
+            const summaryData = data.summary || null;
+            const rankingsData = data.rankings || null;
+
             // Map backend data to frontend interface
-            const mappedReports = data.map((item: any) => ({
+            const mappedReports = reportsList.map((item: any) => ({
                 id: item.id,
                 name: item.name,
                 team: item.team,
-                avatar: item.avatar,
-                status: item.status,
-                submittedAt: item.submitted_at, // Keep raw date for filtering
+                avatar: getAvatarUrl(item.avatar, item.name),
+                status: item.status, // Should be 'ĐÚNG HẠN' or 'CHƯA BÁO CÁO'
+                submittedAt: item.date,
+                time: item.date ? new Date(item.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa báo cáo',
+                dailyGoal: item.kpi_day || 0,
+                done: item.completed_day || 0,
+                traffic: item.traffic_month ? item.traffic_month.toLocaleString('vi-VN') : '0',
+                revenue: item.revenue_month ? item.revenue_month.toLocaleString('vi-VN') : '0',
+                monthlyProgress: item.monthlyProgress || 0,
                 checklist: {
                     fb: item.checklist?.fb || false,
                     ig: item.checklist?.ig || false,
@@ -66,19 +93,45 @@ const UserActivityPage = () => {
                     youtube: item.checklist?.youtube || false,
                     zalo: item.checklist?.zalo || false,
                     lark: item.checklist?.lark || false,
-                    reportLink: item.checklist?.reportLink || false,
-                    captionHashtag: item.checklist?.caption_hashtag || false,
+                    captionHashtag: item.checklist?.caption || false,
                 },
-                videoCount: item.video_source_count || 0,
+                videoCount: item.answers?.['Số video edit sử dụng >50% source từ quay?'] || 0,
                 questions: [
-                    { question: 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?', answer: item.questions?.q1 || 'Không có' },
-                    { question: 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?', answer: item.questions?.q2 || 'Không có' },
-                    { question: 'BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?', answer: item.questions?.q3 || 'Không có' },
-                    { question: 'BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?', answer: item.questions?.q4 || 'Không có' },
-                    { question: 'BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)', answer: item.questions?.q5 || 'Không có' },
+                    {
+                        question: 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
+                        answer: item.answers?.['1.NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?'] ||
+                            item.answers?.['1. BẠN ĐÃ KIỂM TRA CHẤT LƯỢNG NỘI DUNG VIDEO ĐẦU RA CỦA TEAM MÌNH CHƯA?'] ||
+                            'Không có'
+                    },
+                    {
+                        question: 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?',
+                        answer: item.answers?.['2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?'] ||
+                            item.answers?.['2. TEAM BẠN HÔM QUA CÓ THÀNH VIÊN NÀO CÓ VIDEO WIN NHẤT?'] ||
+                            'Không có'
+                    },
+                    {
+                        question: 'BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?',
+                        answer: item.answers?.['3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?'] ||
+                            item.answers?.['3. TEAM BẠN HÔM QUA CÓ GÌ ĐỔI MỚI ĐƯỢC ÁP DỤNG KHÔNG?'] ||
+                            'Không có'
+                    },
+                    {
+                        question: 'BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?',
+                        answer: item.answers?.['4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?'] ||
+                            item.answers?.['4. TEAM BẠN CÓ AI TRỄ DEADLINE HÔM QUA KHÔNG? LÝ DO VÀ PHƯƠNG ÁN?'] ||
+                            'Không có'
+                    },
+                    {
+                        question: 'BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)',
+                        answer: item.answers?.['5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)'] ||
+                            item.answers?.['5. TEAM BẠN HÔM QUA CÓ SẢN PHẨM NÀO WIN MỚI KHÔNG? ĐÃ THÔNG TIN LÊN GROUP NEW PRODUCT CHƯA?'] ||
+                            'Không có'
+                    },
                 ]
             }));
             setReports(mappedReports);
+            setSummary(summaryData);
+            setRankings(rankingsData);
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
@@ -86,32 +139,8 @@ const UserActivityPage = () => {
         }
     };
 
-    // Filter Logic
-    const filteredReports = React.useMemo(() => {
-        return reports.filter(report => {
-            // Filter by Team
-            if (activeTeam !== 'All') {
-                // Approximate matching or exact matching depending on data
-                // Data has "Team ADS", "Global - JP1", etc.
-                if (report.team !== activeTeam) return false;
-            }
-
-            // Filter by Date
-            if (selectedDate) {
-                const reportDate = new Date(report.submittedAt);
-                // Compare Year, Month, Day
-                if (
-                    reportDate.getDate() !== selectedDate.getDate() ||
-                    reportDate.getMonth() !== selectedDate.getMonth() ||
-                    reportDate.getFullYear() !== selectedDate.getFullYear()
-                ) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-    }, [reports, activeTeam, selectedDate]);
+    // No need for client-side filtering - API handles it
+    // Use reports directly since they're already filtered by the backend
 
     return (
         <div className="min-h-screen bg-[#f1f5f9] p-6 space-y-8">
@@ -173,25 +202,36 @@ const UserActivityPage = () => {
                 setSelectedDate={setSelectedDate}
             />
 
+            {/* KPI Cards - Only visible in Performance and Ranking tabs */}
+            {activeTab !== 'report' && (
+                <ActivityKPIs summary={summary} />
+            )}
+
             {activeTab === 'performance' ? (
                 <>
-                    {/* KPI Cards */}
-                    <ActivityKPIs />
 
                     {/* User Activity Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                        {mockUsers.map((user, idx) => (
-                            <UserActivityCard key={idx} data={user} />
+                        {reports.map((report, idx) => (
+                            <UserActivityCard key={report.id || idx} data={{
+                                name: report.name,
+                                team: report.team,
+                                avatar: report.avatar,
+                                time: report.time,
+                                dailyGoal: report.dailyGoal,
+                                done: report.done,
+                                traffic: report.traffic,
+                                revenue: report.revenue,
+                                reportStatus: report.status,
+                                monthlyProgress: report.monthlyProgress
+                            }} />
                         ))}
                     </div>
                 </>
             ) : activeTab === 'ranking' ? (
                 <>
-                    {/* KPI Cards */}
-                    <ActivityKPIs />
-
                     {/* Ranking View */}
-                    <RankingView />
+                    <RankingView rankings={rankings} />
                 </>
             ) : (
                 <>
@@ -201,8 +241,8 @@ const UserActivityPage = () => {
                             <div className="col-span-full flex justify-center py-12">
                                 <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
                             </div>
-                        ) : filteredReports.length > 0 ? (
-                            filteredReports.map((report) => (
+                        ) : reports.length > 0 ? (
+                            reports.map((report: any) => (
                                 <ReportCard key={report.id} report={report} />
                             ))
                         ) : (
