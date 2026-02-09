@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle, Share2, Music2, Hash, Play, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GenerateContentButton from '@/components/content/GenerateContentButton';
+import SearchAutocomplete from '@/components/SearchAutocomplete';
 
 // Updated Interface to match Backend 'VideoSerializer'
 interface ScrapedVideo {
@@ -213,7 +215,7 @@ export default function TikTokSearchPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/60 rounded-3xl p-6 mb-8 relative overflow-hidden"
+          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/60 rounded-3xl p-6 mb-8 relative"
         >
           {/* Aesthetic Background Blob */}
           <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#00f2ea]/10 rounded-full blur-3xl pointer-events-none" />
@@ -245,20 +247,22 @@ export default function TikTokSearchPage() {
             </div>
           </div>
 
-          {/* Search Input */}
-          <div className="flex gap-3 relative z-10">
-            <input
-              type="text"
+          {/* Search Input with Autocomplete */}
+          <div className="relative z-10">
+            <SearchAutocomplete
+              platform="TIKTOK"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch(true)}
+              onChange={setSearchTerm}
+              onSearch={() => handleSearch(true)}
               placeholder={searchType === 'keyword' ? 'Nhập từ khóa (vd: mèo cute)...' : 'Nhập hashtag (vd: xuhuong)...'}
-              className="flex-1 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-[#00f2ea] transition-colors"
+              className="mb-3"
             />
+
+            {/* Search Button */}
             <button
               onClick={() => handleSearch(true)}
               disabled={loading}
-              className="px-6 py-3 bg-gradient-to-r from-[#00f2ea] to-[#ff0050] text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#00f2ea] to-[#ff0050] text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
             >
               {loading && !isFetchingMore ? (
                 <>
@@ -326,91 +330,95 @@ export default function TikTokSearchPage() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
               >
-                {currentVideos.map((video, index) => (
-                  <div
-                    key={video.video_id || index}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-[#ff0050]/50 transition-all duration-300 group relative flex flex-col h-full"
-                  >
-                    {/* Cover */}
-                    <div className="relative aspect-[9/16] bg-slate-800 group-hover:scale-[1.02] transition-transform duration-500">
-                      {/* Play Icon Overlay */}
-                      <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg">
-                          <Play className="w-6 h-6 text-white fill-white ml-1" />
+                {currentVideos.map((video, index) => {
+                  // Debug: log first video to check structure
+                  if (index === 0) {
+                    console.log('Video data structure:', video);
+                  }
+                  return (
+                    <div
+                      key={video.video_id || index}
+                      className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-[#ff0050]/50 transition-all duration-300 group relative flex flex-col h-full"
+                    >
+                      {/* Cover */}
+                      <div className="relative aspect-[9/16] bg-slate-800 group-hover:scale-[1.02] transition-transform duration-500">
+                        {/* Play Icon Overlay */}
+                        <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg">
+                            <Play className="w-6 h-6 text-white fill-white ml-1" />
+                          </div>
                         </div>
-                      </div>
 
-                      <img
-                        src={video.thumbnail_url}
-                        alt={video.description}
-                        className="w-full h-full object-cover"
-                        loading='lazy'
-                        decoding="async"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
-
-                      {/* Stats Overlay */}
-                      <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between items-end">
-                        <div className="flex items-center gap-1 text-white bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
-                          <Play className="w-3 h-3 text-[#00f2ea]" />
-                          <span className="text-xs font-bold">{formatNumber(video.views_count)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-4 relative bg-slate-900 z-10 flex flex-col flex-1">
-                      {/* Author */}
-                      <div className="flex items-center gap-2 mb-3">
                         <img
-                          src={getAvatarUrl(video)}
-                          alt=""
-                          className="w-8 h-8 rounded-full border border-slate-700 object-cover"
-                          loading="lazy"
+                          src={video.thumbnail_url}
+                          alt={video.description}
+                          className="w-full h-full object-cover"
+                          loading='lazy'
+                          decoding="async"
                         />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate" title={video.author_name}>{video.author_name}</p>
-                          <p className="text-xs text-slate-500 truncate">@{video.author_username}</p>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
+
+                        {/* Stats Overlay */}
+                        <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between items-end">
+                          <div className="flex items-center gap-1 text-white bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <Play className="w-3 h-3 text-[#00f2ea]" />
+                            <span className="text-xs font-bold">{formatNumber(video.views_count)}</span>
+                          </div>
                         </div>
                       </div>
 
-                      <p className="text-sm text-slate-300 line-clamp-2 mb-3 h-10" title={video.description}>{video.description}</p>
+                      {/* Content */}
+                      <div className="p-4 relative bg-slate-900 z-10 flex flex-col flex-1">
+                        {/* Author */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <img
+                            src={getAvatarUrl(video)}
+                            alt=""
+                            className="w-8 h-8 rounded-full border border-slate-700 object-cover"
+                            loading="lazy"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-white truncate" title={video.author_name}>{video.author_name}</p>
+                            <p className="text-xs text-slate-500 truncate">@{video.author_username}</p>
+                          </div>
+                        </div>
 
-                      {/* Metrics */}
-                      <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-auto">
-                        <div className="flex items-center gap-1 text-slate-400 text-xs" title="Likes">
-                          <Heart className="w-3 h-3 text-[#ff0050]" /> {formatNumber(video.likes_count)}
-                        </div>
-                        <div className="flex items-center gap-1 text-slate-400 text-xs" title="Comments">
-                          <MessageCircle className="w-3 h-3 text-white" /> {formatNumber(video.comments_count)}
-                        </div>
-                        <div className="flex items-center gap-1 text-slate-400 text-xs" title="Shares">
-                          <Share2 className="w-3 h-3 text-[#00f2ea]" /> {formatNumber(video.shares_count)}
-                        </div>
-                      </div>
+                        <p className="text-sm text-slate-300 line-clamp-2 mb-3 h-10" title={video.description}>{video.description}</p>
 
-                      {/* Actions */}
-                      <div className="grid grid-cols-2 gap-2 mt-4">
-                        <a
-                          href={video.video_url} // Or construct tiktok URL if generic
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Xem
-                        </a>
-                        <a
-                          href={video.download_url || video.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="py-2.5 bg-[#ff0050]/10 hover:bg-[#ff0050]/20 text-[#ff0050] text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Tải
-                        </a>
+                        {/* Metrics */}
+                        <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-auto">
+                          <div className="flex items-center gap-1 text-slate-400 text-xs" title="Likes">
+                            <Heart className="w-3 h-3 text-[#ff0050]" /> {formatNumber(video.likes_count)}
+                          </div>
+                          <div className="flex items-center gap-1 text-slate-400 text-xs" title="Comments">
+                            <MessageCircle className="w-3 h-3 text-white" /> {formatNumber(video.comments_count)}
+                          </div>
+                          <div className="flex items-center gap-1 text-slate-400 text-xs" title="Shares">
+                            <Share2 className="w-3 h-3 text-[#00f2ea]" /> {formatNumber(video.shares_count)}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="grid grid-cols-2 gap-2 mt-4">
+                          <a
+                            href={video.video_url} // Or construct tiktok URL if generic
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Xem
+                          </a>
+                          <GenerateContentButton
+                            videoId={video.id || Math.abs(video.video_id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0))}
+                            videoTitle={video.title || video.description || 'TikTok Video'}
+                            className="text-xs py-2.5"
+                            compact={true}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </motion.div>
 
               {/* Pagination Controls */}
