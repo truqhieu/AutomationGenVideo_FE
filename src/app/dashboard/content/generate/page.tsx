@@ -1,0 +1,803 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+    ArrowLeft, Sparkles, Loader2, CheckCircle, Copy, Check, ArrowRight,
+    Scissors, Upload, Film, Download, Trash2, Music, Mic, Play, Pause
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useContentGeneration, GeneratedContent } from '@/hooks/useContentGeneration';
+import { toast } from 'react-hot-toast';
+import SmartMixVideo from '@/components/SmartMixVideo';
+
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+// ─── Content Type Config ───
+interface ContentType {
+    id: string;
+    name: string;
+    description: string;
+    color: string;
+    examples: string[];
+}
+
+const CONTENT_TYPES: ContentType[] = [
+    { id: 'A1', name: 'A1 - Traffic (Viral)', description: 'Mẹo, tin tức, soi sản phẩm - Thu hút lượt view', color: 'from-red-500 to-pink-500', examples: ['Mẹo đánh sáng vàng bạc', 'Soi trang sức sao Việt', 'Tin tức ngành kim hoàn'] },
+    { id: 'A2', name: 'A2 - Knowledge (Giáo dục)', description: 'Kiến thức chuyên môn - Xây dựng uy tín', color: 'from-teal-500 to-cyan-500', examples: ['Phân biệt vàng/bạc/đá quý', 'Ý nghĩa phật bản mệnh', 'Lịch sử thương hiệu'] },
+    { id: 'A3', name: 'A3 - Credibility (Uy tín)', description: 'Xây dựng niềm tin - Flex thành tựu', color: 'from-blue-500 to-indigo-500', examples: ['Flex giải thưởng, từ thiện', 'Giao hàng cho người nổi tiếng', 'Kể chuyện bảo hành khách'] },
+    { id: 'A4', name: 'A4 - Conversion (Bán hàng)', description: 'Chuyển đổi trực tiếp - Giới thiệu sản phẩm', color: 'from-green-500 to-emerald-500', examples: ['Top list sản phẩm hot', 'Ngân sách X mua được gì?', 'Combo quà tặng'] },
+    { id: 'A5', name: 'A5 - Combined (Tổng hợp)', description: 'Kết hợp A1-A4 - Content đa chiều', color: 'from-yellow-500 to-orange-500', examples: ['Storytelling hoàn chỉnh', 'Từ hook đến CTA', 'Nội dung đa chiều'] },
+];
+
+// ─── Mix Video Config ───
+const PARTS_LABELS = [
+    'Sản phẩm', 'HuyK', 'Chế tác (Above)', 'Chế tác (Below)',
+    'Chế tác (Above)', 'HuyK (Above)', 'HuyK (Above)',
+    'Chế tác (Below)', 'Sản phẩm HT', 'Outtrol',
+];
+
+type Step = 'generate' | 'content' | 'mix-video';
+
+export default function GenerateContentPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { generateContent, isGenerating } = useContentGeneration();
+
+    // ─── Step control ───
+    const [currentStep, setCurrentStep] = useState<Step>('generate');
+
+    // ─── Content generation state ───
+    const [videoId, setVideoId] = useState<number | null>(null);
+    const [videoTitle, setVideoTitle] = useState<string>('');
+    const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
+    const [copiedSection, setCopiedSection] = useState<string | null>(null);
+    const [productInfo, setProductInfo] = useState({ id: '', name: '', category: '', description: '', price: '' });
+
+    // Advanced Prompt state
+    const [showAdvancedPrompt, setShowAdvancedPrompt] = useState(false);
+    const [advancedPrompt, setAdvancedPrompt] = useState('');
+
+    // ─── Mix Video state ───
+    const [baseFolderPath, setBaseFolderPath] = useState(''); // NEW: Folder tổng
+    const [isScanning, setIsScanning] = useState(false); // NEW: Scanning state
+    const [scannedFolders, setScannedFolders] = useState<any[]>([]); // NEW: Kết quả scan
+    const [cacheStats, setCacheStats] = useState<any>(null); // NEW: Cache stats
+    const [folderSlots, setFolderSlots] = useState<{ path: string; videoCount: number; scanning: boolean }[]>(
+        Array(10).fill(null).map(() => ({ path: '', videoCount: 0, scanning: false }))
+    );
+    const [audioMode, setAudioMode] = useState<'upload' | 'generate'>('upload');
+    const [audioFile, setAudioFile] = useState<File | null>(null);
+    const [voices, setVoices] = useState<any[]>([]);
+    const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
+    const [ttsText, setTtsText] = useState<string>('');
+    const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const audioInputRef = useRef<HTMLInputElement>(null);
+    const [mixLoading, setMixLoading] = useState(false);
+    const [mixProgress, setMixProgress] = useState(0);
+    const [mixError, setMixError] = useState('');
+    const [mixResult, setMixResult] = useState<{
+        output_url?: string; output_filename?: string;
+        output_urls?: string[]; output_filenames?: string[];
+        num_outputs?: number;
+    } | null>(null);
+
+    // ─── Init from URL params ───
+    useEffect(() => {
+        const id = searchParams.get('videoId');
+        const title = searchParams.get('videoTitle');
+        if (id) setVideoId(parseInt(id));
+        if (title) setVideoTitle(decodeURIComponent(title));
+        setProductInfo({
+            id: searchParams.get('productId') || '',
+            name: decodeURIComponent(searchParams.get('productName') || ''),
+            category: decodeURIComponent(searchParams.get('productCategory') || ''),
+            description: decodeURIComponent(searchParams.get('productDescription') || ''),
+            price: searchParams.get('productPrice') || ''
+        });
+    }, [searchParams]);
+
+    // ─── Fetch voices when entering mix step ───
+    useEffect(() => {
+        if (currentStep === 'mix-video') {
+            fetchVoices();
+            if (generatedContent?.script) {
+                setTtsText(generatedContent.script);
+                setAudioMode('generate');
+            }
+        }
+    }, [currentStep]);
+
+    useEffect(() => {
+        if (generatedAudioUrl) {
+            audioRef.current = new Audio(generatedAudioUrl);
+            audioRef.current.onended = () => setIsPlayingAudio(false);
+        }
+    }, [generatedAudioUrl]);
+
+    // ─── Content Generation Handlers ───
+    const handleGenerate = async () => {
+        if (!selectedType) return;
+        try {
+            const result = await generateContent({
+                video_id: videoId || undefined,
+                video_description: videoTitle,
+                video_title: videoTitle,
+                content_type: selectedType,
+                brand_name: 'Viễn Chí Bảo',
+                industry: 'kim hoàn (trang sức vàng bạc)',
+                product_id: productInfo.id,
+                product_name: productInfo.name,
+                product_category: productInfo.category,
+                product_description: productInfo.description,
+                product_price: productInfo.price
+            });
+            if (result) {
+                setGeneratedContent(result);
+                setCurrentStep('content');
+                toast.success('Content đã được tạo thành công!');
+            } else {
+                toast.error('Không thể tạo content. Vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error('Generation error:', error);
+            toast.error('Có lỗi xảy ra khi tạo content');
+        }
+    };
+
+    const copyToClipboard = async (text: string, section: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedSection(section);
+            setTimeout(() => setCopiedSection(null), 2000);
+            toast.success('Đã copy!');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            toast.error('Không thể copy');
+        }
+    };
+
+    const handleAdvancedGenerate = async () => {
+        if (!selectedType || !advancedPrompt.trim()) {
+            toast.error('Vui lòng nhập prompt nâng cao');
+            return;
+        }
+
+        try {
+            const result = await generateContent({
+                video_id: videoId || undefined,
+                video_description: videoTitle,
+                video_title: videoTitle,
+                content_type: selectedType,
+                brand_name: 'Viễn Chí Bảo',
+                industry: 'kim hoàn (trang sức vàng bạc)',
+                product_id: productInfo.id,
+                product_name: productInfo.name,
+                product_category: productInfo.category,
+                product_description: productInfo.description,
+                product_price: productInfo.price,
+                custom_prompt: advancedPrompt // Pass custom prompt
+            });
+
+            if (result) {
+                setGeneratedContent(result);
+                setShowAdvancedPrompt(false);
+                setAdvancedPrompt('');
+                toast.success('Content đã được tạo lại với prompt nâng cao!');
+            } else {
+                toast.error('Không thể tạo content. Vui lòng thử lại.');
+            }
+        } catch (error) {   
+            console.error('Advanced generation error:', error);
+            toast.error('Có lỗi xảy ra khi tạo content');
+        }
+    };
+
+    // ─── Mix Video Handlers ───
+    const fetchVoices = async () => {
+        try {
+            const response = await fetch(`${AI_SERVICE_URL}/api/heygen/voices`);
+            const data = await response.json();
+            if (data.success) {
+                setVoices(data.data.voices);
+                if (data.data.voices.length > 0 && !selectedVoiceId) {
+                    setSelectedVoiceId(data.data.voices[0].voice_id);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch voices", e);
+        }
+    };
+
+    const handleGenerateAudio = async () => {
+        if (!ttsText || !selectedVoiceId) return;
+        setIsGeneratingAudio(true);
+        setMixError('');
+        try {
+            const response = await fetch(`${AI_SERVICE_URL}/api/heygen/generate-audio`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: ttsText, voice_id: selectedVoiceId }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setGeneratedAudioUrl(data.data.audio_url);
+                const audioRes = await fetch(data.data.audio_url);
+                const blob = await audioRes.blob();
+                setAudioFile(new File([blob], "generated_audio.mp3", { type: "audio/mpeg" }));
+                toast.success("Đã tạo audio thành công!");
+            } else {
+                setMixError(data.error || "Không thể tạo audio.");
+            }
+        } catch (e: any) {
+            setMixError(e.message || "Lỗi kết nối.");
+        } finally {
+            setIsGeneratingAudio(false);
+        }
+    };
+
+    const toggleAudioPreview = () => {
+        if (!audioRef.current) return;
+        if (isPlayingAudio) { audioRef.current.pause(); setIsPlayingAudio(false); }
+        else { audioRef.current.play(); setIsPlayingAudio(true); }
+    };
+
+    const updateSlotPath = (index: number, path: string) => {
+        setFolderSlots(prev => { const n = [...prev]; n[index] = { ...n[index], path }; return n; });
+    };
+
+    // NEW: Scan base folder (tự động tìm subfolder)
+    const handleScanBaseFolder = async () => {
+        const path = baseFolderPath.trim();
+        if (!path) {
+            setMixError('Vui lòng nhập đường dẫn folder tổng');
+            return;
+        }
+
+        setIsScanning(true);
+        setMixError('');
+        setScannedFolders([]);
+        setCacheStats(null);
+
+        try {
+            const res = await fetch(`${AI_SERVICE_URL}/api/videos/scan-folder/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path,
+                    use_cache: true,
+                    recursive: true
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Lỗi scan folder');
+            }
+
+            const data = await res.json();
+
+            if (data.success) {
+                const folders = data.subfolders || [];
+                setScannedFolders(folders);
+                setCacheStats(data.cache_stats);
+
+                // Auto-fill 10 folders vào slots
+                const newSlots = [...folderSlots];
+                folders.slice(0, 10).forEach((folder: any, i: number) => {
+                    newSlots[i] = {
+                        path: folder.path,
+                        videoCount: folder.video_count,
+                        scanning: false
+                    };
+                });
+                setFolderSlots(newSlots);
+
+                const totalVideos = data.total_video_count || 0;
+                const hitRate = data.cache_stats?.hit_rate || 0;
+
+                toast.success(
+                    `✅ Tìm thấy ${folders.length} folders với ${totalVideos} videos!\n` +
+                    `📊 Cache hit rate: ${hitRate}% (Scan rất nhanh!)`
+                );
+            } else {
+                throw new Error(data.error || 'Scan failed');
+            }
+        } catch (error: any) {
+            setMixError(error.message || 'Lỗi khi scan folder');
+            toast.error(error.message || 'Lỗi khi scan folder');
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    // OLD: Scan single slot (keep for manual edit)
+    const scanSlot = async (index: number) => {
+        const path = folderSlots[index].path.trim();
+        if (!path) return;
+        setFolderSlots(prev => { const n = [...prev]; n[index] = { ...n[index], scanning: true }; return n; });
+        try {
+            const res = await fetch(`${AI_SERVICE_URL}/api/videos/scan-folder/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path, use_cache: true, recursive: true }),
+            });
+            const data = await res.json();
+            const totalVideos = data.total_video_count || 0;
+            setFolderSlots(prev => { const n = [...prev]; n[index] = { ...n[index], videoCount: totalVideos, scanning: false }; return n; });
+        } catch {
+            setFolderSlots(prev => { const n = [...prev]; n[index] = { ...n[index], videoCount: 0, scanning: false }; return n; });
+        }
+    };
+
+    const clearSlot = (index: number) => {
+        setFolderSlots(prev => { const n = [...prev]; n[index] = { path: '', videoCount: 0, scanning: false }; return n; });
+    };
+
+    const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selected = e.target.files?.[0];
+        if (!selected) return;
+        if (!/\.(mp3|wav|m4a|aac|ogg)$/i.test(selected.name)) { setMixError('Định dạng audio không hợp lệ.'); return; }
+        setAudioFile(selected);
+        setGeneratedAudioUrl(null);
+        setMixError('');
+        setMixResult(null);
+        e.target.value = '';
+    };
+
+    // NEW: Auto mix - chỉ cần base folder (CALL BE, BE orchestrates)
+    const handleAutoMix = async () => {
+        if (!baseFolderPath.trim()) {
+            setMixError('Vui lòng nhập đường dẫn folder tổng');
+            return;
+        }
+        if (!audioFile) {
+            setMixError('Vui lòng chọn hoặc tạo audio trước');
+            return;
+        }
+
+        setMixLoading(true);
+        setMixProgress(0);
+        setMixError('');
+        setMixResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('base_folder_path', baseFolderPath.trim());
+            formData.append('audio', audioFile);
+            formData.append('width', '720');
+            formData.append('height', '1280');
+            formData.append('num_outputs', '5');
+
+            // Call BE (NestJS) - BE will orchestrate:
+            // 1. Read subfolders
+            // 2. Call AI Service to scan metadata (with cache)
+            // 3. Select best 10 folders
+            // 4. Call AI Service to mix
+            const response = await fetch(`${BE_API_URL}/ai/mix-video-auto`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setMixError(data.error || 'Có lỗi khi ghép video.');
+                toast.error(data.error || 'Có lỗi khi ghép video.');
+                return;
+            }
+
+            const progressId = data.progress_id;
+
+            // Show info về folders được chọn
+            if (data.selected_folders) {
+                toast.success(
+                    `✅ BE đã tự động chọn ${data.selected_folders.length} folders!\n` +
+                    `📹 Tổng ${data.total_videos} videos\n` +
+                    `⚡ Cache hit: ${data.cache_stats?.hit_rate}%`
+                );
+            }
+
+            if (!progressId) {
+                setMixError('Server không trả progress_id.');
+                return;
+            }
+
+            await new Promise<void>((resolve) => {
+                const poll = async () => {
+                    // Poll status through BE
+                    const statusRes = await fetch(`${BE_API_URL}/ai/mix-video/status/${progressId}`);
+                    const statusData = await statusRes.json().catch(() => ({}));
+                    if (!statusRes.ok) {
+                        setMixError(statusData.error || 'Lỗi khi lấy trạng thái.');
+                        resolve();
+                        return;
+                    }
+                    if (statusData.percent != null) setMixProgress(statusData.percent);
+                    if (statusData.status === 'done') {
+                        setMixResult({
+                            output_url: statusData.output_url,
+                            output_filename: statusData.output_filename,
+                            output_urls: statusData.output_urls,
+                            output_filenames: statusData.output_filenames,
+                            num_outputs: statusData.num_outputs,
+                        });
+                        toast.success(`🎉 Hoàn thành ${statusData.num_outputs} videos!`);
+                        resolve();
+                        return;
+                    }
+                    if (statusData.status === 'error') {
+                        setMixError(statusData.error || 'Lỗi khi ghép video.');
+                        resolve();
+                        return;
+                    }
+                    setTimeout(poll, 2000);
+                };
+                poll();
+            });
+        } catch (error: any) {
+            setMixError(error.message || 'Lỗi kết nối.');
+            toast.error(error.message || 'Lỗi kết nối.');
+        } finally {
+            setMixLoading(false);
+        }
+    };
+
+    // OLD: Manual mix (giữ lại để backward compatible)
+    const handleMix = async () => {
+        const hasFolder = folderSlots.some(s => s.path.trim() !== '');
+        if (!hasFolder) { setMixError('Vui lòng nhập đường dẫn cho ít nhất 1 folder video.'); return; }
+        if (!audioFile) { setMixError('Vui lòng chọn hoặc tạo audio trước.'); return; }
+
+        setMixLoading(true);
+        setMixProgress(0);
+        setMixError('');
+        setMixResult(null);
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+            folderSlots.forEach((slot, i) => {
+                formData.append(`folder_paths_${i}`, slot.path.trim());
+            });
+            formData.append('width', '720');
+            formData.append('height', '1280');
+
+            const response = await fetch(`${AI_SERVICE_URL}/api/videos/mix/`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok) { setMixError(data.error || 'Có lỗi khi ghép video.'); return; }
+
+            const progressId = data.progress_id;
+            if (!progressId) { setMixError('Server không trả progress_id.'); return; }
+
+            await new Promise<void>((resolve) => {
+                const poll = async () => {
+                    const statusRes = await fetch(`${AI_SERVICE_URL}/api/videos/mix/status/${progressId}/`);
+                    const statusData = await statusRes.json().catch(() => ({}));
+                    if (!statusRes.ok) { setMixError(statusData.error || 'Lỗi khi lấy trạng thái.'); resolve(); return; }
+                    if (statusData.percent != null) setMixProgress(statusData.percent);
+                    if (statusData.status === 'done') {
+                        setMixResult({
+                            output_url: statusData.output_url, output_filename: statusData.output_filename,
+                            output_urls: statusData.output_urls, output_filenames: statusData.output_filenames,
+                            num_outputs: statusData.num_outputs,
+                        });
+                        resolve(); return;
+                    }
+                    if (statusData.status === 'error') { setMixError(statusData.error || 'Lỗi khi ghép video.'); resolve(); return; }
+                    setTimeout(poll, 500);
+                };
+                poll();
+            });
+        } catch (err: any) {
+            setMixError(err.message || 'Lỗi kết nối tới server.');
+        } finally {
+            setMixLoading(false);
+            setMixProgress(0);
+        }
+    };
+
+    const getDownloadUrl = (urlPath: string) => `${AI_SERVICE_URL}/${urlPath.replace(/^\//, '')}`;
+
+    const contentSections = generatedContent ? [
+        { key: 'hook', label: 'Hook (Mở đầu)', text: generatedContent.hook, color: 'from-red-500 to-pink-500' },
+        { key: 'problem', label: 'Problem (Vấn đề)', text: generatedContent.problem, color: 'from-orange-500 to-yellow-500' },
+        { key: 'solution', label: 'Solution (Giải pháp)', text: generatedContent.solution, color: 'from-green-500 to-emerald-500' },
+        { key: 'cta', label: 'CTA (Kêu gọi hành động)', text: generatedContent.cta, color: 'from-blue-500 to-purple-500' },
+    ] : [];
+
+    // ─── Step Indicator ───
+    const steps = [
+        { key: 'generate', label: '1. Tạo nội dung', icon: Sparkles },
+        { key: 'content', label: '2. Xem kịch bản', icon: CheckCircle },
+        { key: 'mix-video', label: '3. Mix Video', icon: Scissors },
+    ];
+
+    return (
+        <div className="min-h-[calc(100vh-80px)] bg-[#0a0a0a] text-gray-200 p-6 md:p-10 font-sans -m-6">
+            <div className="max-w-6xl mx-auto py-6">
+                {/* Header */}
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                    <button onClick={() => {
+                        if (currentStep === 'mix-video') setCurrentStep('content');
+                        else if (currentStep === 'content') { setGeneratedContent(null); setCurrentStep('generate'); }
+                        else router.back();
+                    }} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
+                        <ArrowLeft className="w-5 h-5" />
+                        Quay lại
+                    </button>
+
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl shadow-lg shadow-purple-900/30">
+                                <Sparkles className="w-8 h-8 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-white bg-clip-text text-transparent">
+                                    Content & Mix Video Pipeline
+                                </h1>
+                                <p className="text-gray-500 mt-1 max-w-xl truncate text-sm">{videoTitle}</p>
+                            </div>
+                        </div>
+                        {productInfo.name && (
+                            <div className="hidden md:block">
+                                <div className="bg-[#141414] px-4 py-2 rounded-xl shadow-lg border border-gray-800 flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
+                                        <CheckCircle className="w-5 h-5 text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Sản phẩm</p>
+                                        <p className="font-bold text-gray-200 max-w-[200px] truncate text-sm">{productInfo.name}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Step Indicator */}
+                    <div className="flex items-center gap-2 mt-6 bg-[#141414] rounded-xl p-3 border border-gray-800">
+                        {steps.map((step, idx) => {
+                            const isActive = step.key === currentStep;
+                            const isDone = steps.findIndex(s => s.key === currentStep) > idx;
+                            return (
+                                <React.Fragment key={step.key}>
+                                    {idx > 0 && <div className={`flex-1 h-0.5 rounded ${isDone ? 'bg-purple-500' : 'bg-gray-800'}`} />}
+                                    <button
+                                        onClick={() => {
+                                            if (isDone) setCurrentStep(step.key as Step);
+                                        }}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
+                                            ${isActive ? 'bg-purple-600/20 text-purple-400 ring-1 ring-purple-500/50' : isDone ? 'text-emerald-400 cursor-pointer hover:bg-gray-800' : 'text-gray-600 cursor-default'}`}
+                                    >
+                                        {isDone ? <Check className="w-4 h-4" /> : <step.icon className="w-4 h-4" />}
+                                        {step.label}
+                                    </button>
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                </motion.div>
+
+                <AnimatePresence mode="wait">
+                    {/* ═══════════ STEP 1: GENERATE ═══════════ */}
+                    {currentStep === 'generate' && (
+                        <motion.div key="step-generate" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
+                                <h2 className="text-xl font-bold text-white mb-6">Chọn loại content bạn muốn tạo</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {CONTENT_TYPES.map((type) => (
+                                        <button key={type.id} onClick={() => setSelectedType(type.id)} disabled={isGenerating}
+                                            className={`text-left p-5 rounded-xl border transition-all duration-200
+                                                ${selectedType === type.id ? 'border-purple-500 bg-purple-900/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] scale-[1.02]' : 'border-gray-800 bg-[#1a1a1a] hover:border-gray-600 hover:bg-[#202020] hover:shadow-lg'}
+                                                ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className={`p-2 rounded-lg bg-gradient-to-br ${type.color} shadow-lg`}><div className="w-6 h-6 bg-white/20 rounded" /></div>
+                                                <div className="flex-1">
+                                                    <h3 className={`font-bold ${selectedType === type.id ? 'text-white' : 'text-gray-200'}`}>{type.name}</h3>
+                                                    <p className="text-gray-500 text-xs mt-1">{type.description}</p>
+                                                </div>
+                                                {selectedType === type.id && <CheckCircle className="w-6 h-6 text-purple-400" />}
+                                            </div>
+                                            <div className="space-y-1 mt-4 pt-4 border-t border-gray-800/50">
+                                                {type.examples.map((ex, idx) => (
+                                                    <div key={idx} className="flex items-start gap-2 text-xs text-gray-500">
+                                                        <span className="text-purple-500 mt-0.5">•</span><span>{ex}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="mt-8 flex justify-end">
+                                    <button onClick={handleGenerate} disabled={!selectedType || isGenerating}
+                                        className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-900/40">
+                                        {isGenerating ? (<><Loader2 className="w-5 h-5 animate-spin" />Đang tạo content...</>) : (<><Sparkles className="w-5 h-5" />Generate Content</>)}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══════════ STEP 2: VIEW CONTENT ═══════════ */}
+                    {currentStep === 'content' && generatedContent && (
+                        <motion.div key="step-content" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-xl shadow-purple-900/20 border border-purple-500/20">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white">{generatedContent.title}</h2>
+                                        <p className="text-white/80 mt-1 text-sm bg-white/10 px-3 py-1 rounded-full inline-block backdrop-blur-sm">
+                                            {generatedContent.word_count} từ • {generatedContent.content_type_display}
+                                        </p>
+                                    </div>
+                                    <CheckCircle className="w-12 h-12 text-white/50" />
+                                </div>
+                            </div>
+
+                            {/* Full Script */}
+                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
+                                <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                        <div className="w-1 h-6 bg-purple-500 rounded-full" />Kịch bản đầy đủ
+                                    </h3>
+                                    <button onClick={() => copyToClipboard(generatedContent.script, 'full')}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-300 transition-colors border border-gray-700">
+                                        {copiedSection === 'full' ? (<><Check className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Đã copy!</span></>) : (<><Copy className="w-4 h-4" />Copy</>)}
+                                    </button>
+                                </div>
+                                <p className="text-gray-300 whitespace-pre-wrap leading-relaxed font-sans text-base">{generatedContent.script}</p>
+                            </div>
+
+                            {/* Advanced Prompt Section */}
+                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full" />
+                                            Tùy chỉnh nâng cao
+                                        </h3>
+                                        <p className="text-gray-500 text-sm mt-1">Sử dụng prompt tùy chỉnh để tạo lại nội dung theo ý bạn</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => setShowAdvancedPrompt(true)}
+                                    className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-pink-600/10 border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 text-purple-400 font-semibold hover:from-purple-600/20 hover:to-pink-600/20 transition-all flex items-center justify-center gap-3 group"
+                                >
+                                    <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    <span>Regenerate với Prompt Nâng cao</span>
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex justify-between items-center pt-4">
+                                <button onClick={() => { setGeneratedContent(null); setCurrentStep('generate'); }}
+                                    className="px-6 py-3 rounded-xl bg-[#202020] text-gray-400 font-semibold hover:bg-[#2a2a2a] hover:text-white transition-colors border border-gray-800">
+                                    Tạo lại
+                                </button>
+                                <button onClick={() => setCurrentStep('mix-video')}
+                                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center gap-2 shadow-lg shadow-purple-900/40">
+                                    Go to Mix Video <ArrowRight className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══════════ STEP 3: SMART MIX VIDEO (20-30x FASTER!) ═══════════ */}
+                    {currentStep === 'mix-video' && (
+                        <motion.div key="step-mix" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                            <SmartMixVideo
+                                generatedScript={generatedContent?.script}
+                                contentType={selectedType || undefined}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Advanced Prompt Modal */}
+                {showAdvancedPrompt && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-[#141414] rounded-2xl border border-gray-800 shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-6 border-b border-gray-800 bg-gradient-to-r from-purple-600/10 to-pink-600/10">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl">
+                                            <Sparkles className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-white">Prompt Nâng cao</h3>
+                                            <p className="text-gray-400 text-sm mt-1">Tùy chỉnh cách AI tạo nội dung</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => { setShowAdvancedPrompt(false); setAdvancedPrompt(''); }}
+                                        className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="p-6 flex-1 overflow-y-auto">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-300 mb-2">
+                                            Nhập prompt tùy chỉnh của bạn
+                                        </label>
+                                        <textarea
+                                            value={advancedPrompt}
+                                            onChange={(e) => setAdvancedPrompt(e.target.value)}
+                                            placeholder="Ví dụ: Tạo nội dung với giọng điệu vui vẻ, hài hước, sử dụng nhiều emoji. Tập trung vào lợi ích của sản phẩm với khách hàng trẻ tuổi..."
+                                            className="w-full h-48 px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            💡 Tip: Càng chi tiết càng tốt! Mô tả giọng điệu, phong cách, điểm nhấn bạn muốn.
+                                        </p>
+                                    </div>
+
+                                    {/* Example Prompts */}
+                                    <div className="bg-[#1a1a1a] rounded-xl p-4 border border-gray-800">
+                                        <p className="text-sm font-semibold text-gray-300 mb-3">📝 Gợi ý prompt:</p>
+                                        <div className="space-y-2">
+                                            {[
+                                                'Tạo nội dung ngắn gọn, súc tích, tập trung vào 3 lợi ích chính',
+                                                'Viết theo phong cách storytelling, kể câu chuyện cảm động',
+                                                'Sử dụng nhiều số liệu, dữ liệu cụ thể để tăng độ tin cậy',
+                                                'Giọng điệu trẻ trung, năng động, nhiều emoji và từ lóng Gen Z'
+                                            ].map((example, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setAdvancedPrompt(example)}
+                                                    className="w-full text-left px-3 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-400 hover:text-white text-sm transition-colors border border-gray-800 hover:border-gray-700"
+                                                >
+                                                    {example}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 border-t border-gray-800 bg-[#0a0a0a] flex gap-3">
+                                <button
+                                    onClick={() => { setShowAdvancedPrompt(false); setAdvancedPrompt(''); }}
+                                    className="flex-1 px-6 py-3 rounded-xl bg-[#202020] text-gray-400 font-semibold hover:bg-[#2a2a2a] hover:text-white transition-colors border border-gray-800"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleAdvancedGenerate}
+                                    disabled={!advancedPrompt.trim() || isGenerating}
+                                    className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40"
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Đang tạo...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5" />
+                                            Regenerate
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

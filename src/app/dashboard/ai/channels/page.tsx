@@ -60,16 +60,16 @@ export default function TrackedChannelsPage() {
     try {
       // Optimize fetch strategy per platform:
       // - Instagram: 0 posts (profile only, very fast ~2s)
+      // - TikTok: 1 post (minimum to get authorMeta with all stats, very fast ~3-5s)
       // - Facebook: 30 posts (enough for stats, fast ~5-10s)
-      // - TikTok: 5 posts (Metadata only. Total count from authorMeta. Fast ~5s)
-      let maxResults = 5; // Default (Small number triggers fast mode)
+      let maxResults = 1; // Default: Minimal fetch
 
       if (platform.toLowerCase() === 'instagram') {
         maxResults = 0; // Profile only
       } else if (platform.toLowerCase() === 'facebook') {
         maxResults = 30; // Quick sample for stats
       } else if (platform.toLowerCase() === 'tiktok') {
-        maxResults = 5; // Explicitly set low limit for TikTok
+        maxResults = 1; // Minimal fetch (authorMeta has all stats)
       }
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -223,7 +223,7 @@ export default function TrackedChannelsPage() {
     return num.toString();
   };
 
-  // Helper to get proxied avatar URL for Instagram (bypass CORS/expiry)
+  // Helper to get proxied avatar URL for Instagram & TikTok (bypass CORS/expiry)
   const getAvatarUrl = (channel: ChannelProfile) => {
     const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random&color=fff`;
 
@@ -232,12 +232,21 @@ export default function TrackedChannelsPage() {
       return fallbackUrl;
     }
 
-    // If it's an Instagram CDN URL, proxy it through our backend
+    const proxyBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+    // Proxy Instagram CDN URLs
     if (channel.platform?.toUpperCase() === 'INSTAGRAM' &&
       (channel.avatar_url.includes('cdninstagram.com') || channel.avatar_url.includes('instagram.com'))) {
-      const proxyBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
       const proxiedUrl = `${proxyBaseUrl}/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
       console.log(`🔄 Proxying Instagram avatar for ${channel.username}:`, proxiedUrl);
+      return proxiedUrl;
+    }
+
+    // Proxy TikTok CDN URLs (they have CORS restrictions and signed URLs with expiry)
+    if (channel.platform?.toUpperCase() === 'TIKTOK' &&
+      (channel.avatar_url.includes('tiktokcdn.com') || channel.avatar_url.includes('tiktok.com'))) {
+      const proxiedUrl = `${proxyBaseUrl}/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
+      console.log(`🔄 Proxying TikTok avatar for ${channel.username}:`, proxiedUrl);
       return proxiedUrl;
     }
 

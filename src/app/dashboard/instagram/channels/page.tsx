@@ -11,14 +11,20 @@ interface ChannelProfile {
   avatar_url: string;
   platform: string;
   total_followers?: number;
+  following_count?: number;
+  posts_count?: number;
   total_likes: number;
   total_views: number;
   total_videos: number;
-  total_posts?: number;
   engagement: number;
   engagement_rate: number;
   video_count: number;
   description?: string;
+  biography?: string;
+  is_verified?: boolean;
+  is_private?: boolean;
+  external_url?: string;
+  category?: string;
   id?: string;
 }
 
@@ -56,7 +62,15 @@ export default function InstagramChannelsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setChannels(data.channels || []); 
+        
+        // Merge posts_count from localStorage (since DB doesn't store it)
+        const storedPostsCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
+        const channelsWithPosts = (data.channels || []).map((ch: any) => ({
+          ...ch,
+          posts_count: storedPostsCounts[ch.username] || 0
+        }));
+        
+        setChannels(channelsWithPosts); 
       }
     } catch (error) {
       console.error('Error fetching tracked channels:', error);
@@ -118,23 +132,37 @@ export default function InstagramChannelsPage() {
       
       // Extract Data for Saving
       if (data.profile) {
+           // Extract posts_count for localStorage (NOT sent to BE)
+           const postsCount = data.profile.posts_count || 0;
+           
            // Map Instagram profile fields from AI service response
+           // NOTE: posts_count is NOT sent to BE (DB doesn't have this field)
            payload = {
               platform: 'INSTAGRAM',
               username: data.profile.username || username,
               display_name: data.profile.display_name || data.profile.fullName || username,
               avatar_url: data.profile.avatar_url || data.profile.profilePicUrl || '',
-              // AI service returns: follower_count, total_posts, total_likes, total_videos
+              // Stats (now including posts_count!)
               total_followers: data.profile.follower_count || data.profile.followersCount || 0,
-              total_posts: data.profile.total_posts || data.profile.postsCount || 0,
               total_likes: data.profile.total_likes || 0,
               total_views: data.profile.total_views || 0,
               total_videos: data.profile.total_videos || 0,
+              posts_count: postsCount,
               engagement_rate: data.profile.engagement_rate || 0
            };
+           
+           // Also keep in localStorage for backward compatibility
+           if (postsCount > 0) {
+              const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
+              storedCounts[payload.username] = postsCount;
+              localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
+              console.log(`💾 Saved posts_count for ${payload.username}: ${postsCount}`);
+           }
       } else if (data.results && data.results.length > 0) {
            // Fallback extraction from posts
            const firstPost = data.results[0];
+           const postsCount = data.results.length;  // Fallback: count fetched posts
+           
            payload = {
               platform: 'INSTAGRAM',
               username: username,
@@ -144,9 +172,17 @@ export default function InstagramChannelsPage() {
               total_likes: data.results.reduce((sum: number, p: any) => sum + (p.likes_count || 0), 0),
               total_views: data.results.reduce((sum: number, p: any) => sum + (p.video_view_count || 0), 0),
               total_videos: data.results.filter((p: any) => p.content_type === 'reel').length,
-              total_posts: data.results.length,
+              posts_count: postsCount,
               engagement_rate: 0
            };
+           
+           // Also keep in localStorage for backward compatibility
+           if (postsCount > 0) {
+              const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
+              storedCounts[username] = postsCount;
+              localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
+              console.log(`💾 Fallback saved posts_count for ${username}: ${postsCount}`);
+           }
       } else {
            alert('Tìm thấy tài khoản nhưng không có bài viết công khai nào để phân tích.');
            setProcessing(false);
@@ -169,7 +205,9 @@ export default function InstagramChannelsPage() {
       });
 
       if (saveResponse.ok) {
+          // Fetch updated channels (posts_count already saved above)
           await fetchTrackedChannels();
+          
           setShowAddModal(false);
           setUsernameInput('');
       } else {
@@ -192,7 +230,8 @@ export default function InstagramChannelsPage() {
   const handleRefreshChannel = async (channel: ChannelProfile) => {
     setRefreshingIds(prev => new Set(prev).add(channel.username));
     try {
-        await fetchChannelProfile(channel.username);
+        const result = await fetchChannelProfile(channel.username);
+        // Result contains updated posts_count which is already saved in localStorage by fetchChannelProfile
         setRefreshingIds(prev => {
             const newSet = new Set(prev);
             newSet.delete(channel.username);
@@ -343,7 +382,16 @@ export default function InstagramChannelsPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-bold text-slate-900 truncate text-lg" title={channel.display_name}>{channel.display_name}</h3>
+                        <h3 className="font-bold text-slate-900 truncate text-lg flex items-center gap-2" title={channel.display_name}>
+                          {channel.display_name}
+                          {channel.is_verified && (
+                            <span className="text-blue-500 flex-shrink-0" title="Verified">
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                              </svg>
+                            </span>
+                          )}
+                        </h3>
                         <p className="text-sm text-slate-500 truncate font-medium flex items-center gap-1">
                            @{channel.username}
                         </p>
@@ -352,20 +400,30 @@ export default function InstagramChannelsPage() {
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-3 mb-6 mt-auto">
+                    <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
                         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
                             <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
                             <span className="text-purple-900 font-black text-lg block">
                                 {formatNumber(channel.total_followers || 0)}
                             </span>
                         </div>
-                        <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-2xl p-3 border border-pink-100">
-                            <span className="text-xs text-pink-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
-                            <span className="text-pink-900 font-black text-lg block">
-                                {formatNumber(channel.total_posts || 0)}
+                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
+                            <span className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
+                            <span className="text-blue-900 font-black text-lg block">
+                                {formatNumber(channel.posts_count || 0)}
                             </span>
                         </div>
                     </div>
+                    
+                    {/* Engagement Badge */}
+                    {channel.engagement_rate > 0 && (
+                      <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-green-700 font-bold uppercase">Engagement</span>
+                          <span className="text-green-900 font-black text-base">{channel.engagement_rate.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action */}
                     <button
@@ -447,33 +505,33 @@ export default function InstagramChannelsPage() {
                   )}
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100 mb-6">
-                    <h4 className="text-sm font-bold text-purple-800 mb-2 flex items-center gap-2">
-                        <InstagramIcon className="w-4 h-4" /> Hỗ trợ các định dạng:
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200 mb-6">
+                    <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
+                        <InstagramIcon className="w-4 h-4 text-purple-600" /> Hỗ trợ các định dạng:
                     </h4>
-                    <ul className="text-sm text-slate-600 space-y-1.5 pl-1">
-                        <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-purple-400" /> Username (vd: cristiano)</li>
-                        <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-purple-400" /> Với @ (vd: @cristiano)</li>
-                        <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-purple-400" /> Link profile (instagram.com/cristiano)</li>
+                    <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Username (vd: cristiano)</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Với @ (vd: @cristiano)</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Link profile (instagram.com/cristiano)</li>
                     </ul>
                 </div>
 
-                <div className="bg-green-50/50 rounded-xl p-4 border border-green-100 mb-4">
-                    <h4 className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
+                <div className="bg-green-50 rounded-xl p-4 border border-green-200 mb-4">
+                    <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
                         ✅ Dữ liệu hỗ trợ đầy đủ
                     </h4>
-                    <ul className="text-sm text-slate-600 space-y-1.5 pl-1">
+                    <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
                         <li className="flex items-start gap-2">
-                            <div className="w-1 h-1 rounded-full bg-green-400 mt-2" />
-                            <span><strong>Profile Info</strong> (Followers, Posts count, Bio)</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                            <span><strong className="font-extrabold text-black">Profile Info</strong> (Followers, Posts count, Bio)</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <div className="w-1 h-1 rounded-full bg-green-400 mt-2" />
-                            <span><strong>Posts & Reels</strong> (Likes, Comments, Views)</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                            <span><strong className="font-extrabold text-black">Posts & Reels</strong> (Likes, Comments, Views)</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <div className="w-1 h-1 rounded-full bg-green-400 mt-2" />
-                            <span><strong>Engagement Metrics</strong> (Tỷ lệ tương tác)</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                            <span><strong className="font-extrabold text-black">Engagement Metrics</strong> (Tỷ lệ tương tác)</span>
                         </li>
                     </ul>
                 </div>

@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
-import { 
-  Search, 
-  Hash, 
-  TrendingUp, 
-  Eye, 
-  Heart, 
-  Share2, 
+import {
+  Search,
+  Hash,
+  TrendingUp,
+  Eye,
+  Heart,
+  Share2,
   Calendar,
   User,
   Video as VideoIcon,
@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
+import GenerateContentButton from '@/components/content/GenerateContentButton';
 
 interface Video {
   id: string;
@@ -53,7 +54,7 @@ export default function HashtagSearchSection() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!hashtag.trim()) {
       setError('Vui lòng nhập hashtag');
       return;
@@ -106,7 +107,7 @@ export default function HashtagSearchSection() {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Hôm nay';
     if (diffDays === 1) return 'Hôm qua';
     if (diffDays < 7) return `${diffDays} ngày trước`;
@@ -229,7 +230,7 @@ export default function HashtagSearchSection() {
                         <VideoIcon className="w-16 h-16 text-slate-300" />
                       </div>
                     )}
-                    
+
                     {/* Play overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                       <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -294,17 +295,25 @@ export default function HashtagSearchSection() {
                       {formatDate(video.created_at)}
                     </div>
 
-                    {/* View Button */}
-                    {video.video_url && (
-                      <a
-                        href={video.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 block w-full py-2 bg-purple-600 text-white text-center text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        Xem video
-                      </a>
-                    )}
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {video.video_url && (
+                        <a
+                          href={video.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-2 bg-purple-600 text-white text-center text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          Xem video
+                        </a>
+                      )}
+                      <GenerateContentButton
+                        videoId={parseInt(video.id)}
+                        videoTitle={video.title || video.description || 'TikTok Video'}
+                        className="text-xs py-2"
+                        compact={true}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

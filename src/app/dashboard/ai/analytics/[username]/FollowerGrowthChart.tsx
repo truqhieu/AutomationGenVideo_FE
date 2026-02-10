@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Props {
@@ -8,15 +7,8 @@ interface Props {
 }
 
 export default function FollowerGrowthChart({ history = [] }: Props) {
-  const [chartData, setChartData] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (history && history.length > 0) {
-      setChartData(history);
-    } else {
-      setChartData([]);
-    }
-  }, [history]);
+  // Use history directly - no need for state since it's already a prop
+  const chartData = history && history.length > 0 ? history : [];
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {

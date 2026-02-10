@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Search, Loader2, Instagram, Video, ThumbsUp, MessageCircle, Share2, Eye, Download, Play, Hash, AlertTriangle, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import GenerateContentButton from '@/components/content/GenerateContentButton';
 
 interface InstagramReel {
     id: number;
@@ -347,7 +348,7 @@ export default function InstagramSearchReelPage() {
                                             </div>
 
                                             {/* Actions */}
-                                            <div className="grid grid-cols-2 gap-2 mt-4">
+                                            <div className="grid grid-cols-3 gap-2 mt-4">
                                                 <a
                                                     href={reel.video_url}
                                                     target="_blank"
@@ -364,6 +365,12 @@ export default function InstagramSearchReelPage() {
                                                 >
                                                     <Download className="w-3.5 h-3.5" /> Tải
                                                 </a>
+                                                <GenerateContentButton
+                                                    videoId={reel.id}
+                                                    videoTitle={reel.title || reel.description || 'Instagram Reel'}
+                                                    className="text-xs py-2.5"
+                                                    compact={true}
+                                                />
                                             </div>
                                         </div>
                                     </div>
