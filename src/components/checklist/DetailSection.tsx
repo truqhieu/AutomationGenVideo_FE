@@ -6,12 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileText } from 'lucide-react';
 
 export const DETAIL_ITEMS = [
-    { question: "SỐ VIDEO EDIT SỬ DỤNG >50% SOURCE TỰ QUAY?", placeholder: "Ví dụ..." },
-    { question: "1. NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CÁI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?", placeholder: "Ví dụ..." },
-    { question: "2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?", placeholder: "Ví dụ..." },
-    { question: "3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?", placeholder: "Ví dụ..." },
-    { question: "4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?", placeholder: "Ví dụ..." },
-    { question: "5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)", placeholder: "Ví dụ..." },
+    { question: "Số video edit sử dụng >50% source tự quay?", placeholder: "Ví dụ: 3 video..." },
+    { question: "1. Ngày hôm qua công việc bạn có cái gì khiến bạn tự hào và thích thú nhất?", placeholder: "Mô tả ngắn gọn..." },
+    { question: "2. Hôm qua có đổi mới sáng tạo gì được áp dụng vào công việc của bạn không?", placeholder: "Mô tả ngắn gọn..." },
+    { question: "3. Bạn có gặp khó khăn nào cần hỗ trợ không?", placeholder: "Mô tả ngắn gọn..." },
+    { question: "4. Bạn có đóng góp ý tưởng hay đề xuất gì không?", placeholder: "Mô tả ngắn gọn..." },
+    { question: "5. Bạn có sản phẩm (A4 - A5) nào win mới không? (>5k view - >10 cmt hỏi giá?)", placeholder: "Ghi rõ tên sản phẩm và link (nếu có)..." },
 ];
 
 interface DetailSectionProps {

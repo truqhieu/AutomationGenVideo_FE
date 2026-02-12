@@ -6,11 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { ShieldCheck } from 'lucide-react';
 
 export const LEADER_QUESTIONS = [
-    { question: "1. BẠN ĐÃ KIỂM TRA CHẤT LƯỢNG NỘI DUNG VIDEO ĐẦU RA CỦA TEAM MÌNH CHƯA?", placeholder: "Ví dụ..." },
-    { question: "2. TEAM BẠN HÔM QUA CÓ THÀNH VIÊN NÀO CÓ VIDEO WIN NHẤT?", placeholder: "Ví dụ..." },
-    { question: "3. TEAM BẠN HÔM QUA CÓ GÌ ĐỔI MỚI ĐƯỢC ÁP DỤNG KHÔNG?", placeholder: "Ví dụ..." },
-    { question: "4. TEAM BẠN CÓ AI TRỄ DEADLINE HÔM QUA KHÔNG? LÝ DO VÀ PHƯƠNG ÁN?", placeholder: "Ví dụ..." },
-    { question: "5. TEAM BẠN HÔM QUA CÓ SẢN PHẨM NÀO WIN MỚI KHÔNG? ĐÃ THÔNG TIN LÊN GROUP NEW PRODUCT CHƯA?", placeholder: "Ví dụ..." },
+    { question: "1. Bạn đã kiểm tra chất lượng nội dung video đầu ra của team mình chưa?", placeholder: "Ví dụ: Đã kiểm tra 100% video..." },
+    { question: "2. Team bạn hôm qua có thành viên nào có video Win nhất?", placeholder: "Ví dụ: Bạn A có video 10k view..." },
+    { question: "3. Team bạn hôm qua có gì đổi mới được áp dụng không?", placeholder: "Ví dụ: Áp dụng kỹ thuật hook mới..." },
+    { question: "4. Team bạn có ai trễ Deadline hôm qua không? Lý do và phương án?", placeholder: "Ví dụ: Không có ai trễ..." },
+    { question: "5. Team bạn hôm qua có sản phẩm nào win mới không? Đã thông tin lên Group New Product chưa?", placeholder: "Ví dụ: Có sản phẩm X và đã báo cáo..." },
 ];
 
 interface LeaderEvaluationSectionProps {
