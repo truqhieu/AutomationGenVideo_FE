@@ -103,9 +103,9 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                             <div className="flex flex-col">
                                 <span className="font-semibold text-gray-900 leading-tight">{user.name}</span>
                                 {user.position && (
-                                    <span className={`text-[8px] font-black w-fit px-1 py-0 rounded mt-0.5 border ${user.position.toLowerCase().includes('lead')
-                                        ? 'bg-orange-50 text-orange-600 border-orange-100'
-                                        : 'bg-gray-50 text-gray-500 border-gray-100'
+                                    <span className={`text-[8px] font-black w-fit px-1 py-0 rounded mt-0.5 border ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => user.position?.toLowerCase().includes(key))
+                                            ? 'bg-orange-50 text-orange-600 border-orange-100'
+                                            : 'bg-gray-50 text-gray-500 border-gray-100'
                                         }`}>
                                         {user.position}
                                     </span>

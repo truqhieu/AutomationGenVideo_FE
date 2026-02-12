@@ -43,6 +43,7 @@ const UserActivityPage = () => {
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
     const [rankings, setRankings] = React.useState<any>(null);
+    const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
 
     // Filter states
@@ -146,6 +147,7 @@ const UserActivityPage = () => {
             setReports(mappedReports);
             setSummary(summaryData);
             setRankings(rankingsData);
+            setTeamContributions(data.teamContributions || []);
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
@@ -231,7 +233,7 @@ const UserActivityPage = () => {
 
             {/* KPI Cards - Only visible in Performance and Ranking tabs */}
             {activeTab !== 'report' && activeTab !== 'checklist' && (
-                <ActivityKPIs summary={summary} />
+                <ActivityKPIs summary={summary} teamContributions={teamContributions} />
             )}
 
             {activeTab === 'performance' ? (

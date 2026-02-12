@@ -89,7 +89,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
             ] : []),
-            { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
+            { label: 'Tổng quan', href: '/dashboard/manager/user-activity', icon: Activity },
+            { label: 'Kiểm tra Video', href: '/dashboard/manager/check-video', icon: Film },
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
             ] : []),

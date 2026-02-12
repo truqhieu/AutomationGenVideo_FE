@@ -58,9 +58,9 @@ const UserActivityCard = ({ data }: { data: UserActivity }) => {
                 <div className="flex items-center gap-2 mb-1">
                     <h4 className="text-sm font-black text-gray-900 tracking-tight">{data.name}</h4>
                     {data.position && (
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${data.position.toLowerCase().includes('lead')
-                            ? 'bg-orange-50 text-orange-600 border-orange-100'
-                            : 'bg-gray-50 text-gray-500 border-gray-100'
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
+                                ? 'bg-orange-50 text-orange-600 border-orange-100'
+                                : 'bg-gray-50 text-gray-500 border-gray-100'
                             }`}>
                             {data.position}
                         </span>
