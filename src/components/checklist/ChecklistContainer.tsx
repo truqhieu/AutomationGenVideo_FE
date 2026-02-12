@@ -3,15 +3,19 @@
 import React, { useState, useCallback } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
+import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
 import { Send } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
+const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
 
 const ChecklistContainer = () => {
+    const { user } = useAuthStore();
     const [checks, setChecks] = useState<boolean[]>(initialChecks);
     const [details, setDetails] = useState<string[]>(initialDetails);
+    const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -31,6 +35,14 @@ const ChecklistContainer = () => {
         });
     }, []);
 
+    const handleLeaderAnswerChange = useCallback((index: number, value: string) => {
+        setLeaderAnswers((prev) => {
+            const next = [...prev];
+            next[index] = value;
+            return next;
+        });
+    }, []);
+
     const buildPayload = useCallback((): Record<string, boolean | string> => {
         const payload: Record<string, boolean | string> = {
             isLate: false,
@@ -41,11 +53,18 @@ const ChecklistContainer = () => {
         DETAIL_ITEMS.forEach((item, i) => {
             payload[item.question] = (details[i] ?? '').trim() || '';
         });
+
+        // Add Leader answers only if user is Manager/Admin
+        if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
+            LEADER_QUESTIONS.forEach((item, i) => {
+                payload[item.question] = (leaderAnswers[i] ?? '').trim() || '';
+            });
+        }
+
         return payload;
-    }, [checks, details]);
+    }, [checks, details, leaderAnswers, user?.role]);
 
     const handleSubmit = async () => {
-        const { user } = useAuthStore.getState();
         if (!user) {
             setMessage({ type: 'error', text: 'Vui lòng đăng nhập để gửi báo cáo.' });
             return;
@@ -85,6 +104,7 @@ const ChecklistContainer = () => {
             setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
             setChecks(initialChecks());
             setDetails(initialDetails());
+            setLeaderAnswers(initialLeaderAnswers());
         } catch (e) {
             const err = e instanceof Error ? e : new Error(String(e));
             const isNetwork = err.message?.includes('fetch') || err.name === 'TypeError';
@@ -109,6 +129,13 @@ const ChecklistContainer = () => {
                     <DetailSection values={details} onChange={handleDetailChange} />
                 </div>
             </div>
+
+            {/* Leader Section - Only for Managers/Admins */}
+            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
+                <div className="bg-white rounded-3xl p-4 shadow-sm border border-orange-100/50">
+                    <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
+                </div>
+            )}
 
             {message && (
                 <p className={`text-center text-sm font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>

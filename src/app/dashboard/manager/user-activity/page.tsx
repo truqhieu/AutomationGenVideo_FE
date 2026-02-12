@@ -6,15 +6,18 @@ import ActivityFilters from './components/ActivityFilters';
 import UserActivityCard, { UserActivity } from './components/UserActivityCard';
 import ReportCard from './components/ReportCard';
 import RankingView from './components/RankingView';
+import ChecklistContainer from '@/components/checklist/ChecklistContainer';
 import {
     RefreshCw,
     Layout,
     User,
     FileText,
     LogOut,
-    Settings
+    Settings,
+    CheckSquare
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { useSearchParams } from 'next/navigation';
 
 const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
@@ -33,7 +36,10 @@ const getAvatarUrl = (url: string | null, name: string) => {
 
 const UserActivityPage = () => {
     const { user } = useAuthStore();
-    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'report'>('performance');
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
+    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'report' | 'checklist'>('performance');
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
     const [rankings, setRankings] = React.useState<any>(null);
@@ -42,6 +48,13 @@ const UserActivityPage = () => {
     // Filter states
     const [activeTeam, setActiveTeam] = React.useState('All');
     const [selectedDate, setSelectedDate] = React.useState(new Date());
+    const [searchName, setSearchName] = React.useState('');
+
+    React.useEffect(() => {
+        if (tabParam === 'checklist') {
+            setActiveTab('checklist');
+        }
+    }, [tabParam]);
 
     React.useEffect(() => {
         fetchReports();
@@ -190,20 +203,33 @@ const UserActivityPage = () => {
                         >
                             <FileText className="w-4 h-4" /> Báo cáo
                         </button>
+                        <button
+                            onClick={() => setActiveTab('checklist')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold ${activeTab === 'checklist'
+                                ? 'bg-[#2563eb] text-white shadow-md shadow-blue-500/20'
+                                : 'text-gray-400 hover:bg-gray-50'
+                                }`}
+                        >
+                            <CheckSquare className="w-4 h-4" /> Checklist
+                        </button>
                     </nav>
                 </div>
             </header>
 
             {/* Filters */}
-            <ActivityFilters
-                activeTeam={activeTeam}
-                setActiveTeam={setActiveTeam}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-            />
+            {activeTab !== 'checklist' && (
+                <ActivityFilters
+                    activeTeam={activeTeam}
+                    setActiveTeam={setActiveTeam}
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                    searchName={searchName}
+                    setSearchName={setSearchName}
+                />
+            )}
 
             {/* KPI Cards - Only visible in Performance and Ranking tabs */}
-            {activeTab !== 'report' && (
+            {activeTab !== 'report' && activeTab !== 'checklist' && (
                 <ActivityKPIs summary={summary} />
             )}
 
@@ -212,7 +238,7 @@ const UserActivityPage = () => {
 
                     {/* User Activity Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                        {reports.map((report, idx) => (
+                        {reports.filter(r => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                             <UserActivityCard key={report.id || idx} data={{
                                 name: report.name,
                                 team: report.team,
@@ -233,6 +259,10 @@ const UserActivityPage = () => {
                     {/* Ranking View */}
                     <RankingView rankings={rankings} />
                 </>
+            ) : activeTab === 'checklist' ? (
+                <>
+                    <ChecklistContainer />
+                </>
             ) : (
                 <>
                     {/* Report Grid */}
@@ -242,7 +272,7 @@ const UserActivityPage = () => {
                                 <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
                             </div>
                         ) : reports.length > 0 ? (
-                            reports.map((report: any) => (
+                            reports.filter((r: any) => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report: any) => (
                                 <ReportCard key={report.id} report={report} />
                             ))
                         ) : (

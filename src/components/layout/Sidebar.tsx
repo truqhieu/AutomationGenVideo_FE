@@ -68,8 +68,6 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       return 'douyin';
     } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
       return 'xiaohongshu';
-    } else if (pathname.startsWith('/dashboard/checklist')) {
-      return 'checklist';
     } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
       return 'facebook';
     }
@@ -79,37 +77,27 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
 
   // Memoize platforms configuration to prevent re-creation on every render
   const platforms = useMemo(() => [
-    // 1. Management Section (Only for Admin/Manager)
-    ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [{
+    // 1. Management & Report Section (Consolidated)
+    {
       id: 'user-management',
       icon: Users,
-      label: 'Quản lý người dùng',
+      label: 'VCB Portal',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'HỆ THỐNG',
           items: [
-            { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-            { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
-            { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
-          ]
-        }
-      ]
-    }] : []),
-
-    // 2. Apps Section (Visible to EVERYONE, including Admins)
-    {
-      id: 'checklist',
-      icon: ClipboardCheck,
-      label: 'Checklist',
-      menus: [
-        {
-          section: 'BÁO CÁO',
-          items: [
-            { label: 'Báo cáo ngày', href: '/dashboard/checklist', icon: ClipboardCheck },
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+              { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+              { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
+              { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
+            ] : []),
+            { label: 'Báo cáo ngày (Checklist)', href: '/dashboard/manager/user-activity?tab=checklist', icon: ClipboardCheck },
           ]
         }
       ]
     },
+
+    // 2. Apps Section (Visible to EVERYONE, including Admins)
     {
       id: 'facebook',
       icon: Facebook,
