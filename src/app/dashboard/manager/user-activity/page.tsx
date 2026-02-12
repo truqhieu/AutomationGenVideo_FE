@@ -89,6 +89,7 @@ const UserActivityPage = () => {
             const mappedReports = reportsList.map((item: any) => ({
                 id: item.id,
                 name: item.name,
+                position: item.position,
                 team: item.team,
                 avatar: getAvatarUrl(item.avatar, item.name),
                 status: item.status, // Should be 'ĐÚNG HẠN' or 'CHƯA BÁO CÁO'
@@ -241,6 +242,7 @@ const UserActivityPage = () => {
                         {reports.filter(r => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                             <UserActivityCard key={report.id || idx} data={{
                                 name: report.name,
+                                position: report.position,
                                 team: report.team,
                                 avatar: report.avatar,
                                 time: report.time,

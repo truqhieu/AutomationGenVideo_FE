@@ -6,6 +6,7 @@ import { Check } from 'lucide-react';
 interface EmployeeReport {
     id: string;
     name: string;
+    position?: string;
     team: string;
     avatar: string;
     status: string;
@@ -56,8 +57,18 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                         }}
                     />
                     <div>
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight">{report.name}</h3>
-                        <span className="inline-block px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-500 mt-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-gray-900 text-lg leading-tight">{report.name}</h3>
+                            {report.position && (
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${report.position.toLowerCase().includes('lead')
+                                    ? 'bg-orange-50 text-orange-600 border-orange-100'
+                                    : 'bg-gray-50 text-gray-500 border-gray-100'
+                                    }`}>
+                                    {report.position}
+                                </span>
+                            )}
+                        </div>
+                        <span className="inline-block px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-500">
                             {report.team}
                         </span>
                     </div>

@@ -6,6 +6,7 @@ import { Users, DollarSign } from 'lucide-react';
 interface RankingUser {
     rank: number;
     name: string;
+    position?: string;
     avatar: string;
     value: string;
 }
@@ -99,7 +100,17 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                                     e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
                                 }}
                             />
-                            <span className="font-semibold text-gray-900">{user.name}</span>
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-gray-900 leading-tight">{user.name}</span>
+                                {user.position && (
+                                    <span className={`text-[8px] font-black w-fit px-1 py-0 rounded mt-0.5 border ${user.position.toLowerCase().includes('lead')
+                                        ? 'bg-orange-50 text-orange-600 border-orange-100'
+                                        : 'bg-gray-50 text-gray-500 border-gray-100'
+                                        }`}>
+                                        {user.position}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <span className="text-blue-600 font-bold text-lg">{user.value}</span>
                     </div>

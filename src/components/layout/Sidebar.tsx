@@ -88,10 +88,11 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           items: [
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-              { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
+            ] : []),
+            { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
             ] : []),
-            { label: 'Báo cáo ngày (Checklist)', href: '/dashboard/manager/user-activity?tab=checklist', icon: ClipboardCheck },
           ]
         }
       ]
