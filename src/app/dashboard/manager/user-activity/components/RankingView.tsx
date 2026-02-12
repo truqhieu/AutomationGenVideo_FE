@@ -70,49 +70,68 @@ const RankingView = ({ rankings }: RankingViewProps) => {
     };
 
     const RankingCard = ({ title, icon: Icon, users }: { title: string; icon: any; users: RankingUser[] }) => (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-                <div className={`p-2 rounded-lg ${title.includes('TRAFFIC') ? 'bg-blue-100' : 'bg-green-100'}`}>
-                    <Icon className={`w-5 h-5 ${title.includes('TRAFFIC') ? 'text-blue-600' : 'text-green-600'}`} />
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+
+            <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl ${title.includes('TRAFFIC') ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : 'bg-slate-900 shadow-lg shadow-slate-900/20'}`}>
+                        <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight">{title}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Top 5 Bùng nổ nhất</p>
+                    </div>
                 </div>
-                <h3 className="text-lg font-black text-gray-900">{title}</h3>
+                <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">Tháng 2/2026</span>
+                </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4 relative z-10">
                 {users.map((user) => (
                     <div
                         key={user.rank}
-                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${getRankBgColor(user.rank)}`}
+                        className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg ${user.rank === 1 ? 'border-blue-500 bg-blue-50/30' :
+                                user.rank === 2 ? 'border-slate-200 bg-slate-50/50' :
+                                    user.rank === 3 ? 'border-slate-100 bg-slate-50/30' :
+                                        'border-slate-50 bg-white'
+                            }`}
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 min-w-[60px]">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-center w-10 text-center">
                                 {getMedalEmoji(user.rank) ? (
-                                    <span className="text-2xl">{getMedalEmoji(user.rank)}</span>
+                                    <span className="text-2xl drop-shadow-sm">{getMedalEmoji(user.rank)}</span>
                                 ) : (
-                                    <span className="text-gray-400 font-bold text-sm">#{user.rank}</span>
+                                    <span className="text-slate-300 font-black text-lg">0{user.rank}</span>
                                 )}
                             </div>
-                            <img
-                                src={getAvatarUrl(user.avatar, user.name)}
-                                alt={user.name}
-                                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-                                onError={(e) => {
-                                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
-                                }}
-                            />
-                            <div className="flex flex-col">
-                                <span className="font-semibold text-gray-900 leading-tight">{user.name}</span>
-                                {user.position && (
-                                    <span className={`text-[8px] font-black w-fit px-1 py-0 rounded mt-0.5 border ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => user.position?.toLowerCase().includes(key))
-                                            ? 'bg-orange-50 text-orange-600 border-orange-100'
-                                            : 'bg-gray-50 text-gray-500 border-gray-100'
-                                        }`}>
-                                        {user.position}
-                                    </span>
+                            <div className="relative">
+                                <img
+                                    src={getAvatarUrl(user.avatar, user.name)}
+                                    alt={user.name}
+                                    className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md"
+                                    onError={(e) => {
+                                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+                                    }}
+                                />
+                                {user.rank === 1 && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white" />
                                 )}
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-black text-slate-900 tracking-tight">{user.name}</span>
+                                <span className="text-[9px] font-black text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1">
+                                    {user.position || 'Thành viên'}
+                                </span>
                             </div>
                         </div>
-                        <span className="text-blue-600 font-bold text-lg">{user.value}</span>
+                        <div className="text-right">
+                            <span className="text-lg font-black text-slate-900 block leading-none">{user.value}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                {title.includes('TRAFFIC') ? 'Lượt xem' : 'VND'}
+                            </span>
+                        </div>
                     </div>
                 ))}
             </div>

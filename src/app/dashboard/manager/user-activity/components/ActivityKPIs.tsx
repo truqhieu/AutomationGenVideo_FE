@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Target } from 'lucide-react';
 
 interface ActivityKPIsProps {
     summary?: {
@@ -71,69 +72,74 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-white border-gray-100 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">{kpi.title}</h3>
-
-                        <div className="flex items-end justify-between mb-4">
-                            <div className="relative w-16 h-16 flex items-center justify-center">
-                                {/* Simple SVG Circular Progress */}
-                                <svg className="w-full h-full transform -rotate-90">
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r="28"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                        fill="transparent"
-                                        className="text-gray-100"
-                                    />
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r="28"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                        fill="transparent"
-                                        strokeDasharray={175.92}
-                                        strokeDashoffset={175.92 * (1 - kpi.percentage / 100)}
-                                        className={kpi.percentage >= 100 ? "text-green-500" : "text-red-500"}
-                                    />
-                                </svg>
-                                <span className={`absolute text-sm font-bold ${kpi.percentage >= 100 ? "text-green-600" : "text-red-600"}`}>
-                                    {kpi.percentage}%
-                                </span>
-                            </div>
-
-                            <div className="text-right">
-                                <div className="text-3xl font-extrabold text-gray-900 leading-none mb-2">{kpi.value}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Mục tiêu: {kpi.total}</div>
+                <Card key={idx} className="bg-[#0f172a] border-slate-800 shadow-xl rounded-[2.5rem] overflow-hidden hover:scale-[1.02] transition-all duration-300 border-b-4 border-b-blue-500/50">
+                    <CardContent className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                            <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.2em]">{kpi.title}</h3>
+                            <div className="bg-blue-500/10 p-2 rounded-xl">
+                                <Target className="w-4 h-4 text-blue-400" />
                             </div>
                         </div>
 
-                        {/* Horizontal Progress Bar */}
-                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-6">
-                            <div
-                                className={`h-full rounded-full ${kpi.percentage >= 100 ? "bg-green-500" : "bg-red-500"}`}
-                                style={{ width: `${kpi.percentage}%` }}
-                            />
+                        <div className="flex flex-col xl:flex-row items-center justify-between gap-6 mb-8">
+                            <div className="relative w-24 h-24 flex-shrink-0 flex items-center justify-center">
+                                {/* Enhanced Circular Progress */}
+                                <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
+                                    <circle
+                                        cx="48"
+                                        cy="48"
+                                        r="38"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        fill="transparent"
+                                        className="text-slate-800"
+                                    />
+                                    <circle
+                                        cx="48"
+                                        cy="48"
+                                        r="38"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        fill="transparent"
+                                        strokeDasharray={238.76}
+                                        strokeDashoffset={238.76 * (1 - kpi.percentage / 100)}
+                                        strokeLinecap="round"
+                                        className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-400" : "text-blue-500"}`}
+                                    />
+                                </svg>
+                                <div className="absolute flex flex-col items-center">
+                                    <span className="text-xl font-black text-white">
+                                        {kpi.percentage}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="text-center xl:text-right min-w-0 flex-1">
+                                <div className="text-3xl 2xl:text-4xl font-black text-white leading-tight mb-3 tracking-tighter break-all">
+                                    {kpi.value}
+                                </div>
+                                <div className="inline-block px-3 py-1 bg-slate-800 rounded-full border border-slate-700">
+                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap uppercase">MT: {kpi.total}</span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Team Contributions Section */}
-                        <div className="pt-4 border-t border-gray-50 space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Đóng góp theo Team (Tháng)</span>
+                        <div className="pt-6 border-t border-slate-800/50 space-y-4">
+                            <div className="flex justify-between items-center mr-1">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Đóng góp theo Team</span>
+                                <span className="text-[10px] font-black text-blue-400">Tháng này</span>
                             </div>
 
                             {/* Stacked Percentage Bar */}
-                            <div className="flex w-full h-1.5 rounded-full overflow-hidden bg-gray-50">
+                            <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-slate-800 p-0.5">
                                 {teamContributions?.map((team, tIdx) => {
                                     const pct = team[kpi.key as keyof typeof team] as number;
                                     if (!pct) return null;
                                     return (
                                         <div
                                             key={tIdx}
-                                            className={`h-full border-r border-white/20 transition-all duration-700 ${getTeamColor(tIdx)}`}
+                                            className={`h-full rounded-full border-r-2 border-slate-900 transition-all duration-700 ${getTeamColor(tIdx)}`}
                                             style={{ width: `${pct}%` }}
                                             title={`${team.team}: ${pct}%`}
                                         />
@@ -141,16 +147,16 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
                                 })}
                             </div>
 
-                            {/* Legend Grid */}
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                                {teamContributions?.filter(team => (team[kpi.key as keyof typeof team] as number) > 0).slice(0, 6).map((team, tIdx) => {
+                            {/* Legend Grid - Modern Layout */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {teamContributions?.filter(team => (team[kpi.key as keyof typeof team] as number) > 0).slice(0, 4).map((team, tIdx) => {
                                     const pct = team[kpi.key as keyof typeof team] as number;
                                     return (
-                                        <div key={tIdx} className="flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${getTeamColor(tIdx)}`} />
-                                            <div className="flex items-baseline gap-1 truncate">
-                                                <span className="text-[9px] font-bold text-gray-500 truncate">{team.team}</span>
-                                                <span className="text-[9px] font-black text-[#1e293b]">{pct}%</span>
+                                        <div key={tIdx} className="bg-slate-800/30 p-2 rounded-xl border border-slate-800/50 hover:bg-slate-800 flex items-center gap-2 transition-colors">
+                                            <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${getTeamColor(tIdx)}`} />
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-bold text-slate-400 truncate uppercase">{team.team}</span>
+                                                <span className="text-xs font-black text-white">{pct}%</span>
                                             </div>
                                         </div>
                                     );
@@ -161,7 +167,7 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
                 </Card>
             ))
             }
-        </div >
+        </div>
     );
 };
 
