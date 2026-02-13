@@ -266,11 +266,11 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                         onClick={() => setShowDatePicker(!showDatePicker)}
                         className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm hover:shadow-md group ${showDatePicker
                             ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-white border-gray-200 hover:border-blue-400'
+                            : 'bg-slate-900 border-slate-800 text-white hover:bg-black'
                             }`}
                     >
-                        <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${showDatePicker ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-400'}`}>Ngày:</span>
-                        <span className={`text-sm font-bold ${showDatePicker ? 'text-white' : 'text-gray-700'}`}>{formatDate(selectedDate)}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${showDatePicker ? 'text-blue-200' : 'text-slate-400 group-hover:text-blue-400'}`}>Ngày:</span>
+                        <span className="text-sm font-bold">{formatDate(selectedDate)}</span>
                         <Calendar className={`w-4 h-4 transition-transform group-hover:scale-110 ${showDatePicker ? 'text-white' : 'text-blue-500'}`} />
                     </button>
 
@@ -280,37 +280,37 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute top-full mt-2 right-0 w-80 bg-white/98 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-gray-100 p-7 z-[60]"
+                                className="absolute top-full mt-2 right-0 w-80 bg-slate-900 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-slate-800 p-7 z-[60]"
                             >
                                 {/* Typing Input Area */}
-                                <div className="mb-6 bg-gray-50/50 p-4 rounded-3xl border border-gray-100 group-within:border-blue-200 group-within:bg-blue-50/20 transition-all">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">Nhập ngày (DD/MM/YYYY):</label>
+                                <div className="mb-6 bg-slate-800/50 p-4 rounded-3xl border border-slate-700 group-within:border-blue-500 group-within:bg-blue-500/10 transition-all">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Nhập ngày (DD/MM/YYYY):</label>
                                     <input
                                         type="text"
                                         value={inputValue}
                                         onChange={handleInputChange}
                                         placeholder="12/02/2026"
-                                        className="w-full bg-transparent text-xl font-black text-gray-800 focus:outline-none placeholder:text-gray-200 tracking-wider"
+                                        className="w-full bg-transparent text-xl font-black text-white focus:outline-none placeholder:text-slate-700 tracking-wider"
                                         autoFocus
                                     />
                                 </div>
 
-                                <div className="h-px bg-gray-100 mb-6 mx-2" />
+                                <div className="h-px bg-slate-800 mb-6 mx-2" />
 
                                 {/* Calendar Header */}
                                 <div className="flex items-center justify-between mb-6">
                                     <button
                                         onClick={() => changeMonth(-1)}
-                                        className="p-2.5 hover:bg-blue-50 rounded-2xl text-blue-600 transition-colors"
+                                        className="p-2.5 hover:bg-slate-800 rounded-2xl text-slate-400 hover:text-white transition-colors"
                                     >
                                         <ChevronDown className="w-5 h-5 rotate-90" />
                                     </button>
-                                    <div className="text-sm font-black text-gray-800 uppercase tracking-widest">
+                                    <div className="text-sm font-black text-white uppercase tracking-widest">
                                         {viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}
                                     </div>
                                     <button
                                         onClick={() => changeMonth(1)}
-                                        className="p-2.5 hover:bg-blue-50 rounded-2xl text-blue-600 transition-colors"
+                                        className="p-2.5 hover:bg-slate-800 rounded-2xl text-slate-400 hover:text-white transition-colors"
                                     >
                                         <ChevronDown className="w-5 h-5 -rotate-90" />
                                     </button>
@@ -319,7 +319,7 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                                 {/* Weekday Headers */}
                                 <div className="grid grid-cols-7 gap-1 mb-3">
                                     {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
-                                        <div key={day} className="text-center text-[10px] font-black text-gray-400">
+                                        <div key={day} className="text-center text-[10px] font-black text-slate-500">
                                             {day}
                                         </div>
                                     ))}
@@ -334,10 +334,10 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                                                     onClick={() => handleDateSelect(day)}
                                                     className={`w-full h-full flex items-center justify-center text-xs font-bold rounded-2xl transition-all duration-200
                                                         ${isSelected(day)
-                                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110 z-10'
+                                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-110 z-10'
                                                             : isToday(day)
-                                                                ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-100'
-                                                                : 'hover:bg-gray-100 text-gray-600'
+                                                                ? 'bg-blue-900/50 text-blue-400 ring-1 ring-blue-500/30'
+                                                                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
                                                         }`}
                                                 >
                                                     {day}
@@ -350,7 +350,7 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                                 </div>
 
                                 {/* Quick Actions */}
-                                <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between gap-3">
+                                <div className="mt-8 pt-4 border-t border-slate-800 flex justify-between gap-3">
                                     <button
                                         onClick={() => {
                                             const today = new Date();
@@ -359,13 +359,13 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
                                             setViewDate(new Date(today));
                                             setShowDatePicker(false);
                                         }}
-                                        className="flex-1 py-3 text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors"
+                                        className="flex-1 py-3 text-[10px] font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 rounded-2xl hover:bg-blue-500/20 transition-colors"
                                     >
                                         Hôm nay
                                     </button>
                                     <button
                                         onClick={() => setShowDatePicker(false)}
-                                        className="flex-1 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest border border-gray-100 rounded-2xl hover:bg-gray-50 transition-colors"
+                                        className="flex-1 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-800 rounded-2xl hover:bg-slate-800 hover:text-slate-300 transition-colors"
                                     >
                                         Đóng
                                     </button>

@@ -75,7 +75,7 @@ const RankingView = ({ rankings }: RankingViewProps) => {
 
             <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${title.includes('TRAFFIC') ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : 'bg-slate-900 shadow-lg shadow-slate-900/20'}`}>
+                    <div className={`p-3 rounded-2xl ${title.includes('TRAFFIC') ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : 'bg-blue-800 shadow-lg shadow-blue-800/20'}`}>
                         <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div>
@@ -93,9 +93,9 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                     <div
                         key={user.rank}
                         className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg ${user.rank === 1 ? 'border-blue-500 bg-blue-50/30' :
-                                user.rank === 2 ? 'border-slate-200 bg-slate-50/50' :
-                                    user.rank === 3 ? 'border-slate-100 bg-slate-50/30' :
-                                        'border-slate-50 bg-white'
+                            user.rank === 2 ? 'border-slate-200 bg-slate-50/50' :
+                                user.rank === 3 ? 'border-slate-100 bg-slate-50/30' :
+                                    'border-slate-50 bg-white'
                             }`}
                     >
                         <div className="flex items-center gap-4">

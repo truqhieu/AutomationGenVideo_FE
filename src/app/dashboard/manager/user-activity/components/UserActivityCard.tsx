@@ -59,8 +59,8 @@ const UserActivityCard = ({ data }: { data: UserActivity }) => {
                     <h4 className="text-sm font-black text-gray-900 tracking-tight">{data.name}</h4>
                     {data.position && (
                         <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
-                                ? 'bg-orange-50 text-orange-600 border-orange-100'
-                                : 'bg-gray-50 text-gray-500 border-gray-100'
+                            ? 'bg-orange-50 text-orange-600 border-orange-100'
+                            : 'bg-gray-50 text-gray-500 border-gray-100'
                             }`}>
                             {data.position}
                         </span>
@@ -108,12 +108,12 @@ const UserActivityCard = ({ data }: { data: UserActivity }) => {
                 {/* Monthly Progress */}
                 <div className="w-full space-y-1 mb-4">
                     <div className="flex justify-between items-center text-[9px] font-bold tracking-tight">
-                        <span className="text-red-500 uppercase">TIẾN ĐỘ THÁNG</span>
+                        <span className="text-blue-600 uppercase">TIẾN ĐỘ THÁNG</span>
                         <span className="text-blue-500">{data.monthlyProgress}%</span>
                     </div>
-                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-red-500 rounded-full"
+                            className="h-full bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.3)]"
                             style={{ width: `${data.monthlyProgress}%` }}
                         />
                     </div>

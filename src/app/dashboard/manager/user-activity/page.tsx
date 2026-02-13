@@ -160,45 +160,40 @@ const UserActivityPage = () => {
 
     return (
         <div className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
-            {/* Top Header Section with High-Contrast Trắng Xanh Đen */}
-            <div className="absolute top-0 left-0 right-0 h-96 bg-[#020617] z-0 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-transparent" />
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+            {/* Top Header Section with Xanh Trắng Theme */}
+            <div className="absolute top-0 left-0 right-0 h-80 bg-blue-600 z-0 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500" />
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+                <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-white to-transparent" />
             </div>
 
             <header className="relative z-10 space-y-8">
                 {/* Logo & User Info */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-5">
-                        <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-500/20 rotate-3">
-                            <Layout className="text-white w-7 h-7" />
+                        <div className="bg-white p-3 rounded-2xl shadow-xl shadow-blue-900/20 rotate-3">
+                            <Layout className="text-blue-600 w-7 h-7" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black text-white tracking-widest uppercase italic">
-                                VCB <span className="text-blue-500">REPORT</span>
+                            <h1 className="text-2xl font-black text-white tracking-widest uppercase italic drop-shadow-sm">
+                                VCB <span className="text-blue-200">REPORT</span>
                             </h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">
+                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                                <p className="text-[10px] font-black text-blue-100 tracking-widest uppercase">
                                     Manager Dashboard • {user?.full_name || 'Admin'}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-white/10">
-                        <button className="p-2.5 text-slate-400 hover:text-white transition-colors">
-                            <Settings className="w-5 h-5" />
-                        </button>
-                        <button className="flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-xl border border-red-500/20 text-xs font-black uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all">
-                            <LogOut className="w-4 h-4" /> Thoát
-                        </button>
-                    </div>
+                    {/* Buttons removed per user request */}
+                    <div />
                 </div>
 
                 {/* Navigation - Centered & Glassmorphic */}
                 <div className="flex justify-center">
-                    <nav className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xl p-2 rounded-[1.5rem] border border-white/10 shadow-2xl">
+                    <nav className="flex items-center gap-1.5 bg-white backdrop-blur-xl p-2 rounded-[1.5rem] border border-blue-100 shadow-2xl shadow-blue-900/10">
                         {[
                             { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
                             { id: 'ranking', label: 'BXH', icon: Layout },
@@ -209,8 +204,8 @@ const UserActivityPage = () => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
                                 className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30 -translate-y-0.5'
-                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 -translate-y-0.5'
+                                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
                                     }`}
                             >
                                 <tab.icon className="w-4 h-4" /> {tab.label}
@@ -220,10 +215,10 @@ const UserActivityPage = () => {
                 </div>
             </header>
 
-            <div className="relative z-10 space-y-10">
+            <div className="relative z-10 space-y-14">
                 {/* Filters Section */}
                 {activeTab !== 'checklist' && (
-                    <div className="bg-white/80 backdrop-blur-md p-4 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
+                    <div className="relative z-30 bg-white/80 backdrop-blur-md p-4 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}
@@ -237,7 +232,9 @@ const UserActivityPage = () => {
 
                 {/* KPI Cards section */}
                 {activeTab !== 'report' && activeTab !== 'checklist' && (
-                    <ActivityKPIs summary={summary} teamContributions={teamContributions} />
+                    <div className="relative z-10 transition-all duration-500">
+                        <ActivityKPIs summary={summary} teamContributions={teamContributions} />
+                    </div>
                 )}
 
                 {/* Main Content Area */}

@@ -54,8 +54,8 @@ const ChecklistContainer = () => {
             payload[item.question] = (details[i] ?? '').trim() || '';
         });
 
-        // Add Leader answers only if user is Manager/Admin
-        if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
+        // Add Leader answers only if user is Manager/Admin/Editor
+        if (user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'EDITOR') {
             LEADER_QUESTIONS.forEach((item, i) => {
                 payload[item.question] = (leaderAnswers[i] ?? '').trim() || '';
             });
@@ -130,9 +130,9 @@ const ChecklistContainer = () => {
                 </div>
             </div>
 
-            {/* Leader Section - Only for Managers/Admins */}
-            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
-                <div className="bg-white rounded-3xl p-4 shadow-sm border border-orange-100/50">
+            {/* Leader Section - Show for Manager/Admin/Editor who might be a Team Lead */}
+            {(user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'EDITOR') && (
+                <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                     <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
                 </div>
             )}
