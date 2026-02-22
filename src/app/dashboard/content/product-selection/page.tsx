@@ -172,9 +172,16 @@ const ProductCard = React.memo(({
     >
         <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-                <h4 className={`font-semibold truncate pr-2 ${isSelected ? 'text-purple-300' : 'text-gray-200'}`}>
-                    {product.name}
-                </h4>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className={`font-semibold truncate pr-2 ${isSelected ? 'text-purple-300' : 'text-gray-200'}`}>
+                        {product.name}
+                    </h4>
+                    {product.sku && (
+                        <span className="text-[10px] font-mono font-medium text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
+                            {product.sku}
+                        </span>
+                    )}
+                </div>
 
                 <div className="flex items-baseline gap-2 mt-2">
                     {product.price ? (
@@ -357,6 +364,14 @@ export default function ProductSelectionPage() {
     const handleContinue = () => {
         if (!selectedProduct) return;
 
+        // Debug: log mã sản phẩm khi ấn Tiếp tục
+        console.log('🛒 [Product Selection] Đã chọn sản phẩm → Tiếp tục:', {
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            productSku: selectedProduct.sku,
+            productCategory: selectedProduct.category,
+        });
+
         // Lưu sản phẩm đã chọn vào localStorage để các bước sau (Generate / Mix Video) luôn biết đúng category
         if (typeof window !== 'undefined') {
             try {
@@ -528,6 +543,9 @@ export default function ProductSelectionPage() {
                                 <div className="flex-1 min-w-0 mr-4">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Đã chọn</p>
                                     <p className="font-bold text-white truncate text-sm">{selectedProduct.name}</p>
+                                    {selectedProduct.sku && (
+                                        <p className="text-xs text-amber-400/90 font-mono mt-0.5">Mã: {selectedProduct.sku}</p>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button

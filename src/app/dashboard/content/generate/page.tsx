@@ -195,7 +195,8 @@ export default function GenerateContentPage() {
                 product_name: productInfo.name,
                 product_category: productInfo.category,
                 product_description: productInfo.description,
-                product_price: productInfo.price
+                product_price: productInfo.price,
+                product_sku: productInfo.sku
             });
             if (result) {
                 setGeneratedContent(result);
@@ -240,7 +241,8 @@ export default function GenerateContentPage() {
                 product_name: productInfo.name,
                 product_category: productInfo.category,
                 product_description: productInfo.description,
-                product_price: productInfo.price
+                product_price: productInfo.price,
+                product_sku: productInfo.sku
             });
 
             toast.dismiss('generating-prompt');
@@ -282,6 +284,7 @@ export default function GenerateContentPage() {
                 product_category: productInfo.category,
                 product_description: productInfo.description,
                 product_price: productInfo.price,
+                product_sku: productInfo.sku,
                 custom_prompt: advancedPrompt // Pass custom prompt
             });
 
