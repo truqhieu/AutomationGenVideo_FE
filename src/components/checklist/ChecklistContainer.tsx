@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
@@ -18,6 +18,41 @@ const ChecklistContainer = () => {
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [larkRole, setLarkRole] = useState<string | null>(null);
+
+    // Fetch Lark Permission Role on mount
+    useEffect(() => {
+        const fetchLarkRole = async () => {
+            if (!user?.email) return;
+
+            try {
+                const apiBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+                const base = apiBase.replace(/\/$/, '');
+                // Nếu apiBase đã chứa /api thì không cộng thêm /api nữa
+                const url = base.endsWith('/api')
+                    ? `${base}/lark/user-permission?email=${encodeURIComponent(user.email)}`
+                    : `${base}/api/lark/user-permission?email=${encodeURIComponent(user.email)}`;
+
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.role) {
+                        setLarkRole(data.role); // e.g., 'Leader', 'Admin'
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch Lark role:', err);
+            }
+        };
+
+        fetchLarkRole();
+    }, [user?.email]);
+
+    const isLeader =
+        larkRole?.toLowerCase() === 'leader' ||
+        larkRole?.toLowerCase() === 'admin' ||
+        user?.role === 'ADMIN' ||
+        user?.role === 'MANAGER';
 
     const handleCheckChange = useCallback((index: number, checked: boolean) => {
         setChecks((prev) => {
@@ -54,15 +89,15 @@ const ChecklistContainer = () => {
             payload[item.question] = (details[i] ?? '').trim() || '';
         });
 
-        // Add Leader answers only if user is Manager/Admin/Editor
-        if (user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'EDITOR') {
+        // Add Leader answers only if user is authorized as leader
+        if (isLeader) {
             LEADER_QUESTIONS.forEach((item, i) => {
                 payload[item.question] = (leaderAnswers[i] ?? '').trim() || '';
             });
         }
 
         return payload;
-    }, [checks, details, leaderAnswers, user?.role]);
+    }, [checks, details, leaderAnswers, isLeader]);
 
     const handleSubmit = async () => {
         if (!user) {
@@ -81,8 +116,8 @@ const ChecklistContainer = () => {
                 userName: user.full_name,
             };
 
-            // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng cùng base với AI/mix-video (start.bat mặc định port 8001)
-            const djangoBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:8001';
+            // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng AI_SERVICE_URL (mặc định port 8001)
+            const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
             const base = djangoBase.replace(/\/$/, '');
             const url = `${base}/api/checklist/submit/`;
             const response = await fetch(url, {
@@ -130,8 +165,8 @@ const ChecklistContainer = () => {
                 </div>
             </div>
 
-            {/* Leader Section - Show for Manager/Admin/Editor who might be a Team Lead */}
-            {(user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'EDITOR') && (
+            {/* Leader Section - Show if user has Leader/Admin role in Lark Permission */}
+            {isLeader && (
                 <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                     <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
                 </div>

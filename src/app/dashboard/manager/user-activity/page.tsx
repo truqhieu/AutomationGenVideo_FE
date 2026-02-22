@@ -7,6 +7,7 @@ import UserActivityCard, { UserActivity } from './components/UserActivityCard';
 import ReportCard from './components/ReportCard';
 import RankingView from './components/RankingView';
 import ChecklistContainer from '@/components/checklist/ChecklistContainer';
+import PersonalCharts from './components/PersonalCharts';
 import {
     RefreshCw,
     Layout,
@@ -39,12 +40,15 @@ const UserActivityPage = () => {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'report' | 'checklist'>('performance');
+    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'personal' | 'report' | 'checklist'>('performance');
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
     const [rankings, setRankings] = React.useState<any>(null);
     const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(false);
+    const [userRole, setUserRole] = React.useState<string | null>(null);
+    const [userTeam, setUserTeam] = React.useState<string | null>(null);
+    const [personalHistory, setPersonalHistory] = React.useState<{ history: any[], teamStats: any | null }>({ history: [], teamStats: null });
 
     // Filter states
     const [activeTeam, setActiveTeam] = React.useState('All');
@@ -59,9 +63,28 @@ const UserActivityPage = () => {
 
     React.useEffect(() => {
         fetchReports();
-    }, [selectedDate, activeTeam]); // Fetch data whenever filters change, regardless of tab
+    }, [selectedDate, activeTeam, user?.email]); // Fetch data whenever filters or user changes
+
+    React.useEffect(() => {
+        if (activeTab === 'personal') {
+            fetchHistory();
+        }
+    }, [activeTab, user?.email]);
+
+    const fetchHistory = async () => {
+        if (!user?.email) return;
+        try {
+            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/personal-history?email=${user.email}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            setPersonalHistory(data);
+        } catch (error) {
+            console.error('Failed to fetch personal history:', error);
+        }
+    };
 
     const fetchReports = async () => {
+        if (!user?.email) return;
         setLoading(true);
         try {
             // Build query params for the new API
@@ -76,15 +99,19 @@ const UserActivityPage = () => {
             if (activeTeam !== 'All') {
                 params.append('team', activeTeam);
             }
+            params.append('requesterEmail', user.email);
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/user-activity?${params.toString()}`;
             const response = await fetch(url);
             const data = await response.json();
 
-            // Handle new response format { reports, summary, rankings }
-            const reportsList = data.reports || data;
+            // Handle new response format { reports, summary, rankings, userRole, userTeam }
+            const reportsList = data.reports || [];
             const summaryData = data.summary || null;
             const rankingsData = data.rankings || null;
+
+            if (data.userRole) setUserRole(data.userRole.toLowerCase());
+            if (data.userTeam) setUserTeam(data.userTeam);
 
             // Map backend data to frontend interface
             const mappedReports = reportsList.map((item: any) => ({
@@ -155,8 +182,19 @@ const UserActivityPage = () => {
         }
     };
 
-    // No need for client-side filtering - API handles it
-    // Use reports directly since they're already filtered by the backend
+    // Tabs filtering
+    const allTabs = [
+        { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
+        { id: 'ranking', label: 'BXH', icon: Layout },
+        { id: 'personal', label: 'Cá nhân', icon: User },
+        { id: 'checklist', label: 'Checklist', icon: CheckSquare },
+        { id: 'report', label: 'Báo cáo', icon: FileText }
+    ];
+
+    const visibleTabs = allTabs.filter(tab => {
+        if (userRole === 'member' && tab.id === 'report') return false;
+        return true;
+    });
 
     return (
         <div className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
@@ -181,25 +219,18 @@ const UserActivityPage = () => {
                             <div className="flex items-center gap-2 mt-1">
                                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
                                 <p className="text-[10px] font-black text-blue-100 tracking-widest uppercase">
-                                    Manager Dashboard • {user?.full_name || 'Admin'}
+                                    {userRole?.toUpperCase() || 'MEMBER'} Dashboard • {user?.full_name || 'User'}
                                 </p>
                             </div>
                         </div>
                     </div>
-
-                    {/* Buttons removed per user request */}
                     <div />
                 </div>
 
                 {/* Navigation - Centered & Glassmorphic */}
                 <div className="flex justify-center">
                     <nav className="flex items-center gap-1.5 bg-white backdrop-blur-xl p-2 rounded-[1.5rem] border border-blue-100 shadow-2xl shadow-blue-900/10">
-                        {[
-                            { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
-                            { id: 'ranking', label: 'BXH', icon: Layout },
-                            { id: 'checklist', label: 'Checklist', icon: CheckSquare },
-                            { id: 'report', label: 'Báo cáo', icon: FileText }
-                        ].map((tab) => (
+                        {visibleTabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
@@ -226,12 +257,15 @@ const UserActivityPage = () => {
                             setSelectedDate={setSelectedDate}
                             searchName={searchName}
                             setSearchName={setSearchName}
+                            userRole={userRole}
+                            userTeam={userTeam}
+                            activeTab={activeTab}
                         />
                     </div>
                 )}
 
                 {/* KPI Cards section */}
-                {activeTab !== 'report' && activeTab !== 'checklist' && (
+                {activeTab !== 'report' && activeTab !== 'checklist' && activeTab !== 'personal' && (
                     <div className="relative z-10 transition-all duration-500">
                         <ActivityKPIs summary={summary} teamContributions={teamContributions} />
                     </div>
@@ -259,6 +293,33 @@ const UserActivityPage = () => {
                         </div>
                     ) : activeTab === 'ranking' ? (
                         <RankingView rankings={rankings} />
+                    ) : activeTab === 'personal' ? (
+                        <div className="space-y-12">
+                            <div className="flex justify-center">
+                                {reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()) ? (
+                                    <div className="w-full max-w-sm">
+                                        <UserActivityCard data={{
+                                            ...reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()),
+                                            reportStatus: reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()).status
+                                        }} />
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-20 bg-white/50 backdrop-blur-md rounded-[2rem] border border-white/20 shadow-inner w-full">
+                                        <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <User className="w-8 h-8 text-blue-400" />
+                                        </div>
+                                        <p className="text-slate-500 font-bold">Không tìm thấy dữ liệu cá nhân của bạn</p>
+                                        <p className="text-slate-400 text-[10px] mt-1 uppercase tracking-widest font-black">Vui lòng kiểm tra lại họ tên trong hệ thống</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {personalHistory.history.length > 0 && (
+                                <div className="pt-12 border-t border-slate-100/50">
+                                    <PersonalCharts history={personalHistory.history} teamStats={personalHistory.teamStats} />
+                                </div>
+                            )}
+                        </div>
                     ) : activeTab === 'checklist' ? (
                         <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100">
                             <ChecklistContainer />

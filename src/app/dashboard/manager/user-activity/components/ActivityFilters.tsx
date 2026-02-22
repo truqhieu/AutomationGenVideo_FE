@@ -11,12 +11,41 @@ interface ActivityFiltersProps {
     setSelectedDate: (date: Date) => void;
     searchName: string;
     setSearchName: (name: string) => void;
+    userRole?: string | null;
+    userTeam?: string | null;
+    activeTab?: string;
 }
 
-const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedDate, searchName, setSearchName }: ActivityFiltersProps) => {
+const ActivityFilters = ({
+    activeTeam,
+    setActiveTeam,
+    selectedDate,
+    setSelectedDate,
+    searchName,
+    setSearchName,
+    userRole,
+    userTeam,
+    activeTab
+}: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const isAdmin = userRole === 'admin';
+    const isLeader = userRole === 'leader';
+    const isRankingTab = activeTab === 'ranking';
+    const isPersonalTab = activeTab === 'personal';
+    const isPerformanceTab = activeTab === 'performance';
+
+    // Team filter: 
+    // - Always HIDDEN in Personal tab
+    // - Show in Ranking and Performance for everyone
+    // - Otherwise only for Admin
+    const canSeeTeamFilter = !isPersonalTab && (isAdmin || isRankingTab || isPerformanceTab);
+
+    // Team label (for Leader):
+    // - Show only if main filter is hidden AND it's not personal tab
+    const showTeamLabel = !canSeeTeamFilter && !isPersonalTab && isLeader && userTeam;
 
     const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
     const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
@@ -136,129 +165,139 @@ const ActivityFilters = ({ activeTeam, setActiveTeam, selectedDate, setSelectedD
 
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-gray-100">
-            <div className="flex items-center gap-3 flex-wrap" ref={dropdownRef}>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-2">
-                    <Layers className="w-3 h-3" /> Lọc Team:
-                </span>
+            {canSeeTeamFilter && (
+                <div className="flex items-center gap-3 flex-wrap" ref={dropdownRef}>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-2">
+                        <Layers className="w-3 h-3" /> Lọc Team:
+                    </span>
 
-                {/* ALL Button */}
-                <button
-                    onClick={() => handleSelectTeam('All')}
-                    className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isAllActive
-                        ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100 scale-105'
-                        : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
-                        }`}
-                >
-                    ALL
-                </button>
-
-                {/* Global Dropdown */}
-                <div className="relative">
+                    {/* ALL Button */}
                     <button
-                        onClick={() => toggleDropdown('global')}
-                        className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
-                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
+                        onClick={() => handleSelectTeam('All')}
+                        className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isAllActive
+                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100 scale-105'
                             : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
                             }`}
                     >
-                        <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-gray-400'}`} />
-                        {isGlobalActive ? activeTeam : 'Global'}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
+                        ALL
                     </button>
 
-                    <AnimatePresence>
-                        {openDropdown === 'global' && (
-                            <motion.div
-                                variants={dropdownVariants}
-                                initial="hidden"
-                                animate="visible"
-                                exit="exit"
-                                transition={{ duration: 0.2, ease: "easeOut" }}
-                                className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
-                            >
-                                {globalTeams.map((team) => (
-                                    <button
-                                        key={team}
-                                        onClick={() => handleSelectTeam(team)}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-                                            {team}
-                                        </span>
-                                        {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                                    </button>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                    {/* Global Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggleDropdown('global')}
+                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
+                                ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
+                                : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
+                                }`}
+                        >
+                            <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-gray-400'}`} />
+                            {isGlobalActive ? activeTeam : 'Global'}
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
+                        </button>
 
-                {/* Việt Nam Dropdown */}
-                <div className="relative">
-                    <button
-                        onClick={() => toggleDropdown('vietnam')}
-                        className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isVNActive
-                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
-                            : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
-                            }`}
-                    >
-                        <MapPin className={`w-3.5 h-3.5 ${isVNActive ? 'text-blue-200' : 'text-gray-400'}`} />
-                        {isVNActive ? activeTeam : 'Việt Nam'}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
-                    </button>
+                        <AnimatePresence>
+                            {openDropdown === 'global' && (
+                                <motion.div
+                                    variants={dropdownVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    transition={{ duration: 0.2, ease: "easeOut" }}
+                                    className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
+                                >
+                                    {globalTeams.map((team) => (
+                                        <button
+                                            key={team}
+                                            onClick={() => handleSelectTeam(team)}
+                                            className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                {team}
+                                            </span>
+                                            {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                    <AnimatePresence>
-                        {openDropdown === 'vietnam' && (
-                            <motion.div
-                                variants={dropdownVariants}
-                                initial="hidden"
-                                animate="visible"
-                                exit="exit"
-                                transition={{ duration: 0.2, ease: "easeOut" }}
-                                className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
-                            >
-                                {vnTeams.map((team) => (
-                                    <button
-                                        key={team}
-                                        onClick={() => handleSelectTeam(team)}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-                                            {team}
-                                        </span>
-                                        {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                                    </button>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
+                    {/* Việt Nam Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggleDropdown('vietnam')}
+                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isVNActive
+                                ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
+                                : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
+                                }`}
+                        >
+                            <MapPin className={`w-3.5 h-3.5 ${isVNActive ? 'text-blue-200' : 'text-gray-400'}`} />
+                            {isVNActive ? activeTeam : 'Việt Nam'}
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
+                        </button>
 
-            <div className="flex items-center gap-4">
-                {/* Name Filter */}
-                <div className="relative group">
-                    <div className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
-                        <Search className={`w-4 h-4 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
-                        <input
-                            type="text"
-                            placeholder="Tìm theo tên..."
-                            value={searchName}
-                            onChange={(e) => setSearchName(e.target.value)}
-                            className="bg-transparent border-none focus:outline-none text-sm font-bold text-gray-700 w-40 placeholder:text-gray-300 placeholder:font-normal"
-                        />
-                        {searchName && (
-                            <button
-                                onClick={() => setSearchName('')}
-                                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                            >
-                                <X className="w-3 h-3 text-gray-400" />
-                            </button>
-                        )}
+                        <AnimatePresence>
+                            {openDropdown === 'vietnam' && (
+                                <motion.div
+                                    variants={dropdownVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    transition={{ duration: 0.2, ease: "easeOut" }}
+                                    className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
+                                >
+                                    {vnTeams.map((team) => (
+                                        <button
+                                            key={team}
+                                            onClick={() => handleSelectTeam(team)}
+                                            className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                {team}
+                                            </span>
+                                            {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
+            )}
+            {showTeamLabel && (
+                <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Team: {userTeam}</span>
+                </div>
+            )}
+
+            <div className="flex items-center gap-4">
+                {/* Name Filter - Hidden in Personal */}
+                {!isPersonalTab && (
+                    <div className="relative group">
+                        <div className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
+                            <Search className={`w-4 h-4 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
+                            <input
+                                type="text"
+                                placeholder="Tìm theo tên..."
+                                value={searchName}
+                                onChange={(e) => setSearchName(e.target.value)}
+                                className="bg-transparent border-none focus:outline-none text-sm font-bold text-gray-700 w-40 placeholder:text-gray-300 placeholder:font-normal"
+                            />
+                            {searchName && (
+                                <button
+                                    onClick={() => setSearchName('')}
+                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X className="w-3 h-3 text-gray-400" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Date Picker */}
                 <div className="relative">
