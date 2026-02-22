@@ -29,7 +29,28 @@ const CONTENT_TYPES: ContentType[] = [
     { id: 'A3', name: 'A3 - Credibility (Uy tín)', description: 'Xây dựng niềm tin - Flex thành tựu', color: 'from-blue-500 to-indigo-500', examples: ['Flex giải thưởng, từ thiện', 'Giao hàng cho người nổi tiếng', 'Kể chuyện bảo hành khách'] },
     { id: 'A4', name: 'A4 - Conversion (Bán hàng)', description: 'Chuyển đổi trực tiếp - Giới thiệu sản phẩm', color: 'from-green-500 to-emerald-500', examples: ['Top list sản phẩm hot', 'Ngân sách X mua được gì?', 'Combo quà tặng'] },
     { id: 'A5', name: 'A5 - Combined (Tổng hợp)', description: 'Kết hợp A1-A4 - Content đa chiều', color: 'from-yellow-500 to-orange-500', examples: ['Storytelling hoàn chỉnh', 'Từ hook đến CTA', 'Nội dung đa chiều'] },
-];
+];  
+
+// ─── Default optimal prompt (auto-filled for Regenerate) ───
+const DEFAULT_OPTIMAL_PROMPT = `YÊU CẦU NỘI DUNG CHUẨN TỐI ƯU:
+
+1. CẤU TRÚC NỘI DUNG:
+   - Mở đầu: Chào hỏi ngắn gọn (1 câu), đi thẳng vào chủ đề không vòng vo.
+   - Thân bài: Tập trung vào đúng 3 lợi ích hoặc điểm nhấn chính. Mỗi điểm phải rõ ràng, cụ thể, không trừu tượng.
+   - Kết bài: CTA nhẹ nhàng, cảm ơn chân thành. Không ép mua, không tạo áp lực.
+
+2. GIỌNG ĐIỆU & PHONG CÁCH:
+   - Chân thật, trầm ấm như người thợ tâm sự với bạn bè.
+   - Không khoa trương, không dùng từ "số 1", "tốt nhất", "đỉnh nhất".
+   - Dùng câu hỏi tu từ ("...nhỉ?", "...phải không?") để tạo tương tác tự nhiên.
+
+3. TỐI ƯU CHO AI VOICE (TTS):
+   - Mỗi câu 10-15 từ, tối đa 20 từ. Câu dài phải chia nhỏ bằng dấu chấm hoặc phẩy.
+   - Dùng dấu phẩy sau 5-7 từ để AI biết chỗ nghỉ hơi.
+   - Dùng ba chấm (...) cho cảm giác suy tư, chậm lại.
+   - Viết liền một khối, không xuống dòng nhiều đoạn.
+
+4. ĐỘ DÀI: 150-180 từ (45-60 giây khi đọc). Loại bỏ chi tiết phụ, giữ cốt lõi.`;
 
 // ─── Mix Video Config ───
 const PARTS_LABELS = [
@@ -43,7 +64,7 @@ type Step = 'generate' | 'content' | 'mix-video';
 export default function GenerateContentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { generateContent, isGenerating } = useContentGeneration();
+    const { generateContent, generatePrompt, isGenerating } = useContentGeneration();
 
     // ─── Step control ───
     const [currentStep, setCurrentStep] = useState<Step>('generate');
@@ -54,7 +75,7 @@ export default function GenerateContentPage() {
     const [selectedType, setSelectedType] = useState<string | null>(null);
     const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
     const [copiedSection, setCopiedSection] = useState<string | null>(null);
-    const [productInfo, setProductInfo] = useState({ id: '', name: '', category: '', description: '', price: '' });
+    const [productInfo, setProductInfo] = useState({ id: '', name: '', category: '', description: '', price: '', sku: '' });
 
     // Advanced Prompt state
     const [showAdvancedPrompt, setShowAdvancedPrompt] = useState(false);
@@ -87,18 +108,57 @@ export default function GenerateContentPage() {
         num_outputs?: number;
     } | null>(null);
 
-    // ─── Init from URL params ───
+    // ─── Init from URL params (and fallback từ localStorage nếu thiếu dữ liệu) ───
     useEffect(() => {
         const id = searchParams.get('videoId');
         const title = searchParams.get('videoTitle');
         if (id) setVideoId(parseInt(id));
         if (title) setVideoTitle(decodeURIComponent(title));
-        setProductInfo({
+
+        const urlProduct = {
             id: searchParams.get('productId') || '',
             name: decodeURIComponent(searchParams.get('productName') || ''),
             category: decodeURIComponent(searchParams.get('productCategory') || ''),
             description: decodeURIComponent(searchParams.get('productDescription') || ''),
-            price: searchParams.get('productPrice') || ''
+            price: searchParams.get('productPrice') || '',
+            sku: searchParams.get('productSku') || ''
+        };
+
+        let finalCategory = urlProduct.category;
+        let finalSku = urlProduct.sku;
+
+        // Fallback: nếu category hoặc sku từ URL rỗng, dùng dữ liệu đã lưu khi chọn sản phẩm
+        if (typeof window !== 'undefined') {
+            try {
+                const stored = localStorage.getItem('selectedProduct');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (!finalCategory && parsed?.category) {
+                        finalCategory = parsed.category;
+                        console.log('📦 Using product category from localStorage fallback:', parsed.category);
+                    }
+                    if (!finalSku && parsed?.sku) {
+                        finalSku = parsed.sku;
+                        console.log('🏷️ Using product SKU from localStorage fallback:', parsed.sku);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to read selectedProduct from localStorage', e);
+            }
+        }
+
+        setProductInfo({
+            ...urlProduct,
+            category: finalCategory || '',
+            sku: finalSku || ''
+        });
+
+        // Debug logging
+        console.log('📦 Product info resolved for pipeline:', {
+            category_from_url: urlProduct.category,
+            category_final: finalCategory || '',
+            sku_from_url: urlProduct.sku,
+            sku_final: finalSku || ''
         });
     }, [searchParams]);
 
@@ -162,6 +222,47 @@ export default function GenerateContentPage() {
         }
     };
 
+    const handleAutoGeneratePrompt = async () => {
+        if (!selectedType) {
+            toast.error('Vui lòng chọn loại content trước tiên');
+            return;
+        }
+
+        try {
+            toast.loading('Đang phân tích video để tạo prompt tối ưu...', { id: 'generating-prompt' });
+
+            const prompt = await generatePrompt({
+                video_id: videoId || undefined,
+                video_description: videoTitle,
+                video_title: videoTitle,
+                content_type: selectedType,
+                product_id: productInfo.id,
+                product_name: productInfo.name,
+                product_category: productInfo.category,
+                product_description: productInfo.description,
+                product_price: productInfo.price
+            });
+
+            toast.dismiss('generating-prompt');
+
+            if (prompt) {
+                setAdvancedPrompt(prompt);
+                setShowAdvancedPrompt(true);
+                toast.success('Đã tạo prompt tối ưu từ AI!');
+            } else {
+                setAdvancedPrompt(DEFAULT_OPTIMAL_PROMPT);
+                setShowAdvancedPrompt(true);
+                toast.error('Không thể tạo prompt AI, đã dùng prompt mặc định.');
+            }
+        } catch (error) {
+            toast.dismiss('generating-prompt');
+            console.error('Auto generate prompt error:', error);
+            setAdvancedPrompt(DEFAULT_OPTIMAL_PROMPT);
+            setShowAdvancedPrompt(true);
+            toast.error('Lỗi khi tạo prompt, đã dùng prompt mặc định.');
+        }
+    };
+
     const handleAdvancedGenerate = async () => {
         if (!selectedType || !advancedPrompt.trim()) {
             toast.error('Vui lòng nhập prompt nâng cao');
@@ -192,7 +293,7 @@ export default function GenerateContentPage() {
             } else {
                 toast.error('Không thể tạo content. Vui lòng thử lại.');
             }
-        } catch (error) {   
+        } catch (error) {
             console.error('Advanced generation error:', error);
             toast.error('Có lỗi xảy ra khi tạo content');
         }
@@ -664,12 +765,22 @@ export default function GenerateContentPage() {
                                 </div>
 
                                 <button
-                                    onClick={() => setShowAdvancedPrompt(true)}
-                                    className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-pink-600/10 border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 text-purple-400 font-semibold hover:from-purple-600/20 hover:to-pink-600/20 transition-all flex items-center justify-center gap-3 group"
+                                    onClick={handleAutoGeneratePrompt}
+                                    disabled={isGenerating}
+                                    className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-pink-600/10 border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 text-purple-400 font-semibold hover:from-purple-600/20 hover:to-pink-600/20 transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                    <span>Regenerate với Prompt Nâng cao</span>
-                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    {isGenerating ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            <span>Đang tạo prompt...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                            <span>AI: Tạo Prompt Nâng cao từ Video gốc</span>
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
                                 </button>
                             </div>
 
@@ -693,6 +804,9 @@ export default function GenerateContentPage() {
                             <SmartMixVideo
                                 generatedScript={generatedContent?.script}
                                 contentType={selectedType || undefined}
+                                productId={productInfo.id}
+                                productSku={productInfo.sku}
+                                productCategory={productInfo.category}
                             />
                         </motion.div>
                     )}
@@ -715,7 +829,7 @@ export default function GenerateContentPage() {
                                         </div>
                                         <div>
                                             <h3 className="text-2xl font-bold text-white">Prompt Nâng cao</h3>
-                                            <p className="text-gray-400 text-sm mt-1">Tùy chỉnh cách AI tạo nội dung</p>
+                                            <p className="text-gray-400 text-sm mt-1">Hệ thống đã điền sẵn prompt chuẩn tối ưu - bạn chỉ cần đọc và Regenerate</p>
                                         </div>
                                     </div>
                                     <button
@@ -732,38 +846,18 @@ export default function GenerateContentPage() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-300 mb-2">
-                                            Nhập prompt tùy chỉnh của bạn
+                                            Prompt chuẩn (đã điền sẵn)
                                         </label>
                                         <textarea
                                             value={advancedPrompt}
                                             onChange={(e) => setAdvancedPrompt(e.target.value)}
-                                            placeholder="Ví dụ: Tạo nội dung với giọng điệu vui vẻ, hài hước, sử dụng nhiều emoji. Tập trung vào lợi ích của sản phẩm với khách hàng trẻ tuổi..."
-                                            className="w-full h-48 px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                            placeholder="..."
+                                            readOnly
+                                            className="w-full h-64 px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-gray-200 placeholder-gray-600 resize-none cursor-default text-sm leading-relaxed"
                                         />
                                         <p className="text-xs text-gray-500 mt-2">
-                                            💡 Tip: Càng chi tiết càng tốt! Mô tả giọng điệu, phong cách, điểm nhấn bạn muốn.
+                                            Hệ thống đã chọn prompt tối ưu để tạo nội dung văn bản chất lượng cao. Nhấn Regenerate để tạo lại.
                                         </p>
-                                    </div>
-
-                                    {/* Example Prompts */}
-                                    <div className="bg-[#1a1a1a] rounded-xl p-4 border border-gray-800">
-                                        <p className="text-sm font-semibold text-gray-300 mb-3">📝 Gợi ý prompt:</p>
-                                        <div className="space-y-2">
-                                            {[
-                                                'Tạo nội dung ngắn gọn, súc tích, tập trung vào 3 lợi ích chính',
-                                                'Viết theo phong cách storytelling, kể câu chuyện cảm động',
-                                                'Sử dụng nhiều số liệu, dữ liệu cụ thể để tăng độ tin cậy',
-                                                'Giọng điệu trẻ trung, năng động, nhiều emoji và từ lóng Gen Z'
-                                            ].map((example, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setAdvancedPrompt(example)}
-                                                    className="w-full text-left px-3 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-400 hover:text-white text-sm transition-colors border border-gray-800 hover:border-gray-700"
-                                                >
-                                                    {example}
-                                                </button>
-                                            ))}
-                                        </div>
                                     </div>
                                 </div>
                             </div>

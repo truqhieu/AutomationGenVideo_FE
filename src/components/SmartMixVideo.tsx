@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X } from 'lucide-react';
+import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -9,17 +9,20 @@ const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localho
 
 // 10 folder types cố định (theo logic mix video) - Mỗi tên phải unique!
 const FOLDER_TYPES = [
-    'Sản phẩm',           // Slot 0
-    'HuyK',               // Slot 1
-    'Chế tác Above 1',    // Slot 2
-    'Chế tác Below 1',    // Slot 3
-    'Chế tác Above 2',    // Slot 4
-    'HuyK Above 1',       // Slot 5
-    'HuyK Above 2',       // Slot 6
-    'Chế tác Below 2',    // Slot 7
-    'Sản phẩm HT',        // Slot 8
-    'Outtrol',            // Slot 9
+    'Sản phẩm',
+    'HuyK',
+    'Chế tác',
+    'Sản phẩm HT',
+    'Outtrol',
 ];
+
+const DEFAULT_PATHS: { [key: string]: string } = {
+    'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\VIDEO Sản Phẩm',
+    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\Source daily HuyK',
+    'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\CHẾ TÁC SẢN PHẨM (xưởng)',
+    'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\VIDEO Sản Phẩm',
+    'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Source Outro',
+};
 
 interface CacheStats {
     indexed_videos: number;
@@ -48,9 +51,12 @@ interface Voice {
 interface SmartMixProps {
     generatedScript?: string;  // Script from content generation step
     contentType?: string;  // A1, A2, A3, A4, A5
+    productId?: string;
+    productSku?: string;
+    productCategory?: string;
 }
 
-export default function SmartMixVideo({ generatedScript, contentType }: SmartMixProps) {
+export default function SmartMixVideo({ generatedScript, contentType, productId, productSku, productCategory }: SmartMixProps) {
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [numOutputs, setNumOutputs] = useState(5);
     const [useGpu, setUseGpu] = useState<'auto' | 'true' | 'false'>('auto');
@@ -61,6 +67,9 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
     const [mixError, setMixError] = useState('');
     const [mixResult, setMixResult] = useState<any>(null);
 
+    const [forcedProductVideoId, setForcedProductVideoId] = useState<number | null>(null);
+    const [forcedProductVideoPath, setForcedProductVideoPath] = useState<string | null>(null);
+
     // Voice & Audio generation
     const [voices, setVoices] = useState<Voice[]>([]);
     const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
@@ -70,6 +79,31 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
 
     const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
     const [loadingStats, setLoadingStats] = useState(false);
+
+    // Fallback: Get product category from localStorage if not provided via props
+    const [actualProductCategory, setActualProductCategory] = useState<string | undefined>(productCategory);
+
+    useEffect(() => {
+        // Priority: productCategory prop > localStorage
+        if (productCategory) {
+            console.log('📦 Using product category from props:', productCategory);
+            setActualProductCategory(productCategory);
+        } else {
+            // Try to get from localStorage
+            const selectedProduct = localStorage.getItem('selectedProduct');
+            if (selectedProduct) {
+                try {
+                    const product = JSON.parse(selectedProduct);
+                    if (product.category) {
+                        console.log('📦 Using product category from localStorage:', product.category);
+                        setActualProductCategory(product.category);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse selectedProduct from localStorage', e);
+                }
+            }
+        }
+    }, [productCategory]);
     const [showIndexPanel, setShowIndexPanel] = useState(false);
 
     // Indexing state - Pre-fill 10 folder types + custom folders
@@ -77,7 +111,7 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
         FOLDER_TYPES.map((type, idx) => ({
             id: `folder-${idx}`,
             folder_type: type,
-            path: ''
+            path: DEFAULT_PATHS[type] || ''
         }))
     );
     const [customFolders, setCustomFolders] = useState<FolderInput[]>([]);
@@ -93,6 +127,65 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
         loadVoices();
     }, []);
 
+    // AUTO-SCAN IF EMPTY INDEX
+    useEffect(() => {
+        if (cacheStats && cacheStats.indexed_videos === 0 && !isIndexing) {
+            console.log('Index trống! Tự động chạy Auto-Scan Default Folders...');
+            const folders: { [key: string]: string } = {};
+
+            FOLDER_TYPES.forEach(type => {
+                // Skip 'Sản phẩm' and 'Outtrol' - will be indexed by smart search
+                if (type === 'Sản phẩm' || type === 'Outtrol') return;
+
+                const path = DEFAULT_PATHS[type];
+                if (path) folders[type] = path;
+            });
+
+            // Call indexing API
+            const runAutoIndex = async () => {
+                setIsIndexing(true);
+                setIndexingProgress('⏳ Auto-indexing default folders (HuyK, Chế tác)...');
+                try {
+                    // 1. Index default folders (HuyK, Chế tác...)
+                    // Call AI service directly for indexing
+                    const response = await fetch(`${AI_SERVICE_URL}/api/videos/index-folders/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            folders,
+                            sku: productSku,
+                            category: actualProductCategory,
+                            videos_per_folder: 50 // Fast scan
+                        })
+                    });
+
+                    if (response.ok) {
+                        setIndexingProgress('⏳ Đang tìm folder Outro...');
+
+                        // 2. Trigger smart Outro indexing
+                        const outroResponse = await fetch(`${AI_SERVICE_URL}/api/videos/index-outro/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+
+                        if (!outroResponse.ok) {
+                            console.warn('⚠️ Could not index Outro folder');
+                        }
+
+                        toast.success('✅ Đã chuẩn bị xong dữ liệu nền!');
+                        loadCacheStats();
+                    }
+                } catch (e) {
+                    console.error('Auto-index failed', e);
+                } finally {
+                    setIsIndexing(false);
+                }
+            };
+
+            runAutoIndex();
+        }
+    }, [cacheStats]);
+
     // Show reminder to enable A4 when content type is A4
     useEffect(() => {
         if (contentType === 'A4' && !useA4Formula) {
@@ -102,6 +195,48 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
             });
         }
     }, [contentType]);
+
+    useEffect(() => {
+        if (productSku) {
+            // Trigger auto-index manufacturing folder for this SKU
+            triggerAutoIndexManufacturing(actualProductCategory || '', productSku);
+            checkProductVideo(productSku);
+        }
+    }, [productSku, actualProductCategory]);
+
+    const triggerAutoIndexManufacturing = async (category: string, sku: string) => {
+        try {
+            console.log(`🛠️ Triggering auto-index for SKU: ${sku}, Category: ${category}`);
+            // Call Backend API to index using the dedicated endpoint that supports SKU search
+            // Call AI Service directly to avoid 404 Proxy issues
+            await fetch(`${AI_SERVICE_URL}/api/videos/index-manufacturing-folder/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category: category,
+                    sku: sku
+                })
+            });
+            // Refresh stats to show user updated counts (give it a moment)
+            setTimeout(loadCacheStats, 1500);
+        } catch (e) {
+            console.error("Auto-index triggering failed:", e);
+        }
+    };
+
+    const checkProductVideo = async (sku: string) => {
+        try {
+            const res = await fetch(`${AI_SERVICE_URL}/api/products/find-video/?sku=${encodeURIComponent(sku)}`);
+            const data = await res.json();
+            if (data.success) {
+                setForcedProductVideoId(data.video_id);
+                setForcedProductVideoPath(data.video_path);
+                toast.success(`✅ Đã tìm thấy video cho SKU: ${sku}`, { duration: 5000 });
+            }
+        } catch (e) {
+            console.error('Error finding product video:', e);
+        }
+    };
 
     const loadVoices = async () => {
         setLoadingVoices(true);
@@ -295,15 +430,34 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
             formData.append('use_gpu', useGpu);
             formData.append('use_a4_formula', useA4Formula.toString());
 
+            if (forcedProductVideoId) {
+                formData.append('forced_product_video_id', forcedProductVideoId.toString());
+            }
+
+            if (actualProductCategory) {
+                formData.append('product_category', actualProductCategory);
+            }
+
+            if (productId) {
+                formData.append('product_id', productId);
+            }
+
+            if (productSku) {
+                formData.append('product_sku', productSku);
+            }
+
             // Debug logging
             console.log('🎯 Smart Mix Config:', {
                 num_outputs: numOutputs,
                 use_a4_formula: useA4Formula,
-                audio: audioFile.name
+                audio: audioFile.name,
+                product_category: actualProductCategory,
+                product_id: productId,
+                product_sku: productSku
             });
 
             // Call smart-mix endpoint
-            const response = await fetch(`${BE_API_URL}/ai/smart-mix`, {
+            const response = await fetch(`${AI_SERVICE_URL}/api/videos/smart-mix/`, {
                 method: 'POST',
                 body: formData
             });
@@ -337,7 +491,12 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
         return new Promise<void>((resolve) => {
             const poll = async () => {
                 try {
-                    const response = await fetch(`${BE_API_URL}/ai/smart-mix/status/${progressId}`);
+                    const response = await fetch(`${AI_SERVICE_URL}/api/videos/smart-mix/status/${progressId}/`);
+
+                    if (response.status === 404) {
+                        throw new Error('404 Not Found');
+                    }
+
                     const data = await response.json();
 
                     setMixProgress(data.percent || 0);
@@ -359,9 +518,16 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
 
                     setTimeout(poll, 1000); // Poll every 1s
                 } catch (error: any) {
-                    setMixError(error.message);
-                    toast.error(`❌ ${error.message}`);
-                    resolve();
+                    if (error.message.includes('404')) {
+                        console.warn('⚠️ Polling stopped because progress ID not found (likely server restart)');
+                        setMixError('Server không tìm thấy progress ID (Vui lòng thử lại)');
+                        toast.error('❌ Mất kết nối tiến trình');
+                        resolve();
+                        return;
+                    }
+
+                    // Retry for network errors
+                    setTimeout(poll, 2000);
                 }
             };
             poll();
@@ -373,6 +539,18 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
 
     return (
         <div className="space-y-6">
+            {/* Indexing Status Overlay */}
+            {isIndexing && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-sm">
+                    <Loader2 className="w-16 h-16 text-green-500 animate-spin mb-4" />
+                    <h3 className="text-2xl font-bold text-white mb-2">Đang thiết lập hệ thống...</h3>
+                    <p className="text-gray-300 text-lg mb-4">{indexingProgress}</p>
+                    <div className="w-full max-w-md bg-gray-700 h-2 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 animate-pulse w-full"></div>
+                    </div>
+                </div>
+            )}
+
             {/* Header with Performance Badge */}
             <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 p-6 rounded-2xl border border-green-500/20">
                 <div className="flex items-start gap-4">
@@ -392,6 +570,32 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
                     </div>
                 </div>
             </div>
+
+            {/* Forced Product Video Banner */}
+            {forcedProductVideoId && (
+                <div className="bg-purple-900/20 p-4 rounded-xl border border-purple-500/30 mb-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                            <Package className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold text-white flex items-center gap-2">
+                                Đã chọn sản phẩm theo SKU
+                                <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">{productSku}</span>
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Video từ sản phẩm này sẽ được ưu tiên sử dụng trong slot "Sản phẩm".
+                            </p>
+                            {forcedProductVideoPath && (
+                                <p className="text-[10px] text-gray-500 mt-1 truncate font-mono opacity-50">
+                                    {forcedProductVideoPath}
+                                </p>
+                            )}
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-purple-400" />
+                    </div>
+                </div>
+            )}
 
             {/* Cache Stats */}
             <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
@@ -515,7 +719,7 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
 
                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                             <p className="text-sm text-blue-400">
-                                📋 <strong>10 loại folder mặc định</strong> + Thêm folders tùy chỉnh. Tối thiểu <strong>5 folders</strong> để mix.
+                                📋 <strong>5 loại folder mặc định</strong> + Thêm folders tùy chỉnh. Tối thiểu <strong>5 folders</strong> để mix.
                             </p>
                         </div>
 
@@ -523,7 +727,7 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
                         <div>
                             <h5 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
                                 <FolderOpen className="w-4 h-4" />
-                                Folders mặc định (10)
+                                Folders mặc định (5)
                             </h5>
                             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                                 {folderInputs.map((folder, idx) => (
@@ -959,6 +1163,7 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
                         ))}
                     </div>
 
+
                     <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                         <p className="text-xs text-orange-300 font-semibold mb-2">
                             ⚠️ Đặc biệt: 3 SPLIT LAYOUTS với tỉ lệ khác nhau
@@ -971,6 +1176,8 @@ export default function SmartMixVideo({ generatedScript, contentType }: SmartMix
                             • Slot 7: Duration = video outro gốc (giữ nguyên audio)
                         </p>
                     </div>
+
+                    {/* (Removed) Manual product category selector when enabling A4 V2 */}
                 </div>
             )}
 

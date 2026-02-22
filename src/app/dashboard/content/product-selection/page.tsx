@@ -356,6 +356,16 @@ export default function ProductSelectionPage() {
 
     const handleContinue = () => {
         if (!selectedProduct) return;
+
+        // Lưu sản phẩm đã chọn vào localStorage để các bước sau (Generate / Mix Video) luôn biết đúng category
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.setItem('selectedProduct', JSON.stringify(selectedProduct));
+            } catch (e) {
+                console.error('Failed to persist selectedProduct to localStorage', e);
+            }
+        }
+
         const params = new URLSearchParams({
             videoId: videoInfo.id,
             videoTitle: encodeURIComponent(videoInfo.title),
@@ -364,6 +374,7 @@ export default function ProductSelectionPage() {
             productCategory: encodeURIComponent(selectedProduct.category || ''),
             productDescription: encodeURIComponent(selectedProduct.description || ''),
             productPrice: selectedProduct.price?.toString() || '',
+            productSku: selectedProduct.sku || '',
         });
         router.push(`/dashboard/content/generate?${params.toString()}`);
     };

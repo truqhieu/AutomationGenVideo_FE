@@ -137,9 +137,33 @@ export function useContentGeneration() {
         }
     };
 
+    const generatePrompt = async (request: GenerateContentRequest): Promise<string | null> => {
+        setIsGenerating(true);
+        setError(null);
+        try {
+            const response = await axios.post<{
+                success: boolean;
+                prompt: string;
+            }>(`${AI_SERVICE_URL}/api/content/generate-prompt/`, request);
+
+            if (response.data.success) {
+                return response.data.prompt;
+            }
+            throw new Error('Failed to generate prompt');
+        } catch (err: any) {
+            const errorMessage = err.response?.data?.error || err.message || 'Failed to generate prompt';
+            setError(errorMessage);
+            console.error('Prompt generation error:', err);
+            return null;
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     return {
         generateContent,
         getGeneratedContents,
+        generatePrompt,
         isGenerating,
         error
     };
