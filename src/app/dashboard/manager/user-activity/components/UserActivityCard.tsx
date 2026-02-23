@@ -18,6 +18,12 @@ interface UserActivity {
     monthlyProgress: number;
 }
 
+interface UserActivityCardProps {
+    data: UserActivity;
+    onClick?: () => void;
+    isActive?: boolean;
+}
+
 const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
@@ -31,12 +37,18 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data }: { data: UserActivity }) => {
+const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) => {
     const isPending = data.reportStatus === 'CHƯA BÁO CÁO';
 
     return (
-        <Card className={`relative rounded-[2rem] overflow-hidden border-2 transition-all hover:shadow-xl ${isPending ? 'border-red-500 bg-white' : 'border-gray-100 bg-white'
-            }`}>
+        <Card
+            onClick={onClick}
+            className={`relative rounded-[2rem] overflow-hidden border-2 transition-all cursor-pointer ${isActive
+                ? 'border-blue-600 shadow-2xl scale-[1.03] animate-pulse-subtle'
+                : isPending
+                    ? 'border-red-500 bg-white hover:shadow-xl hover:scale-[1.02]'
+                    : 'border-gray-100 bg-white hover:shadow-xl hover:scale-[1.02]'
+                }`}>
             <CardContent className="p-5 flex flex-col items-center">
                 {/* Warning Icon */}
                 <div className="absolute top-4 right-4">

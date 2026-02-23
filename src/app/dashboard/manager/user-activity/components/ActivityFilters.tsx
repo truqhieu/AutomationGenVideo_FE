@@ -38,14 +38,13 @@ const ActivityFilters = ({
     const isPerformanceTab = activeTab === 'performance';
 
     // Team filter: 
-    // - Always HIDDEN in Personal tab
     // - Show in Ranking and Performance for everyone
     // - Otherwise only for Admin
-    const canSeeTeamFilter = !isPersonalTab && (isAdmin || isRankingTab || isPerformanceTab);
+    const canSeeTeamFilter = (isAdmin || isRankingTab || isPerformanceTab);
 
     // Team label (for Leader):
-    // - Show only if main filter is hidden AND it's not personal tab
-    const showTeamLabel = !canSeeTeamFilter && !isPersonalTab && isLeader && userTeam;
+    // - Show only if main filter is hidden
+    const showTeamLabel = !canSeeTeamFilter && isLeader && userTeam;
 
     const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
     const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
@@ -274,9 +273,9 @@ const ActivityFilters = ({
                 </div>
             )}
 
-            <div className="flex items-center gap-4">
-                {/* Name Filter - Hidden in Personal */}
-                {!isPersonalTab && (
+            <div className="flex items-center gap-4 ml-auto">
+                {/* Name Filter - Hidden in Personal unless Admin/Leader */}
+                {(!isPersonalTab || isAdmin || isLeader) && (
                     <div className="relative group">
                         <div className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
                             <Search className={`w-4 h-4 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
