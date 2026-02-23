@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package } from 'lucide-react';
+import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package, Eye } from 'lucide-react';
+import { VirtualMixSection } from './VirtualMixPlayer';
 import { toast } from 'react-hot-toast';
 
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -196,20 +197,23 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     }, [contentType]);
 
+    const pollCleanupRef = useRef<(() => void) | null>(null);
+
     useEffect(() => {
         if (productSku) {
-            // Trigger auto-index manufacturing folder for this SKU
+            // Khi vào Mix Video: luôn quét indexed để lưu 1 lần nữa
             triggerAutoIndexManufacturing(actualProductCategory || '', productSku);
             checkProductVideo(productSku);
         }
+        return () => {
+            pollCleanupRef.current?.();
+        };
     }, [productSku, actualProductCategory]);
 
     const triggerAutoIndexManufacturing = async (category: string, sku: string) => {
         try {
-            console.log(`🛠️ Triggering auto-index for SKU: ${sku}, Category: ${category}`);
-            // Call Backend API to index using the dedicated endpoint that supports SKU search
-            // Call AI Service directly to avoid 404 Proxy issues
-            await fetch(`${AI_SERVICE_URL}/api/videos/index-manufacturing-folder/`, {
+            console.log(`🛠️ [Go to Mix Video] Quét indexed cho SKU: ${sku}...`);
+            const res = await fetch(`${AI_SERVICE_URL}/api/videos/index-manufacturing-folder/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -217,10 +221,19 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     sku: sku
                 })
             });
-            // Refresh stats to show user updated counts (give it a moment)
-            setTimeout(loadCacheStats, 1500);
+            if (res.ok) toast.success('Đang quét video Sản phẩm...');
+
+            // Poll loadCacheStats để cập nhật số liệu (indexing UNC + ffprobe mất thời gian)
+            pollCleanupRef.current?.();
+            const delays = [1500, 3000, 6000, 10000, 15000, 20000];
+            const timeouts: NodeJS.Timeout[] = [];
+            delays.forEach((ms) => {
+                timeouts.push(setTimeout(loadCacheStats, ms));
+            });
+            pollCleanupRef.current = () => timeouts.forEach((t) => clearTimeout(t));
         } catch (e) {
             console.error("Auto-index triggering failed:", e);
+            toast.error('Không thể quét folder Sản phẩm. Vui lòng thử lại.');
         }
     };
 
@@ -1181,7 +1194,18 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 </div>
             )}
 
-            {/* Mix Button */}
+            {/* ⚡ Virtual Preview (INSTANT - no FFmpeg!) */}
+            {audioFile && !needsIndexing && (
+                <VirtualMixSection
+                    audioFile={audioFile}
+                    productId={productId}
+                    productSku={productSku}
+                    numOutputs={numOutputs}
+                    useA4Formula={useA4Formula}
+                />
+            )}
+
+            {/* Mix Button (Full FFmpeg Render) */}
             <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Scissors className="w-5 h-5 text-green-400" />

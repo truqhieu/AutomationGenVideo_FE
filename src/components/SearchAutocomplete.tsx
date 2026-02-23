@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Clock, TrendingUp, Sparkles, Loader2, X } from 'lucide-react';
+import { Search, Clock, TrendingUp, Sparkles, Loader2, X, Zap } from 'lucide-react';
 import { useSearchSuggestions, SearchSuggestion } from '@/hooks/useSearchSuggestions';
 
 interface SearchAutocompleteProps {
@@ -29,14 +29,16 @@ export default function SearchAutocomplete({
     const {
         suggestions,
         loading,
+        source,
+        isLocalOnly,
         fetchSuggestions,
         trackSearch,
-        clearSuggestions
+        clearSuggestions,
     } = useSearchSuggestions({ platform });
 
-    // Fetch suggestions when value changes
+    // Fetch suggestions whenever value changes — no extra debounce here (hook handles it)
     useEffect(() => {
-        if (value && value.length >= 2) {
+        if (value && value.length >= 1) {
             fetchSuggestions(value);
         } else {
             clearSuggestions();
@@ -55,14 +57,12 @@ export default function SearchAutocomplete({
                 setIsFocused(false);
             }
         }
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value;
-        onChange(newValue);
+        onChange(e.target.value);
         setSelectedIndex(-1);
     };
 
@@ -74,14 +74,20 @@ export default function SearchAutocomplete({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!suggestions.length) return;
+        if (!suggestions.length) {
+            if (e.key === 'Enter' && value) {
+                e.preventDefault();
+                trackSearch(value);
+                onSearch(value);
+                setIsFocused(false);
+            }
+            return;
+        }
 
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                setSelectedIndex(prev =>
-                    prev < suggestions.length - 1 ? prev + 1 : prev
-                );
+                setSelectedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : prev));
                 break;
             case 'ArrowUp':
                 e.preventDefault();
@@ -118,18 +124,52 @@ export default function SearchAutocomplete({
         inputRef.current?.focus();
     };
 
-    const getSuggestionIcon = (type: SearchSuggestion['type']) => {
-        switch (type) {
+    // Highlight matching text in suggestion
+    const highlightMatch = (text: string, query: string) => {
+        if (!query.trim()) return text;
+        const lowerText = text.toLowerCase();
+        const lowerQuery = query.trim().toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerQuery);
+        if (matchIndex === -1) return text;
+        return (
+            <>
+                {text.slice(0, matchIndex)}
+                <span className="text-white font-semibold">{text.slice(matchIndex, matchIndex + query.trim().length)}</span>
+                {text.slice(matchIndex + query.trim().length)}
+            </>
+        );
+    };
+
+    const getSourceLabel = () => {
+        if (isLocalOnly && loading) return { label: 'Đang tải gợi ý...', color: 'text-gray-600' };
+        if (source === 'youtube') return { label: 'Gợi ý video phổ biến', color: 'text-red-500/70' };
+        if (source === 'google') return { label: 'Gợi ý từ Google', color: 'text-blue-500/70' };
+        if (source === 'gemini') return { label: 'Xu hướng thực tế (Gemini)', color: 'text-purple-400' };
+        if (source === 'ai') return { label: 'AI gợi ý', color: 'text-purple-400/70' };
+        return null;
+    };
+
+    const getSuggestionIcon = (suggestion: SearchSuggestion) => {
+        if (suggestion.isLocal) {
+            return <Search className="w-4 h-4 text-gray-600" />;
+        }
+        switch (suggestion.type) {
+            case 'youtube':
+                return <TrendingUp className="w-4 h-4 text-red-400/80" />;
+            case 'google':
+                return <Search className="w-4 h-4 text-blue-400/80" />;
             case 'history':
-                return <Clock className="w-4 h-4 text-gray-400" />;
-            case 'trending':
-                return <TrendingUp className="w-4 h-4 text-orange-400" />;
+                return <Clock className="w-4 h-4 text-gray-500" />;
+            case 'gemini':
             case 'ai':
                 return <Sparkles className="w-4 h-4 text-purple-400" />;
+            default:
+                return <Search className="w-4 h-4 text-gray-500" />;
         }
     };
 
-    const showDropdown = isFocused && (suggestions.length > 0 || loading);
+    const showDropdown = isFocused && suggestions.length > 0;
+    const sourceInfo = getSourceLabel();
 
     return (
         <div className={`relative ${className}`}>
@@ -152,7 +192,7 @@ export default function SearchAutocomplete({
                     {/* Loading or Clear Button */}
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {loading ? (
-                            <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                            <Loader2 className="w-4 h-4 text-purple-400/60 animate-spin" />
                         ) : value ? (
                             <button
                                 type="button"
@@ -170,64 +210,96 @@ export default function SearchAutocomplete({
             {showDropdown && (
                 <div
                     ref={dropdownRef}
-                    className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50"
+                    className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+                    style={{
+                        backdropFilter: 'blur(12px)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
+                    }}
                 >
-                    {suggestions.length === 0 ? (
-                        <div className="px-4 py-3 text-center text-gray-500 text-sm">
-                            {loading ? 'Đang tìm gợi ý...' : 'Không có gợi ý'}
+                    {/* Source header */}
+                    {sourceInfo && (
+                        <div className="px-4 py-1.5 border-b border-gray-800/50 flex items-center justify-between">
+                            <span className={`text-[10px] uppercase tracking-wider font-medium ${sourceInfo.color}`}>
+                                {sourceInfo.label}
+                            </span>
+                            {/* Loading indicator: subtle pulsing dot when local only */}
+                            {isLocalOnly && loading && (
+                                <span className="flex gap-0.5">
+                                    {[0, 1, 2].map(i => (
+                                        <span
+                                            key={i}
+                                            className="w-1 h-1 rounded-full bg-purple-400 animate-bounce"
+                                            style={{ animationDelay: `${i * 0.15}s` }}
+                                        />
+                                    ))}
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        <>
-                            {/* Simple list - no grouping */}
-                            {suggestions.slice(0, 6).map((suggestion, idx) => (
-                                <SuggestionItem
-                                    key={`suggestion-${idx}`}
-                                    suggestion={suggestion}
-                                    isSelected={selectedIndex === idx}
-                                    onClick={() => handleSuggestionClick(suggestion)}
-                                    icon={getSuggestionIcon(suggestion.type)}
-                                />
-                            ))}
-                        </>
                     )}
+
+                    {/* Suggestion list */}
+                    <div className="py-1">
+                        {suggestions.slice(0, 8).map((suggestion, idx) => (
+                            <button
+                                key={`suggestion-${idx}-${suggestion.text}`}
+                                type="button"
+                                onClick={() => handleSuggestionClick(suggestion)}
+                                className={`
+                                    w-full px-4 py-2.5 flex items-center gap-3 text-left group/item
+                                    transition-all duration-100
+                                    ${selectedIndex === idx
+                                        ? 'bg-[#ff0050]/10 text-white'
+                                        : 'hover:bg-gray-800/60 text-gray-300'}
+                                    ${suggestion.isLocal ? 'opacity-75' : 'opacity-100'}
+                                `}
+                            >
+                                {/* Icon */}
+                                <div className={`flex-shrink-0 transition-colors ${selectedIndex === idx ? 'text-[#ff0050]' : ''}`}>
+                                    {getSuggestionIcon(suggestion)}
+                                </div>
+
+                                {/* Text */}
+                                <span className="flex-1 text-sm truncate">
+                                    {highlightMatch(suggestion.text, value)}
+                                </span>
+
+                                {/* Arrow on hover/select */}
+                                <svg
+                                    className={`w-3.5 h-3.5 text-gray-600 transition-all flex-shrink-0 ${selectedIndex === idx
+                                        ? 'opacity-100 text-[#ff0050] -rotate-45'
+                                        : 'opacity-0 group-hover/item:opacity-60'
+                                        }`}
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-4 py-1.5 border-t border-gray-800/50 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-600">
+                            ↑↓ để chọn · Enter để tìm
+                        </span>
+                        {!isLocalOnly && source === 'youtube' && (
+                            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                                <Zap className="w-2.5 h-2.5 text-red-400" /> Xu hướng video
+                            </span>
+                        )}
+                        {!isLocalOnly && source === 'google' && (
+                            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                                <Zap className="w-2.5 h-2.5 text-blue-400" /> Google Suggest
+                            </span>
+                        )}
+                        {!isLocalOnly && source === 'gemini' && (
+                            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                                <Sparkles className="w-2.5 h-2.5 text-purple-400" /> Viral Research
+                            </span>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
-    );
-}
-
-// Suggestion Item Component
-interface SuggestionItemProps {
-    suggestion: SearchSuggestion;
-    isSelected: boolean;
-    onClick: () => void;
-    icon: React.ReactNode;
-}
-
-function SuggestionItem({ suggestion, isSelected, onClick, icon }: SuggestionItemProps) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`w-full px-4 py-2.5 flex items-center gap-3 transition-colors text-left ${isSelected
-                ? 'bg-purple-600/20 text-white'
-                : 'hover:bg-gray-800/50 text-gray-300'
-                }`}
-        >
-            {icon}
-            <span className="flex-1 text-sm">{suggestion.text}</span>
-
-            {/* Count badge for history */}
-            {suggestion.type === 'history' && suggestion.count && suggestion.count > 1 && (
-                <span className="px-2 py-0.5 bg-gray-700 text-gray-400 text-xs rounded-full">
-                    {suggestion.count}
-                </span>
-            )}
-
-            {/* Trending indicator */}
-            {suggestion.type === 'trending' && (
-                <span className="text-xs text-orange-400">🔥</span>
-            )}
-        </button>
     );
 }

@@ -31,6 +31,7 @@ export interface GenerateContentRequest {
     product_category?: string;
     product_description?: string;
     product_price?: string;
+    product_sku?: string;
     // Advanced prompt
     custom_prompt?: string; // Custom prompt for advanced regeneration
 }

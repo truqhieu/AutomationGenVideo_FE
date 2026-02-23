@@ -1,144 +1,160 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+/**
+ * useSearchSuggestions — Real-time as-you-type suggestions with Market-Aware Rotation
+ *
+ * Tier 1 (0ms):   Local word bank — shows INSTANTLY on each keystroke.
+ * Tier 2 (~200ms): Market-aware suggestions from YouTube or Gemini research.
+ *
+ * Why no caching?
+ * To satisfy the requirement "Every search shows different suggestions",
+ * we let the backend handle rotation. Each fetch to the same query
+ * returns a different batch of trending/viral results.
+ */
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { generateLocalSuggestions } from '@/lib/localSuggestionGenerator';
 
 export interface SearchSuggestion {
     text: string;
-    type: 'history' | 'trending' | 'ai';
-    count?: number;
-    score?: number;
+    type: 'youtube' | 'google' | 'gemini' | 'ai' | 'history' | 'local';
+    source?: string;
+    isLocal?: boolean;
 }
 
 export interface UseSuggestionsOptions {
-    platform: string;
+    platform?: string;
     debounceMs?: number;
     minQueryLength?: number;
     maxResults?: number;
 }
 
-export function useSearchSuggestions(options: UseSuggestionsOptions) {
+export function useSearchSuggestions(options: UseSuggestionsOptions = {}) {
     const {
-        platform,
-        debounceMs = 200, // Google API cần debounce nhẹ để tránh spam
+        debounceMs = 200,    // Slightly longer debounce for better server rotation
         minQueryLength = 1,
-        maxResults = 10
+        maxResults = 8,
     } = options;
 
     const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
     const [loading, setLoading] = useState(false);
+    const [source, setSource] = useState<string>('none');
+    const [isLocalOnly, setIsLocalOnly] = useState(false);
 
-    // Cache: Lưu trữ kết quả đã fetch để tăng tốc { query: suggestions[] }
-    const cache = useRef<Record<string, SearchSuggestion[]>>({});
+    const abortRef = useRef<AbortController | null>(null);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const lastQuery = useRef<string>('');
 
-    const abortController = useRef<AbortController | null>(null);
-    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+    const fetchSuggestions = useCallback(
+        (query: string) => {
+            const q = query.trim();
 
-    const fetchSuggestions = useCallback(async (query: string) => {
-        const normalizedQuery = query.trim().toLowerCase();
-
-        // 1. Check Cache (Instant Response)
-        if (cache.current[normalizedQuery]) {
-            setSuggestions(cache.current[normalizedQuery]);
-            setLoading(false);
-            return;
-        }
-
-        if (!query || query.length < minQueryLength) {
-            setSuggestions([]);
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-
-        // Cancel previous request if any
-        if (abortController.current) {
-            abortController.current.abort();
-        }
-        abortController.current = new AbortController();
-
-        try {
-            // 2. Fetch Google Suggest API (Via Proxy)
-            // Đây là nguồn dữ liệu thông minh nhất thế giới hiện nay
-            const response = await fetch(
-                `/api/proxy-suggest?q=${encodeURIComponent(query)}`,
-                { signal: abortController.current.signal }
-            );
-
-            if (!response.ok) throw new Error('API Error');
-
-            const data = await response.json();
-            const rawSuggestions: string[] = data.suggestions || [];
-
-            // 3. Format & Limit Results
-            const formattedSuggestions: SearchSuggestion[] = rawSuggestions
-                .slice(0, maxResults)
-                .map(text => ({
-                    text: text,
-                    type: 'ai' // Google Suggest is AI/Trend based
-                }));
-
-            if (formattedSuggestions.length > 0) {
-                setSuggestions(formattedSuggestions);
-                cache.current[normalizedQuery] = formattedSuggestions; // Cache lại
-            } else {
+            if (!q || q.length < minQueryLength) {
                 setSuggestions([]);
+                setSource('none');
+                setLoading(false);
+                setIsLocalOnly(false);
+                lastQuery.current = '';
+                return;
             }
 
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                console.error('Google Suggest Error:', err);
-                // Giữ nguyên suggestions cũ nếu lỗi mạng, hoặc clear nếu cần
-            }
-        } finally {
-            if (abortController.current?.signal.aborted) return;
-            setLoading(false);
-        }
-    }, [platform, minQueryLength, maxResults]);
+            lastQuery.current = q;
+            console.log(`🔍 [Suggest] Input: "${q}"`);
 
-    const debouncedFetch = useCallback((query: string) => {
-        if (debounceTimer.current) {
-            clearTimeout(debounceTimer.current);
-        }
-        debounceTimer.current = setTimeout(() => {
-            fetchSuggestions(query);
-        }, debounceMs);
-    }, [fetchSuggestions, debounceMs]);
+            // ── TIER 1: Local instant (0ms) ───────────────────────────────────
+            const localItems = generateLocalSuggestions(q, maxResults);
+            setSuggestions(localItems.map(text => ({
+                text, type: 'local' as const, source: 'local', isLocal: true,
+            })));
+            setSource('local');
+            setIsLocalOnly(true);
 
-    const trackSearch = useCallback(async (query: string, resultCount?: number) => {
-        try {
-            await fetch(`${AI_SERVICE_URL}/api/search/track/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query,
-                    platform,
-                    result_count: resultCount
-                })
-            });
-        } catch (err) {
-            console.error('Track error:', err);
-        }
-    }, [platform]);
+            // ── TIER 2: Live API Suggestions ──────────────────────────────────
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+
+            debounceRef.current = setTimeout(async () => {
+                // Abort previous request
+                if (abortRef.current) abortRef.current.abort();
+                abortRef.current = new AbortController();
+                setLoading(true);
+
+                try {
+                    const url = `/api/proxy-tiktok-suggest?q=${encodeURIComponent(q)}&count=${maxResults}`;
+
+                    const res = await fetch(url, { signal: abortRef.current.signal });
+                    if (lastQuery.current !== q) return; // stale
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    const data = await res.json();
+                    const raw: string[] = data.suggestions || [];
+                    const apiSource: string = data.source || 'youtube';
+
+                    console.log(`🎯 [Suggest] Server Response: Query="${q}" | Source=${apiSource} | Count=${raw.length}`);
+
+                    if (raw.length > 0 && lastQuery.current === q) {
+                        const formatted: SearchSuggestion[] = raw.map(text => ({
+                            text,
+                            type: (apiSource === 'youtube' ? 'youtube'
+                                : apiSource === 'google' ? 'google'
+                                    : apiSource === 'gemini' ? 'gemini'
+                                        : 'ai') as SearchSuggestion['type'],
+                            source: apiSource,
+                            isLocal: false,
+                        }));
+
+                        // NO Front-end caching here! 
+                        // Reason: User wants the results to mutate every time they re-search.
+                        // The backend handles the rotation logic.
+
+                        setSuggestions(formatted);
+                        setSource(apiSource);
+                        setIsLocalOnly(false);
+                    }
+
+                } catch (err: any) {
+                    if (err.name === 'AbortError') return;
+                    console.error(`[Suggest Hook] Error: ${err?.message}`);
+                } finally {
+                    if (lastQuery.current === q) setLoading(false);
+                }
+            }, debounceMs);
+        },
+        [minQueryLength, maxResults, debounceMs],
+    );
 
     const clearSuggestions = useCallback(() => {
         setSuggestions([]);
+        setSource('none');
         setLoading(false);
+        setIsLocalOnly(false);
+        lastQuery.current = '';
+        if (abortRef.current) abortRef.current.abort();
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+    }, []);
+
+    const trackSearch = useCallback(async (query: string) => {
+        try {
+            await fetch('/api/proxy-tiktok-suggest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+        } catch { /* silent */ }
     }, []);
 
     useEffect(() => {
         return () => {
-            if (debounceTimer.current) clearTimeout(debounceTimer.current);
-            if (abortController.current) abortController.current.abort();
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            if (abortRef.current) abortRef.current.abort();
         };
     }, []);
 
     return {
         suggestions,
         loading,
-        error: null,
-        fetchSuggestions: debouncedFetch,
+        source,
+        isLocalOnly,
+        fetchSuggestions,
+        clearSuggestions,
         trackSearch,
-        clearSuggestions
+        error: null,
     };
 }
