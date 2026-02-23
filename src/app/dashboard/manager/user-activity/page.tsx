@@ -41,7 +41,7 @@ const UserActivityPage = () => {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'personal' | 'report' | 'checklist' | 'daily_checklist'>('performance');
+    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'personal' | 'checklist' | 'daily_checklist'>('performance');
     const [reportOutstandings, setReportOutstandings] = React.useState<any[]>([]);
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
@@ -218,14 +218,10 @@ const UserActivityPage = () => {
         { id: 'ranking', label: 'BXH', icon: Layout },
         { id: 'personal', label: 'Cá nhân', icon: User },
         { id: 'daily_checklist', label: 'Checklist ngày', icon: ClipboardList },
-        { id: 'checklist', label: 'Checklist', icon: CheckSquare },
-        { id: 'report', label: 'Báo cáo', icon: FileText }
+        { id: 'checklist', label: 'Checklist', icon: CheckSquare }
     ];
 
-    const visibleTabs = allTabs.filter(tab => {
-        if (userRole === 'member' && tab.id === 'report') return false;
-        return true;
-    });
+    const visibleTabs = allTabs;
 
     return (
         <div className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
@@ -296,7 +292,7 @@ const UserActivityPage = () => {
                 )}
 
                 {/* KPI Cards section */}
-                {activeTab !== 'report' && activeTab !== 'checklist' && activeTab !== 'personal' && (
+                {activeTab !== 'checklist' && activeTab !== 'personal' && (
                     <div className="relative z-10 transition-all duration-500">
                         <ActivityKPIs summary={summary} teamContributions={teamContributions} />
                     </div>
@@ -308,17 +304,8 @@ const UserActivityPage = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                             {reports.filter(r => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                                 <UserActivityCard key={report.id || idx} data={{
-                                    name: report.name,
-                                    position: report.position,
-                                    team: report.team,
-                                    avatar: report.avatar,
-                                    time: report.time,
-                                    dailyGoal: report.dailyGoal,
-                                    done: report.done,
-                                    traffic: report.traffic,
-                                    revenue: report.revenue,
-                                    reportStatus: report.status,
-                                    monthlyProgress: report.monthlyProgress
+                                    ...report,
+                                    reportStatus: report.status
                                 }} />
                             ))}
                         </div>
@@ -328,53 +315,26 @@ const UserActivityPage = () => {
                         <div className="space-y-12">
                             {(userRole === 'admin' || userRole === 'leader') ? (
                                 <>
-                                    {/* Grid of Team Members for Admin/Leader */}
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between px-4">
-                                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">
-                                                {userRole === 'admin' ? 'Tất cả thành viên' : `Thành viên Team ${userTeam}`}
-                                            </h3>
-                                            <span className="text-[10px] font-bold text-slate-400">Chọn một thành viên để xem chi tiết</span>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                                            {reports
-                                                .filter(r => {
-                                                    // For Admin, show all or filter by team if selected
-                                                    if (userRole === 'admin') {
-                                                        return activeTeam === 'All' || r.team === activeTeam;
-                                                    }
-                                                    // For Leader, show their team members (already filtered by API usually, but good to be sure)
-                                                    return r.team === userTeam;
-                                                })
-                                                .filter(r => r.name.toLowerCase().includes(searchName.toLowerCase()))
-                                                .map((report, idx) => (
-                                                    <UserActivityCard
-                                                        key={report.id || idx}
-                                                        isActive={searchName === report.name}
-                                                        onClick={() => setSearchName(report.name)}
-                                                        data={{
-                                                            ...report,
-                                                            reportStatus: report.status
-                                                        }}
-                                                    />
-                                                ))}
-                                        </div>
+                                    {/* Removed: Grid of Team Members for Admin/Leader header */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                                        {reports
+                                            .filter(r => userRole === 'admin' ? (activeTeam === 'All' || r.team === activeTeam) : r.team === userTeam)
+                                            .filter(r => r.name.toLowerCase().includes(searchName.toLowerCase()))
+                                            .map((report, idx) => (
+                                                <UserActivityCard
+                                                    key={report.id || idx}
+                                                    isActive={searchName === report.name}
+                                                    onClick={() => setSearchName(report.name)}
+                                                    data={{ ...report, reportStatus: report.status }}
+                                                />
+                                            ))}
                                     </div>
 
                                     {/* Detail View for Selected Member */}
-                                    {searchName && (
+                                    {searchName && personalHistory.history.length > 0 && (
                                         <div className="pt-12 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                            <div className="text-center mb-10">
-                                                <h2 className="text-xl font-black text-blue-600 uppercase tracking-tighter">
-                                                    Biểu đồ hiệu suất: {searchName}
-                                                </h2>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Dữ liệu tổng hợp theo tháng</p>
-                                            </div>
-                                            <PersonalCharts
-                                                history={personalHistory.history}
-                                                teamStats={personalHistory.teamStats}
-                                            />
+                                            {/* Removed: text-center mb-10 header */}
+                                            <PersonalCharts history={personalHistory.history} teamStats={personalHistory.teamStats} />
                                         </div>
                                     )}
                                 </>
@@ -390,11 +350,8 @@ const UserActivityPage = () => {
                                             </div>
                                         ) : (
                                             <div className="text-center py-20 bg-white/50 backdrop-blur-md rounded-[2rem] border border-white/20 shadow-inner w-full">
-                                                <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                    <User className="w-8 h-8 text-blue-400" />
-                                                </div>
-                                                <p className="text-slate-500 font-bold">Không tìm thấy dữ liệu cá nhân của bạn</p>
-                                                <p className="text-slate-400 text-[10px] mt-1 uppercase tracking-widest font-black">Vui lòng kiểm tra lại họ tên trong hệ thống</p>
+                                                <User className="w-8 h-8 text-blue-400 mx-auto mb-4" />
+                                                <p className="text-slate-500 font-bold">Không tìm thấy dữ liệu cá nhân</p>
                                             </div>
                                         )}
                                     </div>
@@ -415,40 +372,22 @@ const UserActivityPage = () => {
                                 if (dailyFilter === 'all') return true;
                                 const content = (r.content?.toLowerCase() || '').normalize('NFC');
                                 if (dailyFilter === 'win') return content.includes('win');
-                                if (dailyFilter === 'idea') return content.includes('đóng góp') || content.includes('ý kiến') || content.includes('cải tiến');
-                                if (dailyFilter === 'difficulty') return !content.includes('win') && !content.includes('đóng góp') && !content.includes('ý kiến') && !content.includes('cải tiến');
+                                if (dailyFilter === 'idea') return content.includes('đóng góp') || content.includes('ý kĩen') || content.includes('cải tiến');
                                 return true;
                             });
 
-                        const getReportStats = (items: any[]) => {
-                            // Stats should always be calculated from the list BEFORE the dailyFilter but AFTER team/search filters
-                            const baseItems = reportOutstandings
-                                .filter(r => activeTeam === 'All' || r.team === activeTeam)
-                                .filter(r => r.name.toLowerCase().includes(searchName.toLowerCase()));
-
-                            let wins = 0;
-                            let ideas = 0;
-                            let difficulties = 0;
-
-                            baseItems.forEach(r => {
-                                const content = (r.content?.toLowerCase() || '').normalize('NFC');
-                                if (content.includes('win')) {
-                                    wins++;
-                                } else if (content.includes('đóng góp') || content.includes('ý kiến') || content.includes('cải tiến')) {
-                                    ideas++;
-                                } else {
-                                    difficulties++;
-                                }
-                            });
-
-                            return { wins, ideas, difficulties };
+                        const stats = {
+                            wins: reportOutstandings.filter(r => (r.content?.toLowerCase() || '').normalize('NFC').includes('win')).length,
+                            ideas: reportOutstandings.filter(r => (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/)).length,
+                            difficulties: reportOutstandings.filter(r => {
+                                const c = (r.content?.toLowerCase() || '').normalize('NFC');
+                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
+                            }).length
                         };
-
-                        const stats = getReportStats(filteredOutstandings);
 
                         return (
                             <div className="space-y-3">
-                                {/* Stats Summary Table/Grid */}
+                                {/* Stats Summary */}
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between px-4">
                                         <div className="flex items-center gap-3">
@@ -456,134 +395,63 @@ const UserActivityPage = () => {
                                                 <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
                                                 Vấn đề nổi bật & Video Win
                                             </h3>
-                                            {dailyFilter !== 'all' && (
-                                                <button
-                                                    onClick={() => setDailyFilter('all')}
-                                                    className="text-[8px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md hover:bg-slate-200 transition-colors uppercase tracking-widest"
-                                                >
-                                                    Xem tất cả ✕
-                                                </button>
-                                            )}
                                         </div>
-                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                            {activeTeam === 'All' ? 'Toàn công ty' : `Team ${activeTeam}`} • {selectedDate.toLocaleDateString('vi-VN')}
-                                        </span>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-1">
-                                        <button
-                                            onClick={() => setDailyFilter(dailyFilter === 'win' ? 'all' : 'win')}
-                                            className={`border rounded-xl p-2.5 flex items-center justify-between group transition-all duration-300 ${dailyFilter === 'win'
-                                                ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20'
-                                                : 'bg-green-50/50 border-green-100 hover:bg-green-50'
-                                                }`}
-                                        >
-                                            <div>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-0 ${dailyFilter === 'win' ? 'text-green-100' : 'text-green-600/70'}`}>Video Win</p>
-                                                <h4 className={`text-xl font-black leading-none ${dailyFilter === 'win' ? 'text-white' : 'text-green-600'}`}>{stats.wins}</h4>
-                                            </div>
-                                            <div className={`w-7 h-7 rounded-lg shadow-sm flex items-center justify-center text-xs group-hover:scale-110 transition-transform ${dailyFilter === 'win' ? 'bg-green-500 text-white' : 'bg-white'}`}>🏆</div>
+                                        <button onClick={() => setDailyFilter(dailyFilter === 'win' ? 'all' : 'win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
+                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'win' ? 'text-green-100' : 'text-green-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'win' ? 'text-white' : 'text-green-600'}`}>{stats.wins}</h4></div>
+                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
                                         </button>
-
-                                        <button
-                                            onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')}
-                                            className={`border rounded-xl p-2.5 flex items-center justify-between group transition-all duration-300 ${dailyFilter === 'idea'
-                                                ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20'
-                                                : 'bg-blue-50/50 border-blue-100 hover:bg-blue-50'
-                                                }`}
-                                        >
-                                            <div>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p>
-                                                <h4 className={`text-xl font-black leading-none ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{stats.ideas}</h4>
-                                            </div>
-                                            <div className={`w-7 h-7 rounded-lg shadow-sm flex items-center justify-center text-xs group-hover:scale-110 transition-transform ${dailyFilter === 'idea' ? 'bg-blue-500 text-white' : 'bg-white'}`}>💡</div>
+                                        <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
+                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{stats.ideas}</h4></div>
+                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
                                         </button>
-
-                                        <button
-                                            onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')}
-                                            className={`border rounded-xl p-2.5 flex items-center justify-between group transition-all duration-300 ${dailyFilter === 'difficulty'
-                                                ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20'
-                                                : 'bg-orange-50/50 border-orange-100 hover:bg-orange-50'
-                                                }`}
-                                        >
-                                            <div>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p>
-                                                <h4 className={`text-xl font-black leading-none ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{stats.difficulties}</h4>
-                                            </div>
-                                            <div className={`w-7 h-7 rounded-lg shadow-sm flex items-center justify-center text-xs group-hover:scale-110 transition-transform ${dailyFilter === 'difficulty' ? 'bg-orange-500 text-white' : 'bg-white'}`}>🛡️</div>
+                                        <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
+                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{stats.difficulties}</h4></div>
+                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
                                         </button>
                                     </div>
                                 </div>
 
+                                {/* Outstanding Items Table */}
                                 <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
-                                    <div className="max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                                    <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
                                         <table className="w-full border-collapse text-left">
-                                            <thead className="sticky top-0 z-20 shadow-sm">
-                                                <tr className="bg-[#FAEEDD]">
-                                                    <th className="px-3 py-1.5 text-[8px] font-black text-slate-800 uppercase tracking-widest border-b border-orange-100/50">ND</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black text-slate-800 uppercase tracking-widest border-b border-orange-100/50">Nhân viên</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black text-slate-800 uppercase tracking-widest border-b border-orange-100/50">Team</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black text-slate-800 uppercase tracking-widest border-b border-orange-100/50">ND Ý tưởng</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black text-slate-800 uppercase tracking-widest border-b border-orange-100/50 text-center">Xử lý</th>
+                                            <thead className="sticky top-0 z-20 bg-[#FAEEDD] shadow-sm">
+                                                <tr>
+                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND</th>
+                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Nhân viên</th>
+                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Team</th>
+                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND Ý tưởng</th>
+                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50 text-center">Xử lý</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {filteredOutstandings.length > 0 ? (
-                                                    filteredOutstandings.map((r, idx) => {
-                                                        const contentLower = (r.content?.toLowerCase() || '').normalize('NFC');
-                                                        const isWin = contentLower.includes('win');
-                                                        const isIdea = contentLower.includes('đóng góp') || contentLower.includes('ý kiến') || contentLower.includes('cải tiến');
-
-                                                        return (
-                                                            <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all duration-200 group">
-                                                                <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border shadow-sm ${isWin ? 'bg-green-50 text-green-600 border-green-100' :
-                                                                        isIdea ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                            'bg-orange-50 text-orange-600 border-orange-100'
-                                                                        }`}>
-                                                                        {r.content?.toUpperCase().replace('VIDEO SẢN PHẨM WIN', 'WIN').replace('Ý KIẾN ĐÓNG GÓP CẢI TIẾN MỚI', 'Ý TƯỞNG').replace('KHÓ KHĂN CẦN HỖ TRỢ', 'KHÓ KHĂN')}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">
-                                                                    {r.name}
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic tracking-tighter">
-                                                                    {r.team}
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                    <p className="text-[10px] text-slate-600 font-medium leading-tight italic max-w-[200px] truncate">
-                                                                        "{r.idea_content}"
-                                                                    </p>
-                                                                </td>
-                                                                <td className="px-3 py-1.5 text-center">
-                                                                    <button
-                                                                        onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
-                                                                        disabled={!!r.status}
-                                                                        className={`px-3 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-500 shadow-sm active:scale-95 whitespace-nowrap ${r.status === 'đã duyệt' ? 'bg-green-100/50 text-green-700 border border-green-200/50 cursor-default opacity-80' :
-                                                                            r.status === 'đã hỗ trợ' ? 'bg-orange-100/50 text-orange-700 border border-orange-200/50 cursor-default opacity-80' :
-                                                                                isWin ? 'bg-green-600 text-white hover:bg-green-700' :
-                                                                                    isIdea ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                                                                                        'bg-orange-500 text-white hover:bg-orange-600'
-                                                                            }`}>
-                                                                        {r.status === 'đã duyệt' ? '✓ Duyệt' :
-                                                                            r.status === 'đã hỗ trợ' ? '✓ Hỗ trợ' :
-                                                                                (isWin || isIdea ? 'Duyệt' : 'Hỗ trợ')}
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan={5} className="py-32 text-center">
-                                                            <div className="flex flex-col items-center justify-center space-y-4 opacity-30">
-                                                                <ClipboardList className="w-12 h-12 text-slate-400" />
-                                                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest italic">
-                                                                    Chưa có dữ liệu cho ngày hôm nay
-                                                                </p>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
+                                                {filteredOutstandings.length > 0 ? filteredOutstandings.map((r, idx) => {
+                                                    const isWin = (r.content?.toLowerCase() || '').normalize('NFC').includes('win');
+                                                    const isIdea = (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
+                                                    return (
+                                                        <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
+                                                            <td className="px-3 py-1.5 border-r border-slate-50">
+                                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${isWin ? 'bg-green-50 text-green-600 border-green-100' : isIdea ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                                                                    {r.content?.toUpperCase().replace('VIDEO SẢN PHẨM WIN', 'WIN').replace('Ý KIẾN ĐÓNG GÓP CẢI TIẾN MỚI', 'Ý TƯỞNG').replace('KHÓ KHĂN CẦN HỖ TRỢ', 'KHÓ KHĂN')}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
+                                                            <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
+                                                            <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 italic truncate max-w-[200px]">"{r.idea_content}"</td>
+                                                            <td className="px-3 py-1.5 text-center">
+                                                                <button
+                                                                    onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
+                                                                    disabled={!!r.status}
+                                                                    className={`px-3 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm ${r.status ? 'bg-slate-100 text-slate-400 cursor-default' : isWin ? 'bg-green-600 text-white hover:bg-green-700' : isIdea ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
+                                                                    {r.status ? `✓ ${r.status.split(' ')[1]}` : (isWin || isIdea ? 'Duyệt' : 'Hỗ trợ')}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }) : (
+                                                    <tr><td colSpan={5} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -594,25 +462,14 @@ const UserActivityPage = () => {
                                 <div className="space-y-4 mt-8">
                                     <div className="flex items-center justify-between px-4">
                                         <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                            <FileText className="w-3.5 h-3.5 text-blue-600" />
-                                            Chi tiết báo cáo ngày
+                                            <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
                                         </h3>
                                     </div>
-
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {reports.length > 0 ? (
-                                            reports
-                                                .filter((r: any) => activeTeam === 'All' || r.team === activeTeam)
-                                                .filter((r: any) => r.name.toLowerCase().includes(searchName.toLowerCase()))
-                                                .map((report: any) => (
-                                                    <ReportCard key={report.id} report={report} />
-                                                ))
-                                        ) : (
-                                            <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
-                                                    Không tìm thấy báo cáo chi tiết
-                                                </p>
-                                            </div>
+                                        {reports.length > 0 ? reports.filter(r => (activeTeam === 'All' || r.team === activeTeam) && r.name.toLowerCase().includes(searchName.toLowerCase())).map(report => (
+                                            <ReportCard key={report.id} report={report} />
+                                        )) : (
+                                            <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
                                         )}
                                     </div>
                                 </div>
@@ -623,32 +480,7 @@ const UserActivityPage = () => {
                             <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100">
                                 <ChecklistContainer />
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {loading ? (
-                                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur rounded-[2rem] border border-white/20">
-                                        <div className="relative">
-                                            <RefreshCw className="w-12 h-12 animate-spin text-blue-600 opacity-20" />
-                                            <RefreshCw className="w-12 h-12 animate-spin text-blue-600 absolute top-0 left-0 [animation-delay:-0.5s]" />
-                                        </div>
-                                        <p className="mt-4 text-xs font-black text-slate-400 uppercase tracking-widest">Đang tải dữ liệu...</p>
-                                    </div>
-                                ) : reports.length > 0 ? (
-                                    reports.filter((r: any) => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report: any) => (
-                                        <ReportCard key={report.id} report={report} />
-                                    ))
-                                ) : (
-                                    <div className="col-span-full text-center py-20 bg-white/50 backdrop-blur-md rounded-[2rem] border border-white/20 shadow-inner">
-                                        <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <FileText className="w-6 h-6 text-slate-400" />
-                                        </div>
-                                        <p className="text-sm font-bold text-slate-500 italic">
-                                            Không tìm thấy báo cáo nào cho {activeTeam !== 'All' ? `team ${activeTeam}` : ''} ngày {selectedDate.toLocaleDateString('vi-VN')}.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        ) : null}
                 </main>
             </div>
         </div>
