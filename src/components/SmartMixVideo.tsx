@@ -271,6 +271,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     };
 
+    const [audioElapsed, setAudioElapsed] = useState<number>(0);
+    const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     const handleGenerateAudio = async () => {
         if (!generatedScript || !selectedVoiceId) {
             toast.error('❌ Cần có script và voice để generate audio!');
@@ -278,6 +281,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
 
         setGeneratingAudio(true);
+        setAudioElapsed(0);
+
+        // Start elapsed timer
+        const startTime = Date.now();
+        audioTimerRef.current = setInterval(() => {
+            setAudioElapsed(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
+
         try {
             const response = await fetch(`${AI_SERVICE_URL}/api/videos/generate-audio/`, {
                 method: 'POST',
@@ -302,12 +313,21 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 const blob = await audioRes.blob();
                 setAudioFile(new File([blob], 'generated_audio.mp3', { type: 'audio/mpeg' }));
 
-                toast.success(`✅ Đã tạo audio với voice: ${data.voice_name}`);
+                if (data.cached) {
+                    toast.success(`⚡ Cache HIT! Audio trả về tức thì (${data.elapsed}s)`, { duration: 3000 });
+                } else {
+                    const chunkInfo = data.chunks > 1 ? ` (${data.chunks} chunks song song)` : '';
+                    toast.success(`✅ Đã tạo audio trong ${data.elapsed}s${chunkInfo} — voice: ${data.voice_name}`);
+                }
             }
         } catch (error: any) {
             toast.error(error.message);
         } finally {
             setGeneratingAudio(false);
+            if (audioTimerRef.current) {
+                clearInterval(audioTimerRef.current);
+                audioTimerRef.current = null;
+            }
         }
     };
 
@@ -977,7 +997,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     }`}>
                     <label className="block text-base font-bold mb-4 flex items-center gap-2">
                         <span className={useA4Formula ? 'text-orange-400' : 'text-gray-400'}>
-                            🎯 Công thức A4 V2 (7 Slots)
+                            🎯 Công thức A4 V3 (7 Slots)
                         </span>
                         {contentType === 'A4' && (
                             <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">
@@ -989,7 +1009,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         onClick={() => {
                             setUseA4Formula(!useA4Formula);
                             if (!useA4Formula) {
-                                toast.success('✅ ĐÃ BẬT CÔNG THỨC A4 V2! Video sẽ mix theo 7 slots với 3 split layouts', { duration: 4000 });
+                                toast.success('✅ ĐÃ BẬT CÔNG THỨC A4 V3! Video sẽ mix theo 7 slots, không có split layout', { duration: 4000 });
                             } else {
                                 toast('○ Đã tắt A4 - sẽ dùng Random mode', { duration: 3000 });
                             }
@@ -999,12 +1019,12 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             : 'bg-[#0a0a0a] border-2 border-gray-700 text-gray-400 hover:border-orange-500/50 hover:text-orange-400 hover:scale-105'
                             }`}
                     >
-                        {useA4Formula ? '✅ A4 V2 ENABLED (7 slots, flexible duration)' : '○ CLICK ĐỂ BẬT CÔNG THỨC A4 V2'}
+                        {useA4Formula ? '✅ A4 V3 ENABLED (7 slots, flexible duration)' : '○ CLICK ĐỂ BẬT CÔNG THỨC A4 V3'}
                     </button>
                     <p className="text-sm mt-3 text-center font-medium">
                         {useA4Formula ? (
                             <span className="text-orange-300">
-                                ✓ Mix theo 7 slots với flexible duration + 3 split layouts (30/70, 70/30)
+                                ✓ Mix theo 7 slots với flexible duration (không có split layout)
                             </span>
                         ) : (
                             <span className="text-gray-500">
@@ -1048,7 +1068,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             </p>
                         </div>
 
-                        <div className="flex items-end">
+                        <div className="flex flex-col gap-2">
                             <button
                                 onClick={handleGenerateAudio}
                                 disabled={!generatedScript || !selectedVoiceId || generatingAudio}
@@ -1057,7 +1077,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                 {generatingAudio ? (
                                     <>
                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                        Đang tạo audio...
+                                        <span>Đang tạo audio... {audioElapsed}s</span>
                                     </>
                                 ) : (
                                     <>
@@ -1066,6 +1086,29 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                     </>
                                 )}
                             </button>
+                            {generatingAudio && (
+                                <div className="space-y-1">
+                                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000"
+                                            style={{
+                                                width: `${Math.min(
+                                                    (audioElapsed / (generatedScript && generatedScript.length > 1000 ? 15 : generatedScript && generatedScript.length > 500 ? 10 : 6)) * 100,
+                                                    95
+                                                )}%`
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 text-center">
+                                        {generatedScript && generatedScript.length > 500
+                                            ? `⚡ Script dài → chia ${Math.ceil(generatedScript.length / 500)} chunks song song`
+                                            : '📡 Đang gọi HeyGen API...'
+                                        }
+                                        {' • '}
+                                        Ước tính ~{generatedScript && generatedScript.length > 1000 ? '10-15' : generatedScript && generatedScript.length > 500 ? '6-10' : '4-6'}s
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1135,8 +1178,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         <div className="flex items-center gap-3">
                             <CheckCircle className="w-6 h-6" />
                             <div>
-                                <p className="font-bold text-lg">🎯 Công thức A4 V2 đã được kích hoạt</p>
-                                <p className="text-sm text-orange-100">Mix theo 7 slots với flexible duration + 3 split layouts</p>
+                                <p className="font-bold text-lg">🎯 Công thức A4 V3 đã được kích hoạt</p>
+                                <p className="text-sm text-orange-100">Mix theo 7 slots với flexible duration (không split layout)</p>
                             </div>
                         </div>
                         {contentType === 'A4' && (
@@ -1153,15 +1196,15 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 <div className="bg-gradient-to-r from-orange-900/20 to-red-900/20 p-6 rounded-xl border border-orange-500/20">
                     <h3 className="text-lg font-semibold text-orange-400 mb-4 flex items-center gap-2">
                         <Film className="w-5 h-5" />
-                        Công thức A4 V2 (7 Slots, Flexible Duration)
+                        Công thức A4 V3 (7 Slots, Flexible Duration)
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         {[
                             { slot: 1, name: 'Sản phẩm', duration: 'Flexible', color: 'bg-blue-500/20 border-blue-500/30', desc: 'Intro' },
                             { slot: 2, name: 'HuyK', duration: 'Flexible', color: 'bg-green-500/20 border-green-500/30', desc: 'KOC' },
-                            { slot: 3, name: 'SPLIT 1', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'CT 30% / CT 70%' },
-                            { slot: 4, name: 'SPLIT 2', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'CT 30% / HK 70%' },
-                            { slot: 5, name: 'SPLIT 3', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'HK 30% / CT 70%' },
+                            { slot: 3, name: 'Chế tác', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'Fullscreen' },
+                            { slot: 4, name: 'HuyK', duration: 'Flexible', color: 'bg-green-500/20 border-green-500/30', desc: 'KOC (lặp lại)' },
+                            { slot: 5, name: 'Chế tác', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'Fullscreen (lặp lại)' },
                             { slot: 6, name: 'Sản phẩm HT', duration: 'Flexible', color: 'bg-blue-500/20 border-blue-500/30', desc: 'Hoàn thiện' },
                             { slot: 7, name: 'Outro', duration: 'Original', color: 'bg-pink-500/20 border-pink-500/30', desc: 'Audio gốc ✨' },
                         ].map(item => (
@@ -1179,14 +1222,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
                     <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                         <p className="text-xs text-orange-300 font-semibold mb-2">
-                            ⚠️ Đặc biệt: 3 SPLIT LAYOUTS với tỉ lệ khác nhau
+                            ℹ️ Cấu trúc A4 V3 — Fullscreen, không split
                         </p>
                         <p className="text-xs text-gray-400">
-                            • Slot 3: Chế tác Above (30%) / Chế tác Below (70%)<br />
-                            • Slot 4: Chế tác (30%) / HuyK (70%)<br />
-                            • Slot 5: HuyK (30%) / Chế tác (70%)<br />
-                            • Slot 1-6: Duration = audio_duration / 6 (flexible)<br />
-                            • Slot 7: Duration = video outro gốc (giữ nguyên audio)
+                            • Slot 1–6: Duration = audio_duration / 6 (flexible)<br />
+                            • Slot 2 &amp; 4 dùng chung folder HuyK (chọn video khác nhau)<br />
+                            • Slot 3 &amp; 5 dùng chung folder Chế tác (chọn video khác nhau)<br />
+                            • Slot 7: Duration = video outro gốc (giữ nguyên audio)<br />
+                            • Tất cả slots đều là video đơn giản, fullscreen (không split layout)
                         </p>
                     </div>
 
@@ -1225,7 +1268,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-900/40"
                     >
                         <Zap className="w-5 h-5" />
-                        {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (8 slots)' : '⚡ BẮT ĐẦU SMART MIX (5-13s)'}
+                        {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ BẮT ĐẦU SMART MIX (5-13s)'}
                     </button>
                 )}
 

@@ -1,45 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle, Share2, Music2, Hash, Play, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GenerateContentButton from '@/components/content/GenerateContentButton';
 import SearchAutocomplete from '@/components/SearchAutocomplete';
-
-// Updated Interface to match Backend 'VideoSerializer'
-interface ScrapedVideo {
-  id: number;
-  platform: string;
-  video_id: string; // TikTok ID
-  title: string;
-  description: string;
-  author_username: string;
-  author_name: string;
-  likes_count: number;
-  views_count: number;
-  comments_count: number;
-  shares_count: number;
-  video_url: string;
-  download_url: string;
-  thumbnail_url: string;
-  published_at: string;
-  hashtags: string[];
-  raw_data: any;
-}
+import { useTikTokSearchStore, ScrapedVideo } from '@/store/tiktok-search-store';
 
 export default function TikTokSearchPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<'keyword' | 'hashtag'>('keyword');
+  // ── Zustand store — persist khi navigate sang trang khác và quay lại ──
+  const {
+    searchTerm, setSearchTerm,
+    searchType, setSearchType,
+    maxPosts, setMaxPosts,
+    videos, setVideos,
+    currentPage, setCurrentPage,
+    normalizedQuery, setNormalizedQuery,
+    error, setError,
+    loading, setLoading,
+    isFetchingMore, setIsFetchingMore,
+    taskId, setTaskId,
+    reset,
+  } = useTikTokSearchStore();
+
   const [sortType, setSortType] = useState<'general' | 'hot' | 'latest'>('general');
-  // Start with a small batch again since we stopped over-filtering.
-  const [maxPosts, setMaxPosts] = useState(30);
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-  const [loading, setLoading] = useState(false);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [videos, setVideos] = useState<ScrapedVideo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [normalizedQuery, setNormalizedQuery] = useState<string | null>(null);
 
   // Calculate Pagination variables
   const totalPages = Math.ceil(videos.length / itemsPerPage);
@@ -49,6 +34,60 @@ export default function TikTokSearchPage() {
   const indexOfLastVideo = safeCurrentPage * itemsPerPage;
   const indexOfFirstVideo = indexOfLastVideo - itemsPerPage;
   const currentVideos = videos.slice(indexOfFirstVideo, indexOfLastVideo);
+
+  // ── Polling Background Task (Celery) ──
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    const checkStatus = async () => {
+      if (!taskId) return;
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const token = localStorage.getItem('auth_token');
+
+        // Correct polling URL
+        const response = await fetch(`${apiUrl}/ai/search/status/${taskId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to check status');
+        }
+
+        const data = await response.json();
+
+        if (data.ready) {
+          if (data.successful && data.result) {
+            const newVideos: ScrapedVideo[] = data.result.results || [];
+            setVideos(newVideos);
+            if (videos.length === 0) setCurrentPage(1);
+          } else {
+            setError(data.result?.error || 'Search failed on server');
+          }
+          setLoading(false);
+          setIsFetchingMore(false);
+          setTaskId(null);
+        }
+      } catch (err: any) {
+        console.error('Polling error', err);
+        setError(err.message || 'Failed to check search status');
+        setLoading(false);
+        setIsFetchingMore(false);
+        setTaskId(null);
+      }
+    };
+
+    if (taskId && (loading || isFetchingMore)) {
+      intervalId = setInterval(checkStatus, 3000); // Polling every 3s
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [taskId, loading, isFetchingMore]);
 
   const handlePageChange = async (pageNumber: number) => {
     // If user is trying to go beyond current known pages, we need to load more
@@ -73,7 +112,7 @@ export default function TikTokSearchPage() {
     // After loading, ideally we go to the next page. 
     // Current page is likely 'totalPages' (before update).
     // We want to move to the next one if data came in.
-    setCurrentPage(prev => prev + 1);
+    setCurrentPage(currentPage + 1);
   };
 
   const handleSearch = async (reset = true, overrideMaxResult?: number) => {
@@ -146,7 +185,8 @@ export default function TikTokSearchPage() {
           search_type: 'posts',
           use_cache: false,
           min_views: 0,
-          min_likes: 0
+          min_likes: 0,
+          async_mode: true
         }),
       });
 
@@ -156,21 +196,29 @@ export default function TikTokSearchPage() {
         throw new Error(data.error || 'Search failed');
       }
 
-      if (data.success && data.results) {
+      // If async_mode = true, backend returns task_id
+      if (data.async_mode && data.task_id) {
+        setTaskId(data.task_id);
+        // Do not turn off loading here. Polling will handle it.
+      } else if (data.success && data.results) {
+        // Fallback sync mode
         const newVideos: ScrapedVideo[] = data.results || [];
         setVideos(newVideos);
-
-        // If we reset, ensure we are on page 1
+        setLoading(false);
+        setIsFetchingMore(false);
         if (reset) setCurrentPage(1);
-
       } else {
         if (reset) setVideos([]);
         if (!data.success) throw new Error(data.error || 'No data returned');
+        setLoading(false);
+        setIsFetchingMore(false);
+        setTaskId(null);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to search TikTok');
-    } finally {
       setLoading(false);
+      setIsFetchingMore(false);
+      setTaskId(null);
     }
   };
 
