@@ -29,6 +29,19 @@ export default function LandingPage() {
         }
     }, []);
 
+    // Re-validate auth state on landing page mount.
+    // This ensures that after backend restart (dev),
+    // any old tokens are checked against /auth/profile
+    // and cleared if no longer valid.
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token');
+        if (token && typeof window !== 'undefined') {
+            // Use store's loadUser to validate token with backend.
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            useAuthStore.getState().loadUser();
+        }
+    }, []);
+
     const toggleTheme = () => {
         const newMode = !isDarkMode;
         setIsDarkMode(newMode);
