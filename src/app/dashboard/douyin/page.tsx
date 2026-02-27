@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle, Share2, User, Music, Hash } from 'lucide-react';
+import { Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle, Share2, User, Music, Hash, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SearchAutocomplete from '@/components/SearchAutocomplete';
+import apiClient from '@/lib/api-client';
 
 interface DouyinVideo {
   video_id: string;
@@ -24,11 +26,88 @@ interface DouyinVideo {
 export default function DouyinScraperPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'keyword' | 'hashtag'>('keyword');
-  const [maxPosts, setMaxPosts] = useState(50);
+  const [maxPosts, setMaxPosts] = useState(6);
   const [loading, setLoading] = useState(false);
   const [videos, setVideos] = useState<DouyinVideo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [trackedChannels, setTrackedChannels] = useState<Set<string>>(new Set());
+
+  const handleFollowChannel = async (video: DouyinVideo) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${baseUrl}/ai/user-videos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'douyin',
+          username: video.author_username.replace('@', ''),
+          max_results: 1
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Lỗi khi lấy thông tin kênh');
+      }
+
+      let payload: any = {};
+
+      if (data.profile) {
+        payload = {
+          platform: 'DOUYIN',
+          username: data.profile.username,
+          display_name: data.profile.display_name,
+          avatar_url: data.profile.avatar_url,
+          total_followers: data.profile.follower_count,
+          total_likes: data.profile.total_likes,
+          total_videos: (data.results && data.results.length === 0) ? 0 : (data.profile.total_videos || 0),
+          total_views: data.profile.total_views || data.results?.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0) || 0,
+          engagement_rate: data.profile.engagement_rate || 0
+        };
+      } else if (data.success && data.results && data.results.length > 0) {
+        const firstVideo = data.results[0];
+        const authorMeta = firstVideo.raw_data?.authorMeta || firstVideo.raw_data?.author || {};
+
+        const totalFollowers = authorMeta.fans || authorMeta.followerCount || 0;
+        const totalLikes = authorMeta.heart || authorMeta.diggCount || 0;
+        const totalVideos = data.results.length === 0 ? 0 : (authorMeta.video || authorMeta.videoCount || data.results.length);
+        const totalViews = data.results.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0);
+        const engagementRate = totalFollowers > 0 ? (totalLikes / totalFollowers) * 100 : 0;
+
+        payload = {
+          platform: 'DOUYIN',
+          username: video.author_username.replace('@', ''),
+          display_name: authorMeta.nickName || authorMeta.nickname || firstVideo.author_name || video.author_name,
+          avatar_url: authorMeta.avatar || authorMeta.avatar_thumb?.url_list?.[0] || firstVideo.thumbnail_url || video.author_avatar,
+          total_followers: totalFollowers,
+          total_likes: totalLikes,
+          total_views: totalViews,
+          total_videos: totalVideos,
+          engagement_rate: parseFloat(engagementRate.toFixed(2))
+        };
+      } else {
+        // Fallback into basic payload if not found
+        payload = {
+          platform: 'DOUYIN',
+          username: video.author_username.replace('@', ''),
+          display_name: video.author_name,
+          avatar_url: video.author_avatar,
+          total_followers: 0,
+          total_likes: 0,
+          total_videos: 0,
+          total_views: 0,
+          engagement_rate: 0
+        };
+      }
+
+      await apiClient.post('/tracked-channels', payload);
+      setTrackedChannels(prev => new Set(prev).add(video.author_username));
+    } catch (error: any) {
+      alert(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi theo dõi kênh');
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
@@ -38,7 +117,29 @@ export default function DouyinScraperPage() {
 
     setLoading(true);
     setError(null);
-    setVideos([]);
+
+    let finalSearchTerm = searchTerm.trim();
+
+    // ── Pre-search Translation for better results ───────────────────────────
+    // Continue translating if there are still Latin/Vietnamese characters in the term
+    if (searchType === 'keyword' && /[a-zA-Z\u00C0-\u1EF9]/.test(finalSearchTerm)) {
+      try {
+        const transRes = await fetch('/api/translate-chinese', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: finalSearchTerm }),
+        });
+        if (transRes.ok) {
+          const transData = await transRes.json();
+          if (transData.success && transData.translated) {
+            finalSearchTerm = transData.translated;
+            setSearchTerm(finalSearchTerm); // Show translated text to user
+          }
+        }
+      } catch (err) {
+        console.warn("Pre-search translation failed, searching with original:", err);
+      }
+    }
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -48,14 +149,14 @@ export default function DouyinScraperPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          searchTerm: searchTerm.trim(),
+          searchTerm: finalSearchTerm,
           searchType,
           maxPosts,
         }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Search failed');
       }
@@ -74,7 +175,7 @@ export default function DouyinScraperPage() {
   };
 
   const loadMore = () => {
-    setMaxPosts(prev => prev + 50);
+    setMaxPosts(prev => prev + 6);
     handleSearch();
   };
 
@@ -110,22 +211,20 @@ export default function DouyinScraperPage() {
           <div className="flex gap-3 mb-4">
             <button
               onClick={() => setSearchType('keyword')}
-              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                searchType === 'keyword'
-                  ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${searchType === 'keyword'
+                ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
             >
               <Search className="w-4 h-4 inline mr-2" />
               Keyword
             </button>
             <button
               onClick={() => setSearchType('hashtag')}
-              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
-                searchType === 'hashtag'
-                  ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${searchType === 'hashtag'
+                ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
             >
               <Hash className="w-4 h-4 inline mr-2" />
               Hashtag
@@ -133,19 +232,19 @@ export default function DouyinScraperPage() {
           </div>
 
           {/* Search Input */}
-          <div className="flex gap-3">
-            <input
-              type="text"
+          <div className="relative z-10">
+            <SearchAutocomplete
+              platform="DOUYIN"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onChange={setSearchTerm}
+              onSearch={handleSearch}
               placeholder={searchType === 'keyword' ? 'Nhập từ khóa...' : 'Nhập hashtag (không cần #)...'}
-              className="flex-1 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors"
+              className="mb-4"
             />
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
             >
               {loading ? (
                 <>
@@ -187,7 +286,7 @@ export default function DouyinScraperPage() {
               </div>
 
               {/* Optimized Video Grid */}
-              <motion.div 
+              <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -221,11 +320,11 @@ export default function DouyinScraperPage() {
                       {/* Author */}
                       <div className="flex items-center gap-2 mb-3">
                         {video.author_avatar ? (
-                          <img 
-                              src={video.author_avatar} 
-                              alt="" 
-                              className="w-8 h-8 rounded-full object-cover" 
-                              loading="lazy"
+                          <img
+                            src={video.author_avatar}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover"
+                            loading="lazy"
                           />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
@@ -280,15 +379,39 @@ export default function DouyinScraperPage() {
                         </div>
                       )}
 
-                      {/* Link */}
-                      <a
-                        href={video.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg text-center transition-colors mt-auto"
-                      >
-                        Xem trên Douyin
-                      </a>
+                      {/* Footer Actions */}
+                      <div className="flex gap-2 mt-auto pt-3">
+                        <a
+                          href={video.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg text-center transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Video className="w-4 h-4" />
+                          <span>Douyin</span>
+                        </a>
+                        <button
+                          onClick={() => handleFollowChannel(video)}
+                          disabled={trackedChannels.has(video.author_username)}
+                          className={`flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50 ${trackedChannels.has(video.author_username)
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20'
+                            }`}
+                          title={trackedChannels.has(video.author_username) ? 'Đã theo dõi' : 'Theo dõi kênh này'}
+                        >
+                          {trackedChannels.has(video.author_username) ? (
+                            <>
+                              <Check className="w-4 h-4 mr-1" />
+                              <span>Đã theo dõi</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-1" />
+                              <span>Theo dõi</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -302,7 +425,7 @@ export default function DouyinScraperPage() {
                     disabled={loading}
                     className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium disabled:opacity-50 transition-all"
                   >
-                    Xem thêm 50 video
+                    Xem thêm 6 video
                   </button>
                 </div>
               )}
