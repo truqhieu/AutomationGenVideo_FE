@@ -33,6 +33,7 @@ export default function TrackedChannelsPage() {
   const [loading, setLoading] = useState(false);
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
   const [searchChannelQuery, setSearchChannelQuery] = useState('');
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   // Fetch tracked channels on mount
   useEffect(() => {
@@ -452,11 +453,26 @@ export default function TrackedChannelsPage() {
 
                 {/* View Dashboard Button */}
                 <button
-                  onClick={() => router.push(`/dashboard/ai/analytics/${channel.username}?platform=${channel.platform}`)}
-                  className="w-full py-3 border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 group"
+                  onClick={() => {
+                    setNavigatingTo(channel.username);
+                    sessionStorage.setItem('analytics_from_channels', '1');
+                    router.push(`/dashboard/ai/analytics/${channel.username}?platform=${channel.platform}`);
+                  }}
+                  onMouseEnter={() => router.prefetch(`/dashboard/ai/analytics/${channel.username}?platform=${channel.platform}`)}
+                  disabled={!!navigatingTo}
+                  className="w-full py-3 border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-wait"
                 >
-                  View Dashboard
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  {navigatingTo === channel.username ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      View Dashboard
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </button>
               </motion.div>
             ))}

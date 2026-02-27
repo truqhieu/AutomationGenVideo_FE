@@ -75,7 +75,8 @@ const TopViralVideos = dynamic(() => import('./TopViralVideos'), {
   ssr: false
 });
 
-
+// Module-level: persists across Strict Mode remount so fetch/analyze skip on 2nd mount
+let _skipFetchFromActivityUntil = 0;
 
 export default function ChannelAnalyticsPage() {
 
@@ -125,6 +126,8 @@ export default function ChannelAnalyticsPage() {
 
 
   const ignoreNextFetch = useRef(false);
+  const fetchInProgress = useRef(false);
+  const restoredFromActivityRef = useRef(false);
 
   // Pass date params explicitly to avoid dependency loop
   const fetchChannelData = useCallback(async (currentStart?: string, currentEnd?: string) => {
@@ -197,7 +200,11 @@ export default function ChannelAnalyticsPage() {
 
       processAnalytics(videoList);
 
-      // Filter preserved.
+      // Cache for back-from-activity (avoids refetch/analyze)
+      try {
+        const cacheKey = `analytics_cache_${username}_${(platform || '').toLowerCase()}`;
+        sessionStorage.setItem(cacheKey, JSON.stringify({ videos: videoList, profile: data.profile || profile }));
+      } catch (_) {}
 
 
     } catch (error: any) {
@@ -208,66 +215,101 @@ export default function ChannelAnalyticsPage() {
     }
   }, [username, platform]);
 
+  // Restore from cache when coming back from activity (no refetch/analyze to save tokens)
+  useEffect(() => {
+    if (!username || typeof window === 'undefined') return;
+    const fromActivity = sessionStorage.getItem('analytics_from_activity') === '1';
+    if (!fromActivity) return;
+    const cacheKey = `analytics_cache_${username}_${(platform || '').toLowerCase()}`;
+    const raw = sessionStorage.getItem(cacheKey);
+    if (raw) {
+      try {
+        const { videos: cv, profile: cp } = JSON.parse(raw);
+        if (Array.isArray(cv)) {
+          if (cp) setProfile(cp);
+          processAnalytics(cv);
+          setLoading(false);
+          restoredFromActivityRef.current = true;
+          setError(null);
+          _skipFetchFromActivityUntil = Date.now() + 3000; // skip fetch/analyze for 3s (Strict Mode remount)
+          setTimeout(() => sessionStorage.removeItem('analytics_from_activity'), 500);
+          return;
+        }
+      } catch (_) {}
+    }
+    sessionStorage.removeItem('analytics_from_activity');
+  }, [username, platform]);
+
   // Trigger fetch when APPLIED dates (or username/platform) change
   useEffect(() => {
-    if (username) {
+    if (!username) return;
+    if (Date.now() < _skipFetchFromActivityUntil) return; // Skip when restored from activity (persists across Strict Mode)
+    if (restoredFromActivityRef.current) return;
+    if (fetchInProgress.current) return;
+    fetchInProgress.current = true;
+    const timer = setTimeout(() => {
       // This runs on mount (with default 3-day applied) and when user clicks Apply
       console.log(`� Fetching data. Applied Range: ${appliedStartDate} to ${appliedEndDate}`);
       fetchChannelData(appliedStartDate, appliedEndDate);
-    }
+      fetchInProgress.current = false;
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      fetchInProgress.current = false;
+    };
   }, [fetchChannelData, username, platform, appliedStartDate, appliedEndDate]);
+
+  // Run AI analysis (token-heavy) - only on refresh or when user clicks Apply
+  const runAnalyze = useCallback(async () => {
+    if (!username || !platform) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      const aiServiceUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+
+      const res = await fetch(`${baseUrl}/tracked-channels?platform=${platform.toUpperCase()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+
+      const channels = await res.json();
+      const channel = channels.find((c: any) => c.username?.toLowerCase() === username.toLowerCase());
+      if (!channel?.id) return;
+
+      console.log(`🔍 Starting analysis for: ${username}`);
+      const r = await fetch(`${aiServiceUrl}/api/channels/analyze-recent/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel_id: channel.id })
+      });
+      const data = await r.json();
+      if (data.analyzed > 0) console.log(`✅ Analyzed ${data.analyzed} videos`);
+    } catch (err) {
+      console.warn('Analysis failed:', err);
+    }
+  }, [username, platform]);
 
   const handleApplyFilter = () => {
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
+    // User explicitly filtered by date -> run analysis
+    setTimeout(runAnalyze, 500);
   };
 
-  // Auto-analyze recent videos when viewing dashboard (background task)
+  // Auto-analyze only on refresh or direct URL - NOT when navigating from channels or activity (saves tokens)
   useEffect(() => {
-    const analyzeRecent = async () => {
-      if (!username || !platform) return;
-
-      try {
-        const token = localStorage.getItem('auth_token');
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-        const aiServiceUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
-
-        // Get channel ID
-        const res = await fetch(`${baseUrl}/tracked-channels?platform=${platform.toUpperCase()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!res.ok) return;
-
-        const channels = await res.json();
-        const channel = channels.find((c: any) => c.username?.toLowerCase() === username.toLowerCase());
-
-        if (!channel?.id) {
-          console.log('Channel not found, skipping analysis');
-          return;
-        }
-
-        // Call AI Service in background
-        console.log(`🔍 Starting background analysis for: ${username}`);
-
-        fetch(`${aiServiceUrl}/api/channels/analyze-recent/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel_id: channel.id })
-        }).then(r => r.json())
-          .then(data => {
-            if (data.analyzed > 0) console.log(`✅ Analyzed ${data.analyzed} videos`);
-          })
-          .catch(err => console.warn('Analysis failed:', err));
-
-      } catch (err) {
-        console.warn('Failed to trigger analysis:', err);
-      }
-    };
-
-    const timer = setTimeout(analyzeRecent, 2000);
+    const fromChannels = typeof window !== 'undefined' && sessionStorage.getItem('analytics_from_channels') === '1';
+    if (fromChannels) {
+      sessionStorage.removeItem('analytics_from_channels');
+      return;
+    }
+    if (Date.now() < _skipFetchFromActivityUntil || restoredFromActivityRef.current) {
+      restoredFromActivityRef.current = false;
+      return;
+    }
+    const timer = setTimeout(runAnalyze, 2000);
     return () => clearTimeout(timer);
-  }, [username, platform]);
+  }, [username, platform, runAnalyze]);
 
   // Legacy effect removal (handled by fetchChannelData now)
   // useEffect(() => { if (username) fetchChannelData(); }, [username, platform]);
