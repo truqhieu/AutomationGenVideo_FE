@@ -392,13 +392,23 @@ const UserActivityPage = () => {
                             <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
                                 <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
                                     <table className="w-full border-collapse text-left">
-                                        <thead className="sticky top-0 z-20 bg-[#FAEEDD] shadow-sm">
+                                        <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
                                             <tr>
-                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND</th>
-                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Nhân viên</th>
-                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Team</th>
-                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND Ý tưởng</th>
-                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50 text-center">Xử lý</th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                    ND
+                                                </th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                    Nhân viên
+                                                </th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                    Team
+                                                </th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                    ND Ý tưởng
+                                                </th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                    Xử lý
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
