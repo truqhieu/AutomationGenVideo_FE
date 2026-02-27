@@ -351,23 +351,39 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                   {section.items.map((item: any) => {
                     const isActive = pathname === item.href;
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        prefetch={true}
-                        onClick={handleLinkClick}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
-                                           ${isActive
-                            ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20 scale-[1.02]'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1'
-                          }`}
-                        style={{
-                          willChange: isActive ? 'auto' : 'transform',
-                        }}
-                      >
-                        <item.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
-                        {item.label}
-                      </Link>
+                      typeof item.onClick === 'function' ? (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            item.onClick();
+                            handleLinkClick();
+                          }}
+                          className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
+                                             text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1`}
+                        >
+                          <item.icon className="w-4 h-4 transition-colors duration-200 text-slate-500" />
+                          {item.label}
+                        </button>
+                      ) : (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={true}
+                          onClick={handleLinkClick}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
+                                             ${isActive
+                              ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20 scale-[1.02]'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1'
+                            }`}
+                          style={{
+                            willChange: isActive ? 'auto' : 'transform',
+                          }}
+                        >
+                          <item.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
+                          {item.label}
+                        </Link>
+                      )
                     )
                   })}
                 </div>

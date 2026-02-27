@@ -17,7 +17,8 @@ import {
     Settings,
     CheckSquare,
     ClipboardList,
-    LayoutDashboard
+    LayoutDashboard,
+    Camera
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -215,6 +216,47 @@ const UserActivityPage = () => {
         }
     };
 
+    const handleCaptureFullPage = async () => {
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+
+            const scrollY = window.scrollY;
+            window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+            await new Promise((r) => setTimeout(r, 50));
+
+            const el = document.documentElement;
+            const canvas = await html2canvas(document.body, {
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                allowTaint: true,
+                scale: Math.min(window.devicePixelRatio || 1, 2),
+                windowWidth: el.scrollWidth,
+                windowHeight: el.scrollHeight,
+                scrollX: 0,
+                scrollY: 0,
+            });
+
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const now = new Date();
+                const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).toString().padStart(2, '0')}${String(now.getMinutes()).toString().padStart(2, '0')}`;
+                a.href = url;
+                a.download = `VCB_screenshot_${ts}.png`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+
+            window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+        } catch (e) {
+            console.error('Capture screenshot failed:', e);
+            alert('Không chụp được màn hình. Hãy thử lại sau.');
+        }
+    };
+
     const allTabs = [
         { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -253,7 +295,18 @@ const UserActivityPage = () => {
                             </div>
                         </div>
                     </div>
-                    <div />
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={handleCaptureFullPage}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest
+                                       bg-black/70 text-white border border-white/40 hover:bg-black hover:border-white
+                                       transition-all shadow-md shadow-black/40 backdrop-blur-sm"
+                        >
+                            <Camera className="w-3.5 h-3.5" />
+                            Chụp màn hình
+                        </button>
+                    </div>
                 </div>
 
                 {/* Navigation - Centered & Glassmorphic */}
