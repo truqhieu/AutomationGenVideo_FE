@@ -21,7 +21,8 @@ import {
   Activity,
   BookOpen, // Xiaohongshu icon
   Volume2,
-  ClipboardCheck
+  ClipboardCheck,
+  Film
 } from 'lucide-react';
 
 
