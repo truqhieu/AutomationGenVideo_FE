@@ -56,73 +56,46 @@ export default function DouyinChannelsPage() {
     const fetchChannelProfile = async (username: string) => {
         setLoading(true);
         try {
-            let maxResults = 1; // Default: Minimal fetch for metadata
-
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-            const response = await fetch(`${baseUrl}/ai/user-videos`, {
+
+            // Call the new Douyin profile proxy endpoint
+            const response = await fetch(`${baseUrl}/douyin/update-profile`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    platform: 'douyin',
-                    username: username.replace('@', ''),
-                    max_results: maxResults
+                    username: username.replace('@', '')
                 })
             });
 
             const data = await response.json();
-            console.log('API Response:', data);
+            console.log('Update Profile API Response:', data);
 
             if (!response.ok) {
-                if (response.status === 429) {
-                    alert('API quota exceeded. Please try again later.');
-                    return;
-                }
-                alert(data.error || 'API Error. Please try again.');
+                alert(data.message || data.error || 'Lỗi kết nối đến server. Vui lòng thử lại.');
                 return;
             }
 
-            let payload: any = {};
-
-            if (data.profile) {
-                payload = {
-                    platform: 'DOUYIN',
-                    username: data.profile.username,
-                    display_name: data.profile.display_name,
-                    avatar_url: data.profile.avatar_url,
-                    total_followers: data.profile.follower_count,
-                    total_likes: data.profile.total_likes,
-                    total_videos: (data.results && data.results.length === 0) ? 0 : (data.profile.total_videos || 0),
-                    total_views: data.profile.total_views || data.results?.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0) || 0,
-                    engagement_rate: data.profile.engagement_rate || 0
-                };
-            } else if (data.success && data.results && data.results.length > 0) {
-                const firstVideo = data.results[0];
-                const authorMeta = firstVideo.raw_data?.authorMeta || firstVideo.raw_data?.author || {};
-
-                const totalFollowers = authorMeta.fans || authorMeta.followerCount || 0;
-                const totalLikes = authorMeta.heart || authorMeta.diggCount || 0;
-                const totalVideos = data.results.length === 0 ? 0 : (authorMeta.video || authorMeta.videoCount || data.results.length);
-                const totalViews = data.results.reduce((sum: number, v: any) => sum + (v.views_count || 0), 0);
-                const engagementRate = totalFollowers > 0 ? (totalLikes / totalFollowers) * 100 : 0;
-
-                payload = {
-                    platform: 'DOUYIN',
-                    username: username.replace('@', ''),
-                    display_name: authorMeta.nickName || authorMeta.nickname || firstVideo.author_name || username,
-                    avatar_url: authorMeta.avatar || authorMeta.avatar_thumb?.url_list?.[0] || firstVideo.thumbnail_url,
-                    total_followers: totalFollowers,
-                    total_likes: totalLikes,
-                    total_views: totalViews,
-                    total_videos: totalVideos,
-                    engagement_rate: parseFloat(engagementRate.toFixed(2))
-                };
-            } else {
-                alert(data.error || 'Channel not found or no data available. Please check the username.');
+            if (!data.success || !data.profile) {
+                alert('Không thể lấy thông tin kênh này. Kênh có thể bị private hoặc không tồn tại.');
                 setLoading(false);
                 return;
             }
 
+            const profile = data.profile;
+            const payload = {
+                platform: 'DOUYIN',
+                username: profile.username || username.replace('@', ''),
+                display_name: profile.display_name || profile.username,
+                avatar_url: profile.avatar_url,
+                total_followers: profile.follower_count || 0,
+                total_likes: profile.total_likes || 0,
+                total_views: profile.total_views || 0,
+                total_videos: profile.total_videos || 0,
+                engagement_rate: profile.engagement_rate || 0
+            };
+
             try {
+                // Save updated profile to our DB
                 const saveResponse = await apiClient.post('/tracked-channels', payload);
                 if (saveResponse.data) {
                     await fetchTrackedChannels();
@@ -131,16 +104,16 @@ export default function DouyinChannelsPage() {
                 }
             } catch (saveError: any) {
                 if (saveError.response?.status === 401) {
-                    alert('Session expired or unauthorized. Please log in again.');
+                    alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
                 } else {
-                    const errorMessage = saveError.response?.data?.message || 'Failed to save channel';
+                    const errorMessage = saveError.response?.data?.message || 'Có lỗi xảy ra khi lưu kênh';
                     alert(errorMessage);
                 }
                 return;
             }
         } catch (error) {
-            console.error('Error fetching channel:', error);
-            alert(`Error: ${error instanceof Error ? error.message : 'Please try again later.'}`);
+            console.error('Error fetching channel profile:', error);
+            alert(`Lỗi: ${error instanceof Error ? error.message : 'Vui lòng thử lại sau.'}`);
         } finally {
             setLoading(false);
         }
@@ -180,11 +153,17 @@ export default function DouyinChannelsPage() {
         const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name || channel.username)}&background=random&color=fff`;
         if (!channel.avatar_url) return fallbackUrl;
 
-        // Use proxy for CDN URLs to avoid CORS/expiry issues
+        // Always proxy Douyin CDN links to avoid CORS/expiry issues.  Proxying
+        // non‑CDN links is harmless and gives us a consistent origin.
         const proxyBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-        if (channel.avatar_url.includes('douyinpic.com') || channel.avatar_url.includes('douyincdn.com') || channel.avatar_url.includes('snssdk.com')) {
+        if (
+            channel.avatar_url.includes('douyinpic.com') ||
+            channel.avatar_url.includes('douyincdn.com') ||
+            channel.avatar_url.includes('snssdk.com')
+        ) {
             return `${proxyBaseUrl}/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
         }
+        // fallback to original URL if it doesn't match known CDNs
         return channel.avatar_url;
     };
 
@@ -268,6 +247,14 @@ export default function DouyinChannelsPage() {
                                             src={getAvatarUrl(channel)}
                                             alt={channel.display_name || channel.username}
                                             className="w-12 h-12 rounded-full object-cover border-2 border-slate-100"
+                                            onError={(e) => {
+                                                // If the image fails to load (expired URL/CORS),
+                                                // fallback to generated avatar.
+                                                const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                    channel.display_name || channel.username
+                                                )}&background=random&color=fff`;
+                                                e.currentTarget.src = fallback;
+                                            }}
                                         />
                                         <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-[10px] border-2 border-white">
                                             🎵

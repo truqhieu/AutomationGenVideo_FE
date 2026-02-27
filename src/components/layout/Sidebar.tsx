@@ -17,7 +17,6 @@ import {
   HelpCircle,
   Pin,
   FileText,
-  Film,
   Users,
   Activity,
   BookOpen, // Xiaohongshu icon
@@ -90,7 +89,6 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
             ] : []),
-            { label: 'Kiểm tra Video', href: '/dashboard/manager/check-video', icon: Film },
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
             ] : []),
