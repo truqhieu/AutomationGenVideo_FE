@@ -3,6 +3,49 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../lib/api-client';
 import type { User, LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
 
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const payload = JSON.parse(atob(padded));
+
+    if (!payload || typeof payload.exp !== 'number') {
+      return true;
+    }
+
+    const expiresAtMs = payload.exp * 1000;
+    return Date.now() >= expiresAtMs;
+  } catch {
+    return true;
+  }
+};
+
+// Ensure local auth storage is cleared when it is no longer valid.
+// - In development: always clear on page load so restarting the dev
+//   server effectively logs users out.
+// - In other envs: clear when token is already expired on the client.
+if (typeof window !== 'undefined') {
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('auth-storage');
+    } else {
+      const existingToken = localStorage.getItem('auth_token');
+      if (existingToken && isTokenExpired(existingToken)) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth-storage');
+      }
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -109,6 +152,19 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
+          // Check token expiry on client to avoid showing stale sessions
+          if (isTokenExpired(token)) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return;
+          }
+
           set({ isLoading: true });
 
           const response = await apiClient.get<User>('/auth/profile');
@@ -147,7 +203,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         token: state.token,
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
+        // Do not persist isAuthenticated; derive it from a valid token + profile
       }),
     }
   )
