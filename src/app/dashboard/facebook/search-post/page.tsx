@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, Facebook, FileText, Image as ImageIcon, Video, ThumbsUp, MessageCircle, Share2, ExternalLink, Calendar, Hash, User, AlertTriangle, Eye, Download, Play } from 'lucide-react';
+import { Search, Loader2, Facebook, FileText, ThumbsUp, MessageCircle, Share2, Hash, AlertTriangle, Eye, Download, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FacebookPost {
@@ -26,8 +26,7 @@ interface FacebookPost {
 
 export default function FacebookSearchPostPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    // Temporarily disabled keyword/hashtag search due to Facebook blocking anonymous requests
-    const [searchType, setSearchType] = useState<'keyword' | 'hashtag' | 'user'>('user');
+    const [searchType, setSearchType] = useState<'keyword' | 'hashtag'>('hashtag');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9;
     const [loading, setLoading] = useState(false);
@@ -49,7 +48,7 @@ export default function FacebookSearchPostPage() {
 
     const handleSearch = async (reset = true) => {
         if (!searchTerm.trim()) {
-            setError('Vui lòng nhập username hoặc page ID');
+            setError('Vui lòng nhập từ khóa hoặc hashtag');
             return;
         }
 
@@ -63,50 +62,37 @@ export default function FacebookSearchPostPage() {
         try {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
             const token = localStorage.getItem('auth_token');
+            const keyword = searchType === 'hashtag'
+                ? searchTerm.replace(/^#/, '').replace(/\s+/g, '').toLowerCase()
+                : searchTerm.trim();
 
-            let apiUrl = '';
-            let body: any = {};
-
-            // Always use user-videos endpoint since keyword search is disabled
-            apiUrl = `${baseUrl}/ai/user-videos`;
-            body = {
-                platform: 'FACEBOOK',
-                username: searchTerm.trim(),
-                min_likes: 0,
-                min_views: 0
-            };
-
-            const response = await fetch(apiUrl, {
+            const response = await fetch(`${baseUrl}/ai/search`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(body),
+                body: JSON.stringify({
+                    platform: 'facebook',
+                    keyword,
+                    search_mode: searchType,
+                    search_type: 'posts',
+                    min_likes: 500,
+                    min_views: 500,
+                    min_comments: 50,
+                    max_results: 5,
+                    page: 1,
+                    use_cache: false,
+                }),
             });
 
             const data = await response.json();
 
-            // Debug logging
-            console.log('🔍 Response data:', data);
-            console.log('🔍 Search type:', searchType);
-
             if (!response.ok) {
-                throw new Error(data.error || 'Search failed');
+                throw new Error(data.error || data.detail || 'Search failed');
             }
 
-            if (searchType === 'user') {
-                console.log('👤 User search - videos:', data.videos);
-                console.log('👤 User search - results:', data.results);
-                setPosts(data.videos || data.results || []);
-            } else {
-                if (data.success && data.results) {
-                    setPosts(data.results || []);
-                } else {
-                    throw new Error(data.error || 'No data returned');
-                }
-            }
-
+            setPosts(data.results || data.videos || []);
             if (reset) setCurrentPage(1);
 
         } catch (err: any) {
@@ -160,7 +146,7 @@ export default function FacebookSearchPostPage() {
                             Facebook Search
                         </h1>
                     </div>
-                    <p className="text-slate-600 text-lg ml-16">Tìm kiếm bài viết viral theo keyword, hashtag hoặc quét posts từ user/page</p>
+                    <p className="text-slate-600 text-lg ml-16">Tìm kiếm bài viết viral theo keyword hoặc hashtag</p>
                 </motion.div>
 
                 {/* Search Section */}
@@ -171,12 +157,7 @@ export default function FacebookSearchPostPage() {
                 >
                     {/* Search Type Selector */}
                     <div className="flex flex-col gap-4 mb-4">
-                        <div className="flex p-1 rounded-xl w-fit">
-                            {/* 
-                                Temporarily disabled Keyword/Hashtag search 
-                                because Facebook blocks anonymous search requests.
-                            */}
-                            {/* 
+                        <div className="flex p-1 rounded-xl w-fit gap-1">
                             <button
                                 onClick={() => setSearchType('keyword')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'keyword'
@@ -195,19 +176,9 @@ export default function FacebookSearchPostPage() {
                             >
                                 <Hash className="w-4 h-4" /> Hashtag
                             </button>
-                            */}
-                            <button
-                                onClick={() => setSearchType('user')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'user'
-                                    ? 'bg-white text-blue-600 shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                            >
-                                <User className="w-4 h-4" /> User/Page
-                            </button>
                         </div>
                         <p className="text-xs text-slate-500 italic">
-                            * Tính năng tìm kiếm theo từ khóa/hashtag đang bảo trì. Vui lòng tìm theo User/Page.
+                            * Keyword: lọc theo caption. Hashtag: tìm theo #hashtag.
                         </p>
                     </div>
 
@@ -218,7 +189,7 @@ export default function FacebookSearchPostPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch(true)}
-                            placeholder="Nhập username hoặc page ID (vd: vtv24, 100...)..."
+                            placeholder="Nhập từ khóa hoặc hashtag (vd: trang sức, #trangsuc)..."
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                         <button
@@ -439,7 +410,7 @@ export default function FacebookSearchPostPage() {
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Facebook className="w-8 h-8 text-blue-600 opacity-50" />
                         </div>
-                        <p>Nhập từ khóa, hashtag hoặc username để tìm kiếm bài viết Facebook</p>
+                        <p>Nhập từ khóa hoặc hashtag để tìm kiếm bài viết Facebook</p>
                     </div>
                 )}
             </div>

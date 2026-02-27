@@ -121,7 +121,8 @@ export default function TikTokSearchPage() {
       return;
     }
 
-    setLoading(true);
+    // Chỉ set loading cho search button khi tìm kiếm mới; Scan Next Page chỉ dùng isFetchingMore (set ở handleLoadMore)
+    if (reset) setLoading(true);
     if (reset) {
       setError(null);
       setVideos([]);

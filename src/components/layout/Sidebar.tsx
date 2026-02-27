@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -107,6 +107,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
+            { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: Search },
+            { label: 'Search Reel', href: '/dashboard/facebook/search-reel', icon: Film },
           ]
         }
       ]
@@ -120,6 +122,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/instagram/channels', icon: LayoutGrid },
+            { label: 'Search Post', href: '/dashboard/instagram/search', icon: FileText },
+            { label: 'Search Reels', href: '/dashboard/instagram/search-reel', icon: Film },
           ]
         }
       ]

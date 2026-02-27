@@ -26,9 +26,42 @@ export default function InstagramSearchPage() {
     const [results, setResults] = useState<SearchResult[]>([]);
     const [error, setError] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
-    const [currentBatch, setCurrentBatch] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [filterFallback, setFilterFallback] = useState(false);
+    const [searchMode, setSearchMode] = useState<'hashtag' | 'keyword'>('hashtag');
 
-    const VIDEOS_PER_BATCH = 16;
+    const VIDEOS_PER_BATCH = 5;
+    const MIN_LIKES = 500;
+    const MIN_VIEWS = 500;
+    const MIN_COMMENTS = 50;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+    const normalizeHashtag = (str: string) =>
+        str.trim().toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '').replace(/#/g, '');
+
+    const getThumbnailSrc = (url: string) => {
+        if (!url) return '/placeholder-image.jpg';
+        if (url.startsWith('/')) return url;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return `${apiUrl}/image-proxy/?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    };
+
+    const handleSearchModeChange = (mode: 'hashtag' | 'keyword') => {
+        if (mode === searchMode) return;
+        setSearchMode(mode);
+        setResults([]);
+        setHasSearched(false);
+        setCurrentPage(1);
+        setHasMore(false);
+        setFilterFallback(false);
+        setError('');
+    };
 
     const performSearch = async (isLoadMore: boolean = false) => {
         if (!hashtag.trim()) {
@@ -36,23 +69,24 @@ export default function InstagramSearchPage() {
             return;
         }
 
+        const pageToFetch = isLoadMore ? currentPage + 1 : 1;
         if (isLoadMore) {
             setLoadingMore(true);
         } else {
             setLoading(true);
             setResults([]);
-            setCurrentBatch(0);
+            setCurrentPage(1);
             setHasSearched(true);
         }
 
         setError('');
 
         try {
-            // Remove # and spaces from hashtag
-            const cleanHashtag = hashtag.replace(/^#/, '').trim();
-
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
             const token = localStorage.getItem('auth_token');
+
+            const keyword = searchMode === 'hashtag'
+                ? normalizeHashtag(hashtag)   // hashtag: "trang sức" -> "trangsuc"
+                : hashtag.replace(/^#/, '').trim();  // keyword: giữ nguyên "trang sức"
 
             const response = await fetch(`${apiUrl}/ai/search`, {
                 method: 'POST',
@@ -62,12 +96,15 @@ export default function InstagramSearchPage() {
                 },
                 body: JSON.stringify({
                     platform: 'instagram',
-                    keyword: cleanHashtag,
+                    keyword,
                     search_type: 'posts',
-                    min_likes: 0,  // Filter posts with > 500 likes (now disabled)
-                    min_views: 0,
+                    search_mode: searchMode,
+                    min_likes: MIN_LIKES,
+                    min_views: MIN_VIEWS,
+                    min_comments: MIN_COMMENTS,
                     max_results: VIDEOS_PER_BATCH,
-                    use_cache: false,  // Always fetch fresh data
+                    page: pageToFetch,
+                    use_cache: false,
                     async_mode: false,
                 }),
             });
@@ -76,13 +113,14 @@ export default function InstagramSearchPage() {
             if (!response.ok) throw new Error(data.detail || data.message || 'Search failed');
 
             const newResults = data.videos || data.results || [];
+            setHasMore(data.has_more ?? false);
+            setFilterFallback(data.filter_fallback ?? false);
+            setCurrentPage(pageToFetch);
 
             if (isLoadMore) {
                 setResults(prev => [...prev, ...newResults]);
-                setCurrentBatch(prev => prev + 1);
             } else {
                 setResults(newResults);
-                setCurrentBatch(1);
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred during search');
@@ -131,23 +169,50 @@ export default function InstagramSearchPage() {
                         <h1 className="text-3xl font-bold text-gray-900">Instagram Hashtag Search</h1>
                     </div>
                     <p className="text-gray-600 ml-15">
-                        Discover trending posts using hashtags • Showing <strong>all posts</strong>
+                        Tìm theo hashtag hoặc keyword • Filter: ≥1K likes OR ≥1K views OR ≥100 comments
                     </p>
                 </div>
 
                 {/* Search Box */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    {/* Hashtag Input */}
+                    {/* Search Mode Toggle */}
+                    <div className="flex gap-2 mb-4">
+                        <button
+                            type="button"
+                            onClick={() => handleSearchModeChange('hashtag')}
+                            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${searchMode === 'hashtag'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            # Hashtag
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSearchModeChange('keyword')}
+                            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${searchMode === 'keyword'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            Keyword
+                        </button>
+                    </div>
+                    {/* Input */}
                     <div className="relative mb-4">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600">
-                            <Hash className="w-5 h-5" />
+                            {searchMode === 'hashtag' ? (
+                                <Hash className="w-5 h-5" />
+                            ) : (
+                                <Search className="w-5 h-5" />
+                            )}
                         </div>
                         <input
                             type="text"
                             value={hashtag}
                             onChange={(e) => setHashtag(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && performSearch(false)}
-                            placeholder="fashion, beauty, travel, food..."
+                            placeholder={searchMode === 'hashtag' ? 'trangsuc, fashion, beauty...' : 'trang sức, jewelry, fashion...'}
                             className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
                         />
                     </div>
@@ -181,7 +246,7 @@ export default function InstagramSearchPage() {
                         ) : (
                             <>
                                 <Search className="w-4 h-4" />
-                                Search {VIDEOS_PER_BATCH} Posts
+                                Tìm Kiếm
                             </>
                         )}
                     </button>
@@ -197,6 +262,13 @@ export default function InstagramSearchPage() {
                 {/* Results */}
                 {results.length > 0 && (
                     <>
+                        {filterFallback && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                <p className="text-amber-800 text-sm">
+                                    Không có bài đạt ngưỡng (≥1K likes, ≥1K views hoặc ≥100 comments). Đang hiển thị tất cả {results.length} bài tìm được.
+                                </p>
+                            </div>
+                        )}
                         {/* Results Header */}
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -204,7 +276,7 @@ export default function InstagramSearchPage() {
                                     {results.length} {results.length === 1 ? 'Post' : 'Posts'}
                                 </h2>
                                 <p className="text-sm text-gray-500">
-                                    Batch {currentBatch} • #{hashtag}
+                                    Page {currentPage} • {searchMode === 'hashtag' ? `#${normalizeHashtag(hashtag)}` : hashtag.replace(/^#/, '').trim()}
                                 </p>
                             </div>
                         </div>
@@ -216,11 +288,17 @@ export default function InstagramSearchPage() {
                                     {/* Thumbnail */}
                                     <div className="aspect-square relative bg-gray-100">
                                         <img
-                                            src={post.thumbnail_url || '/placeholder-image.jpg'}
+                                            src={getThumbnailSrc(post.thumbnail_url)}
                                             alt={post.description || 'Instagram post'}
                                             className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
                                             onError={(e) => {
-                                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=No+Image';
+                                                const t = e.target as HTMLImageElement;
+                                                if (t.src && t.src.includes('image-proxy')) {
+                                                    t.src = post.thumbnail_url || 'https://placehold.co/400x400?text=No+Image';
+                                                } else {
+                                                    t.src = 'https://placehold.co/400x400?text=No+Image';
+                                                }
                                             }}
                                         />
                                         <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
@@ -273,26 +351,28 @@ export default function InstagramSearchPage() {
                             ))}
                         </div>
 
-                        {/* Load More Button */}
-                        <div className="flex justify-center pb-8">
-                            <button
-                                onClick={() => performSearch(true)}
-                                disabled={loadingMore}
-                                className="px-6 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
-                            >
-                                {loadingMore ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Loading more...
-                                    </>
-                                ) : (
-                                    <>
-                                        <ChevronDown className="w-4 h-4" />
-                                        Load More
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        {/* Scan Next Page Button */}
+                        {hasMore && (
+                            <div className="flex justify-center pb-8">
+                                <button
+                                    onClick={() => performSearch(true)}
+                                    disabled={loadingMore}
+                                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {loadingMore ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Đang tải...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ChevronDown className="w-4 h-4" />
+                                            Scan Next Page
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
 

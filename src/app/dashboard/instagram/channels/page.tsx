@@ -258,6 +258,17 @@ export default function InstagramChannelsPage() {
     (c.display_name && c.display_name.toLowerCase().includes(searchChannelQuery.toLowerCase()))
   );
 
+  // Proxy avatar để tránh CORS/CORP khi load trực tiếp từ Instagram CDN
+  const getAvatarUrl = (channel: ChannelProfile) => {
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`;
+    if (!channel.avatar_url) return fallback;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    if (channel.avatar_url.includes('cdninstagram.com') || channel.avatar_url.includes('instagram.com') || channel.avatar_url.includes('fbcdn.net')) {
+      return `${apiUrl}/ai/proxy/avatar?url=${encodeURIComponent(channel.avatar_url)}`;
+    }
+    return channel.avatar_url;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 pb-20 fade-in">
       {/* Header */}
@@ -367,7 +378,7 @@ export default function InstagramChannelsPage() {
                     <div className="flex items-start gap-4 mb-6">
                       <div className="relative flex-shrink-0">
                         <img 
-                          src={channel.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`} 
+                          src={getAvatarUrl(channel)} 
                           alt={channel.display_name}
                           referrerPolicy="no-referrer"
                           className="w-16 h-16 rounded-full object-cover border-2 border-pink-100 shadow-md ring-2 ring-pink-50"
