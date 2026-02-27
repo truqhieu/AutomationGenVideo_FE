@@ -28,7 +28,7 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
 
     const calculatePercentage = (current: number, target: number) => {
         if (!target) return 0;
-        return Math.min(100, Math.round((current / target) * 100));
+        return Math.round((current / target) * 100);
     };
 
     const kpis = [
@@ -72,7 +72,7 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-white border-slate-100 shadow-xl shadow-blue-500/5 rounded-[2.5rem] overflow-hidden hover:scale-[1.02] transition-all duration-300 border-b-4 border-b-blue-600">
+                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/50 border-slate-200/60 shadow-[0_10px_40px_-15px_rgba(59,130,246,0.1)] rounded-[2rem] overflow-hidden hover:scale-[1.01] transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-8">
                         <div className="flex justify-between items-start mb-6">
                             <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">{kpi.title}</h3>
@@ -124,45 +124,6 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
                             </div>
                         </div>
 
-                        {/* Team Contributions Section */}
-                        <div className="pt-6 border-t border-slate-100 space-y-4">
-                            <div className="flex justify-between items-center mr-1">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Đóng góp theo Team</span>
-                                <span className="text-[10px] font-black text-blue-600">Tháng này</span>
-                            </div>
-
-                            {/* Stacked Percentage Bar */}
-                            <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-slate-100 p-0.5">
-                                {teamContributions?.map((team, tIdx) => {
-                                    const pct = team[kpi.key as keyof typeof team] as number;
-                                    if (!pct) return null;
-                                    return (
-                                        <div
-                                            key={tIdx}
-                                            className={`h-full rounded-full border-r-2 border-white transition-all duration-700 ${getTeamColor(tIdx)}`}
-                                            style={{ width: `${pct}%` }}
-                                            title={`${team.team}: ${pct}%`}
-                                        />
-                                    );
-                                })}
-                            </div>
-
-                            {/* Legend Grid - Modern Layout */}
-                            <div className="grid grid-cols-2 gap-3">
-                                {teamContributions?.filter(team => (team[kpi.key as keyof typeof team] as number) > 0).slice(0, 4).map((team, tIdx) => {
-                                    const pct = team[kpi.key as keyof typeof team] as number;
-                                    return (
-                                        <div key={tIdx} className="bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-white hover:shadow-md flex items-center gap-2 transition-all">
-                                            <div className={`w-2 h-2 rounded-full shadow-sm ${getTeamColor(tIdx)}`} />
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-[9px] font-bold text-slate-500 truncate uppercase">{team.team}</span>
-                                                <span className="text-xs font-black text-slate-900">{pct}%</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
             ))

@@ -86,10 +86,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         {
           section: 'HỆ THỐNG',
           items: [
+            { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
             ] : []),
-            { label: 'Tổng quan', href: '/dashboard/manager/user-activity', icon: Activity },
             { label: 'Kiểm tra Video', href: '/dashboard/manager/check-video', icon: Film },
             ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
@@ -106,7 +106,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Facebook',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
           ]
@@ -119,7 +119,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Instagram',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/instagram/channels', icon: LayoutGrid },
           ]
@@ -146,9 +146,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Douyin',
       menus: [
         {
-          section: 'RESEARCH',
+          section: 'ANALYTICS',
           items: [
-            { label: 'Search Videos', href: '/dashboard/douyin', icon: Search },
+            { label: 'Channel Overview', href: '/dashboard/douyin/channels', icon: LayoutGrid },
+            { label: 'Search Video', href: '/dashboard/douyin', icon: Search },
           ]
         }
       ]
@@ -159,9 +160,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Xiaohongshu',
       menus: [
         {
-          section: 'RESEARCH',
+          section: 'ANALYTICS',
           items: [
-            { label: 'Search Notes', href: '/dashboard/xiaohongshu', icon: Search },
+            { label: 'Channel Overview', href: '/dashboard/xiaohongshu/channels', icon: LayoutGrid },
+            { label: 'Search Video', href: '/dashboard/xiaohongshu', icon: Search },
           ]
         }
       ]

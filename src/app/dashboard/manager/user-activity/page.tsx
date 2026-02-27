@@ -16,7 +16,8 @@ import {
     LogOut,
     Settings,
     CheckSquare,
-    ClipboardList
+    ClipboardList,
+    LayoutDashboard
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -41,7 +42,7 @@ const UserActivityPage = () => {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = React.useState<'performance' | 'ranking' | 'personal' | 'checklist' | 'daily_checklist'>('performance');
+    const [activeTab, setActiveTab] = React.useState<'dashboard' | 'performance' | 'ranking' | 'personal' | 'daily_checklist'>('performance');
     const [reportOutstandings, setReportOutstandings] = React.useState<any[]>([]);
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
@@ -50,19 +51,21 @@ const UserActivityPage = () => {
     const [loading, setLoading] = React.useState(false);
     const [userRole, setUserRole] = React.useState<string | null>(null);
     const [userTeam, setUserTeam] = React.useState<string | null>(null);
-    const [personalHistory, setPersonalHistory] = React.useState<{ history: any[], teamStats: any | null }>({ history: [], teamStats: null });
+    const [personalHistory, setPersonalHistory] = React.useState<{
+        history: any[],
+        teamStats: any | null,
+        companyStats?: any | null,
+        userActivity: any | null,
+        members: any[]
+    }>({ history: [], teamStats: null, companyStats: null, userActivity: null, members: [] });
 
     // Filter states
     const [activeTeam, setActiveTeam] = React.useState('All');
     const [selectedDate, setSelectedDate] = React.useState(new Date());
     const [searchName, setSearchName] = React.useState('');
-    const [dailyFilter, setDailyFilter] = React.useState<'all' | 'win' | 'idea' | 'difficulty'>('all');
+    const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
 
-    React.useEffect(() => {
-        if (tabParam === 'checklist') {
-            setActiveTab('checklist');
-        }
-    }, [tabParam]);
+
 
     React.useEffect(() => {
         fetchReports();
@@ -79,7 +82,7 @@ const UserActivityPage = () => {
         try {
             const params = new URLSearchParams();
             params.append('email', user.email);
-            if (searchName && (userRole === 'admin' || userRole === 'leader')) {
+            if (searchName && (userRole === 'admin' || userRole === 'manager' || userRole === 'leader')) {
                 params.append('name', searchName);
             }
             const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/personal-history?${params.toString()}`;
@@ -155,7 +158,7 @@ const UserActivityPage = () => {
                     },
                     {
                         question: 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?',
-                        answer: item.answers?.['2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?'] ||
+                        answer: item.answers?.['2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỂ ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?'] ||
                             item.answers?.['2. TEAM BẠN HÔM QUA CÓ THÀNH VIÊN NÀO CÓ VIDEO WIN NHẤT?'] ||
                             'Không có'
                     },
@@ -212,13 +215,12 @@ const UserActivityPage = () => {
         }
     };
 
-    // Tabs filtering
     const allTabs = [
         { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
+        { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'ranking', label: 'BXH', icon: Layout },
-        { id: 'personal', label: 'Cá nhân', icon: User },
-        { id: 'daily_checklist', label: 'Checklist ngày', icon: ClipboardList },
-        { id: 'checklist', label: 'Checklist', icon: CheckSquare }
+        { id: 'personal', label: 'Tiến độ', icon: User },
+        { id: 'daily_checklist', label: 'Checklist ngày', icon: ClipboardList }
     ];
 
     const visibleTabs = allTabs;
@@ -274,25 +276,22 @@ const UserActivityPage = () => {
             </header>
 
             <div className="relative z-10 space-y-14">
-                {/* Filters Section */}
-                {activeTab !== 'checklist' && (
-                    <div className="relative z-30 bg-white/80 backdrop-blur-md p-4 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
-                        <ActivityFilters
-                            activeTeam={activeTeam}
-                            setActiveTeam={setActiveTeam}
-                            selectedDate={selectedDate}
-                            setSelectedDate={setSelectedDate}
-                            searchName={searchName}
-                            setSearchName={setSearchName}
-                            userRole={userRole}
-                            userTeam={userTeam}
-                            activeTab={activeTab}
-                        />
-                    </div>
-                )}
+                <div className="relative z-30 bg-white/80 backdrop-blur-md p-4 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
+                    <ActivityFilters
+                        activeTeam={activeTeam}
+                        setActiveTeam={setActiveTeam}
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
+                        searchName={searchName}
+                        setSearchName={setSearchName}
+                        userRole={userRole}
+                        userTeam={userTeam}
+                        activeTab={activeTab}
+                    />
+                </div>
 
                 {/* KPI Cards section */}
-                {activeTab !== 'checklist' && activeTab !== 'personal' && (
+                {activeTab !== 'personal' && (
                     <div className="relative z-10 transition-all duration-500">
                         <ActivityKPIs summary={summary} teamContributions={teamContributions} />
                     </div>
@@ -300,9 +299,13 @@ const UserActivityPage = () => {
 
                 {/* Main Content Area */}
                 <main className="min-h-[60vh]">
-                    {activeTab === 'performance' ? (
+                    {activeTab === 'dashboard' ? (
+                        <div className="flex items-center justify-center py-20 bg-white/50 backdrop-blur rounded-[2rem] border border-dashed border-slate-200">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest italic">Dashboard đang được phát triển...</p>
+                        </div>
+                    ) : activeTab === 'performance' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                            {reports.filter(r => r.name.toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
+                            {reports.filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                                 <UserActivityCard key={report.id || idx} data={{
                                     ...report,
                                     reportStatus: report.status
@@ -313,174 +316,168 @@ const UserActivityPage = () => {
                         <RankingView rankings={rankings} />
                     ) : activeTab === 'personal' ? (
                         <div className="space-y-12">
-                            {(userRole === 'admin' || userRole === 'leader') ? (
-                                <>
-                                    {/* Removed: Grid of Team Members for Admin/Leader header */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                                        {reports
-                                            .filter(r => userRole === 'admin' ? (activeTeam === 'All' || r.team === activeTeam) : r.team === userTeam)
-                                            .filter(r => r.name.toLowerCase().includes(searchName.toLowerCase()))
-                                            .map((report, idx) => (
-                                                <UserActivityCard
-                                                    key={report.id || idx}
-                                                    isActive={searchName === report.name}
-                                                    onClick={() => setSearchName(report.name)}
-                                                    data={{ ...report, reportStatus: report.status }}
-                                                />
-                                            ))}
-                                    </div>
+                            <PersonalCharts
+                                history={personalHistory.history}
+                                teamStats={personalHistory.teamStats}
+                                companyStats={personalHistory.companyStats}
+                                userActivity={personalHistory.userActivity}
+                                members={personalHistory.members}
+                                allReports={reports.filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))}
+                            />
 
-                                    {/* Detail View for Selected Member */}
-                                    {searchName && personalHistory.history.length > 0 && (
-                                        <div className="pt-12 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                            {/* Removed: text-center mb-10 header */}
-                                            <PersonalCharts history={personalHistory.history} teamStats={personalHistory.teamStats} />
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="space-y-12">
-                                    <div className="flex justify-center">
-                                        {reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()) ? (
-                                            <div className="w-full max-w-sm">
-                                                <UserActivityCard data={{
-                                                    ...reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()),
-                                                    reportStatus: reports.find(r => r.name.toLowerCase() === user?.full_name?.toLowerCase()).status
-                                                }} />
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-20 bg-white/50 backdrop-blur-md rounded-[2rem] border border-white/20 shadow-inner w-full">
-                                                <User className="w-8 h-8 text-blue-400 mx-auto mb-4" />
-                                                <p className="text-slate-500 font-bold">Không tìm thấy dữ liệu cá nhân</p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {personalHistory.history.length > 0 && (
-                                        <div className="pt-12 border-t border-slate-100/50">
-                                            <PersonalCharts history={personalHistory.history} teamStats={personalHistory.teamStats} />
-                                        </div>
-                                    )}
+                            {/* Integrated Checklist Section */}
+                            <div className="relative pt-10">
+                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div className="w-full border-t border-slate-100"></div>
                                 </div>
-                            )}
-                        </div>
-                    ) : activeTab === 'daily_checklist' ? (() => {
-                        const filteredOutstandings = reportOutstandings
-                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
-                            .filter(r => r.name.toLowerCase().includes(searchName.toLowerCase()))
-                            .filter(r => {
-                                if (dailyFilter === 'all') return true;
-                                const content = (r.content?.toLowerCase() || '').normalize('NFC');
-                                if (dailyFilter === 'win') return content.includes('win');
-                                if (dailyFilter === 'idea') return content.includes('đóng góp') || content.includes('ý kĩen') || content.includes('cải tiến');
-                                return true;
-                            });
-
-                        const stats = {
-                            wins: reportOutstandings.filter(r => (r.content?.toLowerCase() || '').normalize('NFC').includes('win')).length,
-                            ideas: reportOutstandings.filter(r => (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/)).length,
-                            difficulties: reportOutstandings.filter(r => {
-                                const c = (r.content?.toLowerCase() || '').normalize('NFC');
-                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
-                            }).length
-                        };
-
-                        return (
-                            <div className="space-y-3">
-                                {/* Stats Summary */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between px-4">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                                <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
-                                                Vấn đề nổi bật & Video Win
-                                            </h3>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-1">
-                                        <button onClick={() => setDailyFilter(dailyFilter === 'win' ? 'all' : 'win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
-                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'win' ? 'text-green-100' : 'text-green-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'win' ? 'text-white' : 'text-green-600'}`}>{stats.wins}</h4></div>
-                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
-                                        </button>
-                                        <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
-                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{stats.ideas}</h4></div>
-                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
-                                        </button>
-                                        <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
-                                            <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{stats.difficulties}</h4></div>
-                                            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Outstanding Items Table */}
-                                <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
-                                    <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
-                                        <table className="w-full border-collapse text-left">
-                                            <thead className="sticky top-0 z-20 bg-[#FAEEDD] shadow-sm">
-                                                <tr>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Nhân viên</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Team</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND Ý tưởng</th>
-                                                    <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50 text-center">Xử lý</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {filteredOutstandings.length > 0 ? filteredOutstandings.map((r, idx) => {
-                                                    const isWin = (r.content?.toLowerCase() || '').normalize('NFC').includes('win');
-                                                    const isIdea = (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
-                                                    return (
-                                                        <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
-                                                            <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${isWin ? 'bg-green-50 text-green-600 border-green-100' : isIdea ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-                                                                    {r.content?.toUpperCase().replace('VIDEO SẢN PHẨM WIN', 'WIN').replace('Ý KIẾN ĐÓNG GÓP CẢI TIẾN MỚI', 'Ý TƯỞNG').replace('KHÓ KHĂN CẦN HỖ TRỢ', 'KHÓ KHĂN')}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
-                                                            <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
-                                                            <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 italic truncate max-w-[200px]">"{r.idea_content}"</td>
-                                                            <td className="px-3 py-1.5 text-center">
-                                                                <button
-                                                                    onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
-                                                                    disabled={!!r.status}
-                                                                    className={`px-3 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm ${r.status ? 'bg-slate-100 text-slate-400 cursor-default' : isWin ? 'bg-green-600 text-white hover:bg-green-700' : isIdea ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
-                                                                    {r.status ? `✓ ${r.status.split(' ')[1]}` : (isWin || isIdea ? 'Duyệt' : 'Hỗ trợ')}
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                }) : (
-                                                    <tr><td colSpan={5} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {/* Detailed Report Cards */}
-                                <div className="space-y-4 mt-8">
-                                    <div className="flex items-center justify-between px-4">
-                                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                            <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
-                                        </h3>
-                                    </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {reports.length > 0 ? reports.filter(r => (activeTeam === 'All' || r.team === activeTeam) && r.name.toLowerCase().includes(searchName.toLowerCase())).map(report => (
-                                            <ReportCard key={report.id} report={report} />
-                                        )) : (
-                                            <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
-                                        )}
-                                    </div>
+                                <div className="relative flex justify-center">
+                                    <span className="bg-white px-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+                                        <CheckSquare className="w-5 h-5 text-blue-600" />
+                                        Báo cáo Checklist hàng ngày
+                                    </span>
                                 </div>
                             </div>
-                        );
-                    })()
-                        : activeTab === 'checklist' ? (
-                            <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100">
+                            <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
                                 <ChecklistContainer />
                             </div>
-                        ) : null}
+                        </div>
+                    ) : activeTab === 'daily_checklist' ? (
+                        <div className="space-y-3">
+                            {/* Stats Summary */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between px-4">
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                            <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
+                                            Vấn đề nổi bật & Video Win
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
+                                    <button onClick={() => setDailyFilter(dailyFilter === 'video_win' ? 'all' : 'video_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'video_win' ? 'bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-600/20' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{reportOutstandings
+                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                            .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
+                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
+                                    </button>
+                                    <button onClick={() => setDailyFilter(dailyFilter === 'product_win' ? 'all' : 'product_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'product_win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
+                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{reportOutstandings
+                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                            .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
+                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💎</div>
+                                    </button>
+                                    <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
+                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{reportOutstandings
+                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                            .filter(r => (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/)).length}</h4></div>
+                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
+                                    </button>
+                                    <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
+                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{reportOutstandings
+                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                            .filter(r => {
+                                                const c = (r.content?.toLowerCase() || '').normalize('NFC');
+                                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
+                                            }).length}</h4></div>
+                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Outstanding Items Table */}
+                            <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
+                                <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+                                    <table className="w-full border-collapse text-left">
+                                        <thead className="sticky top-0 z-20 bg-[#FAEEDD] shadow-sm">
+                                            <tr>
+                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND</th>
+                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Nhân viên</th>
+                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">Team</th>
+                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50">ND Ý tưởng</th>
+                                                <th className="px-3 py-1.5 text-[8px] font-black uppercase border-b border-orange-100/50 text-center">Xử lý</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {reportOutstandings
+                                                .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                                .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                                .filter(r => {
+                                                    if (dailyFilter === 'all') return true;
+                                                    const content = (r.content?.toUpperCase() || '').normalize('NFC');
+                                                    if (dailyFilter === 'video_win') return content.includes('VIDEO WIN');
+                                                    if (dailyFilter === 'product_win') return content.includes('SẢN PHẨM WIN');
+                                                    if (dailyFilter === 'idea') return content.toLowerCase().normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
+                                                    if (dailyFilter === 'difficulty') {
+                                                        const c = content.toLowerCase().normalize('NFC');
+                                                        return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
+                                                    }
+                                                    return true;
+                                                }).length > 0 ? reportOutstandings
+                                                    .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                                    .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
+                                                    .filter(r => {
+                                                        if (dailyFilter === 'all') return true;
+                                                        const content = (r.content?.toUpperCase() || '').normalize('NFC');
+                                                        if (dailyFilter === 'video_win') return content.includes('VIDEO WIN');
+                                                        if (dailyFilter === 'product_win') return content.includes('SẢN PHẨM WIN');
+                                                        if (dailyFilter === 'idea') return content.toLowerCase().normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
+                                                        if (dailyFilter === 'difficulty') {
+                                                            const c = content.toLowerCase().normalize('NFC');
+                                                            return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
+                                                        }
+                                                        return true;
+                                                    }).map((r, idx) => {
+                                                        const isWin = (r.content?.toLowerCase() || '').normalize('NFC').includes('win');
+                                                        const isIdea = (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
+                                                        return (
+                                                            <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
+                                                                <td className="px-3 py-1.5 border-r border-slate-50">
+                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${isWin ? 'bg-green-50 text-green-600 border-green-100' : isIdea ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                                                                        {r.content?.toUpperCase().replace('VIDEO SẢN PHẨM WIN', 'SẢN PHẨM WIN').replace('Ý KIẾN ĐÓNG GÓP CẢI TIẾN MỚI', 'Ý TƯỞNG').replace('KHÓ KHĂN CẦN HỖ TRỢ', 'KHÓ KHĂN')}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 italic truncate max-w-[200px]">"{r.idea_content}"</td>
+                                                                <td className="px-3 py-1.5 text-center">
+                                                                    <button
+                                                                        onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
+                                                                        disabled={!!r.status}
+                                                                        className={`px-3 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm ${r.status ? 'bg-slate-100 text-slate-400 cursor-default' : isWin ? 'bg-green-600 text-white hover:bg-green-700' : isIdea ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
+                                                                        {r.status ? `✓ ${r.status.split(' ')[1]}` : (isWin || isIdea ? 'Duyệt' : 'Hỗ trợ')}
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }) : (
+                                                <tr><td colSpan={5} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Detailed Report Cards */}
+                            <div className="space-y-4 mt-8">
+                                <div className="flex items-center justify-between px-4">
+                                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                        <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {reports.length > 0 ? reports.filter(r => (activeTeam === 'All' || r.team === activeTeam) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map(report => (
+                                        <ReportCard key={report.id} report={report} />
+                                    )) : (
+                                        <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
                 </main>
             </div>
         </div>
