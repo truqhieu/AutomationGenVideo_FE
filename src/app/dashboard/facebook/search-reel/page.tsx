@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Search, Loader2, Facebook, Film, ThumbsUp, MessageCircle, Share2, Eye, Download, Play, AlertTriangle, Hash } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -29,6 +29,11 @@ export default function FacebookSearchReelPage() {
     const [loading, setLoading] = useState(false);
     const [reels, setReels] = useState<FacebookReel[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+    const handleImageError = useCallback((reelId: string) => {
+        setFailedImages(prev => new Set(prev).add(reelId));
+    }, []);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9;
 
@@ -231,12 +236,13 @@ export default function FacebookSearchReelPage() {
                                                 </div>
                                             </div>
 
-                                            {reel.thumbnail_url ? (
+                                            {reel.thumbnail_url && !failedImages.has(reel.video_id || String(index)) ? (
                                                 <img
                                                     src={reel.thumbnail_url}
                                                     alt={reel.description}
                                                     className="w-full h-full object-cover"
                                                     loading="lazy"
+                                                    onError={() => handleImageError(reel.video_id || String(index))}
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
@@ -261,6 +267,10 @@ export default function FacebookSearchReelPage() {
                                                     alt=""
                                                     className="w-8 h-8 rounded-full border border-slate-200 object-cover"
                                                     loading="lazy"
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(reel.author_name || reel.author_username || '?')}&background=1877F2&color=fff`;
+                                                    }}
                                                 />
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-bold text-slate-900 truncate" title={reel.author_name}>

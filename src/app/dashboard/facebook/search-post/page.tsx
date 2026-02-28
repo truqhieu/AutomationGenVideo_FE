@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Loader2, Facebook, FileText, ThumbsUp, MessageCircle, Share2, Hash, AlertTriangle, Eye, Download, Play } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Search, Loader2, Facebook, FileText, ThumbsUp, MessageCircle, Hash, AlertTriangle, Eye, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FacebookPost {
@@ -33,6 +33,22 @@ export default function FacebookSearchPostPage() {
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [posts, setPosts] = useState<FacebookPost[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+    const getThumbnailSrc = (url: string | undefined) => {
+        if (!url) return '';
+        if (url.startsWith('/')) return url;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return `${apiUrl}/media/?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    };
+
+    const handleImageError = useCallback((postId: string) => {
+        setFailedImages(prev => new Set(prev).add(postId));
+    }, []);
 
     // Pagination
     const totalPages = Math.ceil(posts.length / itemsPerPage);
@@ -46,6 +62,15 @@ export default function FacebookSearchPostPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleSearchTypeChange = (type: 'keyword' | 'hashtag') => {
+        if (type === searchType) return;
+        setSearchType(type);
+        setPosts([]);
+        setError(null);
+        setCurrentPage(1);
+        setFailedImages(new Set());
+    };
+
     const handleSearch = async (reset = true) => {
         if (!searchTerm.trim()) {
             setError('Vui lòng nhập từ khóa hoặc hashtag');
@@ -57,6 +82,7 @@ export default function FacebookSearchPostPage() {
             setError(null);
             setPosts([]);
             setCurrentPage(1);
+            setFailedImages(new Set()); // Reset failed images khi search mới
         }
 
         try {
@@ -77,9 +103,9 @@ export default function FacebookSearchPostPage() {
                     keyword,
                     search_mode: searchType,
                     search_type: 'posts',
-                    min_likes: 500,
-                    min_views: 500,
-                    min_comments: 50,
+                    min_likes: 0,
+                    min_views: 0,
+                    min_comments: 0,
                     max_results: 5,
                     page: 1,
                     use_cache: false,
@@ -92,7 +118,28 @@ export default function FacebookSearchPostPage() {
                 throw new Error(data.error || data.detail || 'Search failed');
             }
 
-            setPosts(data.results || data.videos || []);
+            const raw = data.results || data.videos || [];
+            // Normalize: handle alternate field names and "No Content" from legacy BE
+            const normalized = raw.map((p: any) => {
+                const rd = p.raw_data || {};
+                const user = rd.user || p.user || rd.author || {};
+                const content = _normContent(
+                    p.description ?? p.title ?? p.text ?? p.message ??
+                    rd.postText ?? rd.text ?? rd.message ?? rd.caption ?? ''
+                );
+                return {
+                    ...p,
+                    description: content,
+                    title: content,
+                    likes_count: _normNum(p.likes_count ?? p.likes ?? p.like_count ?? p.likesCount ?? rd.reactionsCount),
+                    comments_count: _normNum(p.comments_count ?? p.comments ?? p.comment_count ?? p.commentsCount ?? rd.commentsCount),
+                    shares_count: _normNum(p.shares_count ?? p.shares ?? p.share_count ?? p.sharesCount ?? rd.sharesCount),
+                    views_count: _normNum(p.views_count ?? p.views ?? p.view_count ?? p.viewsCount ?? rd.viewsCount),
+                    author_name: (p.author_name || user.name || rd.postAuthor || p.pageName || rd.pageName || '').trim(),
+                    author_username: (p.author_username || user.username || user.uri_token || user.id || p.pageName || rd.pageName || '').trim(),
+                };
+            });
+            setPosts(normalized);
             if (reset) setCurrentPage(1);
 
         } catch (err: any) {
@@ -102,6 +149,16 @@ export default function FacebookSearchPostPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const _normContent = (v: string | undefined | null) => {
+        const s = String(v ?? '').trim();
+        return (s === '' || s.toLowerCase() === 'no content') ? '' : s;
+    };
+    const _normNum = (v: number | string | undefined | null) => {
+        if (v == null) return 0;
+        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+        return isNaN(n) ? 0 : Math.max(0, n);
     };
 
     const formatDate = (dateString: string) => {
@@ -123,10 +180,22 @@ export default function FacebookSearchPostPage() {
     };
 
     const getAvatarUrl = (post: FacebookPost) => {
-        if (post.raw_data && post.raw_data.author && post.raw_data.author.avatar) {
-            return post.raw_data.author.avatar;
+        const rd = post.raw_data || {};
+        const user = rd.user || rd.author || {};
+        const avatar = user.profilePic || user.profilePicture || user.avatar || user.profile_pic;
+        if (avatar) return avatar;
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author_name || post.author_username || '?')}&background=1877F2&color=fff`;
+    };
+
+    const extractProductLink = (text: string | null | undefined) => {
+        if (!text) return null;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const matches = text.match(urlRegex);
+        if (matches && matches.length > 0) {
+            const productLinK = matches.find(url => url.includes('shopee') || url.includes('lazada') || url.includes('tiktok') || url.includes('mwc') || url.includes('tiki'));
+            return productLinK || matches[0];
         }
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author_name || post.author_username)}&background=1877F2&color=fff`;
+        return null;
     };
 
     return (
@@ -146,7 +215,7 @@ export default function FacebookSearchPostPage() {
                             Facebook Search
                         </h1>
                     </div>
-                    <p className="text-slate-600 text-lg ml-16">Tìm kiếm bài viết viral theo keyword hoặc hashtag</p>
+                    <p className="text-slate-600 text-lg ml-16">Tìm bài viết có ảnh sản phẩm + caption (link Shopee, Lazada, TikTok Shop…)</p>
                 </motion.div>
 
                 {/* Search Section */}
@@ -159,7 +228,7 @@ export default function FacebookSearchPostPage() {
                     <div className="flex flex-col gap-4 mb-4">
                         <div className="flex p-1 rounded-xl w-fit gap-1">
                             <button
-                                onClick={() => setSearchType('keyword')}
+                                onClick={() => handleSearchTypeChange('keyword')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'keyword'
                                     ? 'bg-white text-blue-600 shadow-md'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -168,7 +237,7 @@ export default function FacebookSearchPostPage() {
                                 <Search className="w-4 h-4" /> Keyword
                             </button>
                             <button
-                                onClick={() => setSearchType('hashtag')}
+                                onClick={() => handleSearchTypeChange('hashtag')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'hashtag'
                                     ? 'bg-white text-blue-600 shadow-md'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -234,7 +303,7 @@ export default function FacebookSearchPostPage() {
                         >
                             <div className="mb-4 text-slate-600 flex justify-between items-center">
                                 <div>
-                                    Tìm thấy <span className="text-blue-600 font-bold">{posts.length}</span> bài viết
+                                    Tìm thấy <span className="text-blue-600 font-bold">{posts.length}</span> bài viết (ảnh sản phẩm + caption)
                                 </div>
                                 <div className="text-sm text-slate-500">
                                     Trang {safeCurrentPage} / {totalPages || 1}
@@ -253,92 +322,80 @@ export default function FacebookSearchPostPage() {
                                         key={post.video_id || index}
                                         className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-blue-400/50 hover:shadow-xl transition-all duration-300 group flex flex-col"
                                     >
-                                        {/* Cover */}
-                                        <div className="relative aspect-video bg-slate-100 group-hover:scale-[1.02] transition-transform duration-500 overflow-hidden">
-                                            {/* Play Icon Overlay */}
-                                            <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg">
-                                                    <Play className="w-6 h-6 text-white fill-white ml-1" />
-                                                </div>
-                                            </div>
-
-                                            {post.thumbnail_url ? (
+                                        {/* Ảnh sản phẩm */}
+                                        <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                                            {post.thumbnail_url && !failedImages.has(post.video_id || String(index)) ? (
                                                 <img
-                                                    src={post.thumbnail_url}
+                                                    src={getThumbnailSrc(post.thumbnail_url)}
                                                     alt={post.description}
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                     loading="lazy"
+                                                    referrerPolicy="no-referrer"
+                                                    onError={() => handleImageError(post.video_id || String(index))}
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
-                                                    <FileText className="w-12 h-12 opacity-50" />
-                                                    <span className="text-xs">Chỉ có văn bản</span>
+                                                <div className="w-full h-full relative">
+                                                    {/* Fallback: dùng avatar làm nền mờ */}
+                                                    <img
+                                                        src={getAvatarUrl(post)}
+                                                        alt={post.author_name || post.author_username}
+                                                        className="w-full h-full object-cover blur-sm scale-110"
+                                                        loading="lazy"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author_name || post.author_username || '?')}&background=1877F2&color=fff`;
+                                                        }}
+                                                    />
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-2 px-3 text-center bg-black/40">
+                                                        <FileText className="w-10 h-10 opacity-80" />
+                                                        <span className="text-xs">Ảnh bị chặn. Nhấn &quot;Xem&quot; để xem bài viết trên Facebook</span>
+                                                    </div>
                                                 </div>
                                             )}
-                                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
-
-                                            {/* Stats Overlay */}
-                                            <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between items-end">
-                                                <div className="flex items-center gap-1 text-white bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
-                                                    <Eye className="w-3 h-3 text-blue-400" />
-                                                    <span className="text-xs font-bold">{formatNumber(post.views_count)}</span>
-                                                </div>
-                                            </div>
                                         </div>
 
-                                        {/* Content */}
+                                        {/* Caption + CTA */}
                                         <div className="p-4 flex flex-col flex-1">
-                                            {/* Author */}
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <img
-                                                    src={getAvatarUrl(post)}
-                                                    alt=""
-                                                    className="w-8 h-8 rounded-full border border-slate-200 object-cover"
-                                                    loading="lazy"
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-bold text-slate-900 truncate" title={post.author_name}>
-                                                        {post.author_name}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500 truncate">@{post.author_username}</p>
-                                                </div>
-                                            </div>
-
-                                            <p className="text-sm text-slate-700 line-clamp-2 mb-3 h-10" title={post.description}>
-                                                {post.description || post.title || 'Không có mô tả.'}
+                                            <p className="text-sm text-slate-700 line-clamp-3 mb-3 flex-1" title={post.description || post.title}>
+                                                {_normContent(post.description || post.title) || 'Không có mô tả.'}
                                             </p>
 
-                                            {/* Metrics */}
-                                            <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-auto">
-                                                <div className="flex items-center gap-1 text-slate-500 text-xs" title="Likes">
-                                                    <ThumbsUp className="w-3 h-3 text-blue-500" /> {formatNumber(post.likes_count)}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-slate-500 text-xs" title="Comments">
-                                                    <MessageCircle className="w-3 h-3 text-green-500" /> {formatNumber(post.comments_count)}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-slate-500 text-xs" title="Shares">
-                                                    <Share2 className="w-3 h-3 text-purple-500" /> {formatNumber(post.shares_count)}
-                                                </div>
+                                            <div className="flex items-center gap-2 text-slate-500 text-xs mb-3">
+                                                <span className="text-slate-400 truncate">{post.author_name || post.author_username}</span>
+                                                <span>·</span>
+                                                <ThumbsUp className="w-3 h-3 text-blue-500" /> {formatNumber(post.likes_count)}
+                                                <MessageCircle className="w-3 h-3 text-green-500 ml-1" /> {formatNumber(post.comments_count)}
                                             </div>
 
-                                            {/* Actions */}
-                                            <div className="grid grid-cols-2 gap-2 mt-4">
+                                            <div className={`grid gap-2 ${extractProductLink(post.description || post.title) ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                                 <a
                                                     href={post.video_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
+                                                    className="py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1 min-w-0"
                                                 >
-                                                    <Eye className="w-3.5 h-3.5" /> Xem
+                                                    <Eye className="w-3.5 h-3.5 flex-shrink-0" /> Xem
                                                 </a>
-                                                <a
-                                                    href={post.download_url || post.video_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
-                                                >
-                                                    <Download className="w-3.5 h-3.5" /> Tải
-                                                </a>
+                                                {extractProductLink(post.description || post.title) ? (
+                                                    <a
+                                                        href={extractProductLink(post.description || post.title) as string}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="col-span-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
+                                                        title="Mua ngay"
+                                                    >
+                                                        Mua ngay
+                                                    </a>
+                                                ) : (
+                                                    <a
+                                                        href={post.download_url || post.video_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg text-center transition-colors flex items-center justify-center gap-1 min-w-0"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" /> Tải
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -410,7 +467,7 @@ export default function FacebookSearchPostPage() {
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Facebook className="w-8 h-8 text-blue-600 opacity-50" />
                         </div>
-                        <p>Nhập từ khóa hoặc hashtag để tìm kiếm bài viết Facebook</p>
+                        <p>Nhập từ khóa hoặc hashtag để tìm bài viết có ảnh sản phẩm + caption</p>
                     </div>
                 )}
             </div>
