@@ -60,12 +60,40 @@ const RankingView = ({ rankings }: RankingViewProps) => {
         }
     };
 
-    const getRankBgColor = (rank: number) => {
+    const getRankStyle = (rank: number) => {
         switch (rank) {
-            case 1: return 'bg-yellow-50 border-yellow-200';
-            case 2: return 'bg-gray-50 border-gray-200';
-            case 3: return 'bg-orange-50 border-orange-200';
-            default: return 'bg-white border-gray-100';
+            case 1: return {
+                container: 'border-2 border-yellow-400/70 bg-gradient-to-r from-yellow-50 via-amber-50/80 to-yellow-50 shadow-[0_0_20px_-4px_rgba(234,179,8,0.3)]',
+                nameColor: 'text-yellow-900',
+                valueColor: 'text-yellow-700',
+                accentBar: 'bg-gradient-to-b from-yellow-400 to-amber-500',
+                avatarRing: 'ring-yellow-300/60 shadow-[0_0_12px_-2px_rgba(234,179,8,0.4)]',
+                badge: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+            };
+            case 2: return {
+                container: 'border-2 border-slate-300/70 bg-gradient-to-r from-slate-50 via-gray-50/80 to-slate-100/50 shadow-[0_0_16px_-4px_rgba(148,163,184,0.3)]',
+                nameColor: 'text-slate-800',
+                valueColor: 'text-slate-600',
+                accentBar: 'bg-gradient-to-b from-slate-400 to-slate-500',
+                avatarRing: 'ring-slate-300/60 shadow-[0_0_10px_-2px_rgba(148,163,184,0.3)]',
+                badge: 'bg-slate-100 text-slate-600 border-slate-200',
+            };
+            case 3: return {
+                container: 'border-2 border-orange-300/60 bg-gradient-to-r from-orange-50/80 via-amber-50/50 to-orange-50/60 shadow-[0_0_14px_-4px_rgba(251,146,60,0.25)]',
+                nameColor: 'text-orange-900',
+                valueColor: 'text-orange-600',
+                accentBar: 'bg-gradient-to-b from-orange-400 to-amber-600',
+                avatarRing: 'ring-orange-300/50 shadow-[0_0_8px_-2px_rgba(251,146,60,0.3)]',
+                badge: 'bg-orange-100 text-orange-600 border-orange-200',
+            };
+            default: return {
+                container: 'border border-slate-100 bg-white hover:bg-slate-50/50',
+                nameColor: 'text-slate-900',
+                valueColor: 'text-slate-700',
+                accentBar: '',
+                avatarRing: 'ring-white',
+                badge: 'bg-blue-100/50 text-blue-600',
+            };
         }
     };
 
@@ -89,51 +117,65 @@ const RankingView = ({ rankings }: RankingViewProps) => {
             </div>
 
             <div className="space-y-4 relative z-10">
-                {users.map((user) => (
-                    <div
-                        key={user.rank}
-                        className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg ${user.rank === 1 ? 'border-blue-500 bg-blue-50/30' :
-                            user.rank === 2 ? 'border-slate-200 bg-slate-50/50' :
-                                user.rank === 3 ? 'border-slate-100 bg-slate-50/30' :
-                                    'border-slate-50 bg-white'
-                            }`}
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center justify-center w-10 text-center">
-                                {getMedalEmoji(user.rank) ? (
-                                    <span className="text-2xl drop-shadow-sm">{getMedalEmoji(user.rank)}</span>
-                                ) : (
-                                    <span className="text-slate-300 font-black text-lg">0{user.rank}</span>
-                                )}
+                {users.map((user) => {
+                    const style = getRankStyle(user.rank);
+                    const isTop3 = user.rank <= 3;
+
+                    return (
+                        <div
+                            key={user.rank}
+                            className={`relative flex items-center justify-between p-5 rounded-3xl transition-all duration-300 hover:scale-[1.01] hover:shadow-lg overflow-hidden ${style.container}`}
+                        >
+                            {/* Accent bar for top 3 */}
+                            {isTop3 && (
+                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-3xl ${style.accentBar}`} />
+                            )}
+
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center justify-center w-10 text-center">
+                                    {getMedalEmoji(user.rank) ? (
+                                        <span className={`text-2xl drop-shadow-sm ${isTop3 ? 'animate-[bounce_2s_ease-in-out_infinite]' : ''}`}>
+                                            {getMedalEmoji(user.rank)}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-300 font-black text-lg">0{user.rank}</span>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <img
+                                        src={getAvatarUrl(user.avatar, user.name)}
+                                        alt={user.name}
+                                        className={`w-12 h-12 rounded-2xl object-cover ring-4 shadow-md ${style.avatarRing}`}
+                                        onError={(e) => {
+                                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+                                        }}
+                                    />
+                                    {user.rank === 1 && (
+                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
+                                            <span className="text-[8px]">👑</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className={`font-black tracking-tight ${isTop3 ? 'text-base' : 'text-sm'} ${style.nameColor}`}>
+                                        {user.name}
+                                    </span>
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1 border ${style.badge}`}>
+                                        {user.position || 'Member'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="relative">
-                                <img
-                                    src={getAvatarUrl(user.avatar, user.name)}
-                                    alt={user.name}
-                                    className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md"
-                                    onError={(e) => {
-                                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
-                                    }}
-                                />
-                                {user.rank === 1 && (
-                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white" />
-                                )}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-black text-slate-900 tracking-tight">{user.name}</span>
-                                <span className="text-[9px] font-black text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1">
-                                    {user.position || 'Thành viên'}
+                            <div className="text-right">
+                                <span className={`font-black block leading-none ${isTop3 ? 'text-xl' : 'text-lg'} ${style.valueColor}`}>
+                                    {user.value}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                    {title.includes('TRAFFIC') ? 'Lượt xem' : 'VND'}
                                 </span>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <span className="text-lg font-black text-slate-900 block leading-none">{user.value}</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                                {title.includes('TRAFFIC') ? 'Lượt xem' : 'VND'}
-                            </span>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
