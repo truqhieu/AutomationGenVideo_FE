@@ -6,6 +6,8 @@ const nextConfig = {
   images: {
     domains: [
       'localhost',
+      'wsrv.nl',
+      'images.weserv.nl',
       'ui-avatars.com',
       'cdninstagram.com',
       'scontent.cdninstagram.com',
