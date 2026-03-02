@@ -164,20 +164,6 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                     </div>
                 </div>
 
-                {/* Task Details Breakdown */}
-                {data.task_progress && (
-                    <div className="grid grid-cols-2 gap-1.5 mb-4 px-1">
-                        <div className="flex flex-col p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                            <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest mb-0.5">TASK AUTO</span>
-                            <span className="text-[11px] font-black text-slate-800">{data.task_progress.task_auto}</span>
-                        </div>
-                        <div className="flex flex-col p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                            <span className="text-[7px] font-black text-orange-500 uppercase tracking-widest mb-0.5">TASK MỚI</span>
-                            <span className="text-[11px] font-black text-slate-800">{data.task_progress.task_new}</span>
-                        </div>
-                    </div>
-                )}
-
                 {/* Report Status Badge */}
                 <div className="w-full flex justify-center mb-4">
                     <div className={`px-5 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] shadow-md transition-all ${isReportedOnTime
