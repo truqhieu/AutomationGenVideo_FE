@@ -188,6 +188,7 @@ const UserActivityPage = () => {
                     captionHashtag: item.checklist?.caption || false,
                 },
                 videoCount: item.answers?.['Số video edit sử dụng >50% source từ quay?'] || 0,
+                task_progress: item.task_progress || null,
                 questions: [
                     {
                         question: 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
