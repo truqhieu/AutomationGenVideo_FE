@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target } from 'lucide-react';
+import { Target, Globe, Flag } from 'lucide-react';
 
 interface ActivityKPIsProps {
     summary?: {
@@ -120,7 +120,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                         <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
                             <div className="relative pl-4 border-l-2 border-amber-400">
                                 <div className="text-[10px] font-black text-amber-600 uppercase mb-1 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                    <Globe className="w-3 h-3 text-amber-500 animate-pulse-slow" />
                                     Global
                                 </div>
                                 <div className="text-sm font-black text-slate-800">
@@ -133,7 +133,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
 
                             <div className="relative pl-4 border-l-2 border-blue-400">
                                 <div className="text-[10px] font-black text-blue-600 uppercase mb-1 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                    <Flag className="w-3 h-3 text-blue-500" />
                                     Việt Nam
                                 </div>
                                 <div className="text-sm font-black text-slate-800">

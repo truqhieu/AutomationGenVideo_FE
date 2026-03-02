@@ -27,6 +27,7 @@ interface UserActivityCardProps {
     data: UserActivity;
     onClick?: () => void;
     isActive?: boolean;
+    timeType?: string;
 }
 
 const getAvatarUrl = (url: string | null, name: string) => {
@@ -42,7 +43,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) => {
+const UserActivityCard = ({ data, onClick, isActive, timeType }: UserActivityCardProps) => {
     const dailyGoal = data.dailyGoal || 0;
     const done = data.done || 0;
 
@@ -71,18 +72,20 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
             accent: 'bg-emerald-100'
         },
         exceeded: {
-            card: 'border-amber-400 border-2 bg-amber-100/60 hover:bg-amber-100/80 transition-all shadow-[0_8px_30px_rgba(245,158,11,0.08)]',
-            avatar: 'border-amber-500 ring-4 ring-amber-100',
-            icon: 'text-amber-600',
-            badge: 'bg-amber-600 text-white',
-            text: 'text-amber-700',
-            glow: 'hover:shadow-amber-300/40',
-            accent: 'bg-amber-100'
+            card: 'border-purple-400 border-2 bg-purple-100/60 hover:bg-purple-100/80 transition-all shadow-[0_8px_30px_rgba(168,85,247,0.1)]',
+            avatar: 'border-purple-500 ring-4 ring-purple-100',
+            icon: 'text-purple-600',
+            badge: 'bg-purple-600 text-white',
+            text: 'text-purple-700',
+            glow: 'hover:shadow-purple-300/40',
+            accent: 'bg-purple-100'
         }
     };
 
     const style = statusStyles[statusType];
     const isReportedOnTime = data.reportStatus === 'ĐÚNG HẠN' || data.reportStatus === 'ĐÃ XONG';
+    const isRange = timeType && !['today', 'yesterday'].includes(timeType);
+    const goalLabel = isRange ? 'TỔNG MỤC TIÊU' : 'MỤC TIÊU NGÀY';
 
     return (
         <Card
@@ -96,8 +99,8 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                 {/* Warning/Status Icon */}
                 <div className="absolute top-2 right-2">
                     {statusType === 'exceeded' ? (
-                        <div className="bg-amber-100 p-2 rounded-xl border border-amber-200">
-                            <Target className="w-4 h-4 text-amber-600" />
+                        <div className="bg-purple-100 p-2 rounded-xl border border-purple-200 shadow-sm animate-pulse-slow">
+                            <Target className="w-4 h-4 text-purple-600" />
                         </div>
                     ) : (
                         <div className={`${!isReportedOnTime ? 'bg-red-100 border-red-200' : 'bg-gray-100 border-gray-200'} p-2 rounded-xl border`}>
@@ -147,15 +150,15 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                         <span className="text-[10px] font-black text-slate-800">{data.time}</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border transition-colors ${statusType === 'exceeded' ? 'bg-purple-50/50 border-purple-100' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
-                            <Target className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">MỤC TIÊU NGÀY</span>
+                            <Target className={`w-3.5 h-3.5 ${statusType === 'exceeded' ? 'text-purple-500' : 'text-slate-400'}`} />
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{goalLabel}</span>
                         </div>
-                        <span className="text-[12px] font-black text-slate-900">{dailyGoal}</span>
+                        <span className={`text-[12px] font-black ${statusType === 'exceeded' ? 'text-purple-700' : 'text-slate-900'}`}>{dailyGoal}</span>
                     </div>
 
-                    <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-100'}`}>
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-purple-100 border-purple-200' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
                             <CheckCircle2 className={`w-3.5 h-3.5 ${style.icon}`} />
                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">ĐÁ XONG</span>
@@ -178,12 +181,12 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                 <div className="w-full space-y-1.5 mb-4 px-1">
                     <div className="flex justify-between items-center text-[9px] font-black tracking-wider">
                         <span className="text-slate-500 uppercase">TIẾN ĐỘ THÁNG</span>
-                        <span className={`${statusType === 'exceeded' ? 'text-amber-600' : 'text-blue-600'}`}>{data.monthlyProgress}%</span>
+                        <span className={`${statusType === 'exceeded' ? 'text-purple-600' : 'text-blue-600'}`}>{data.monthlyProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-200/50 rounded-full overflow-hidden p-0.5 shadow-inner">
                         <div
                             className={`h-full rounded-full transition-all duration-700 shadow-sm ${statusType === 'exceeded'
-                                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-500'
+                                ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500'
                                 : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
                             style={{ width: `${Math.min(data.monthlyProgress, 100)}%` }}
                         />

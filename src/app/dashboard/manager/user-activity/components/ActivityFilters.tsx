@@ -41,6 +41,7 @@ const ActivityFilters = ({
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [filterMode, setFilterMode] = useState<'day' | 'week' | 'month' | 'year' | 'range'>('day');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const timeFilterRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +75,8 @@ const ActivityFilters = ({
         { id: 'last_week', label: 'Tuần trước' },
         { id: 'this_month', label: 'Tháng này' },
         { id: 'last_month', label: 'Tháng trước' },
-        { id: 'custom', label: 'Chọn khoảng ngày' },
+        { id: 'this_year', label: 'Năm nay' },
+        { id: 'custom', label: 'Chọn ngày' },
     ];
 
     useEffect(() => {
@@ -114,34 +116,44 @@ const ActivityFilters = ({
 
         switch (typeId) {
             case 'today':
+                setFilterMode('day');
                 break;
             case 'yesterday':
+                setFilterMode('day');
                 start.setDate(today.getDate() - 1);
                 end = new Date(start);
                 end.setHours(23, 59, 59, 999);
                 break;
             case 'this_week':
-                const day = today.getDay(); // 0 is Sunday
-                const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-                start.setDate(diff);
-                break;
             case 'last_week':
-                const lastWeekDay = today.getDay();
-                const lastWeekDiff = today.getDate() - lastWeekDay - 6;
-                start.setDate(lastWeekDiff);
+                setFilterMode('week');
+                const targetDay = typeId === 'this_week' ? today : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const dayOfWeek = targetDay.getDay();
+                const diff = targetDay.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                start = new Date(targetDay);
+                start.setDate(diff);
+                start.setHours(0, 0, 0, 0);
                 end = new Date(start);
                 end.setDate(start.getDate() + 6);
                 end.setHours(23, 59, 59, 999);
                 break;
             case 'this_month':
+                setFilterMode('month');
                 start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
                 break;
             case 'last_month':
+                setFilterMode('month');
                 start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                end = new Date(today.getFullYear(), today.getMonth(), 0);
-                end.setHours(23, 59, 59, 999);
+                end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+                break;
+            case 'this_year':
+                setFilterMode('year');
+                start = new Date(today.getFullYear(), 0, 1);
+                end = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
                 break;
             case 'custom':
+                setFilterMode('range');
                 setShowDatePicker(true);
                 break;
         }
@@ -149,7 +161,7 @@ const ActivityFilters = ({
         setTimeType(typeId);
         setDateRange({ start, end });
         if (typeId !== 'custom') {
-            setSelectedDate(start); // For backward compatibility
+            setSelectedDate(start);
             setOpenDropdown(null);
         }
     };
@@ -205,26 +217,48 @@ const ActivityFilters = ({
     const handleDateSelect = (day: number) => {
         const newDate = new Date(currentYear, currentMonth, day);
 
-        if (timeType !== 'custom') {
+        if (filterMode === 'day') {
             setSelectedDate(newDate);
-            setDateRange({ start: newDate, end: new Date(newDate.getTime() + 24 * 60 * 60 * 1000 - 1) });
-            setInputValue(formatDate(newDate));
-            setShowDatePicker(false);
-        } else {
-            // Range selection logic
+            setDateRange({ start: newDate, end: new Date(newDate.setHours(23, 59, 59, 999)) });
+            setOpenDropdown(null);
+        } else if (filterMode === 'week') {
+            const dayOfWeek = newDate.getDay();
+            const diff = newDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const start = new Date(newDate);
+            start.setDate(diff);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            setDateRange({ start, end });
+            setOpenDropdown(null);
+        } else if (filterMode === 'range') {
             if (dateRange.start.getTime() === dateRange.end.getTime()) {
                 if (newDate < dateRange.start) {
                     setDateRange({ start: newDate, end: dateRange.start });
-                    setShowDatePicker(false);
+                    setOpenDropdown(null);
                 } else {
                     setDateRange({ start: dateRange.start, end: newDate });
-                    setShowDatePicker(false);
+                    setOpenDropdown(null);
                 }
             } else {
                 setDateRange({ start: newDate, end: newDate });
-                // Don't close yet, wait for second click
             }
         }
+    };
+
+    const handleMonthSelect = (monthIdx: number) => {
+        const start = new Date(viewDate.getFullYear(), monthIdx, 1, 0, 0, 0, 0);
+        const end = new Date(viewDate.getFullYear(), monthIdx + 1, 0, 23, 59, 59, 999);
+        setDateRange({ start, end });
+        setOpenDropdown(null);
+    };
+
+    const handleYearSelect = (year: number) => {
+        const start = new Date(year, 0, 1, 0, 0, 0, 0);
+        const end = new Date(year, 11, 31, 23, 59, 59, 999);
+        setDateRange({ start, end });
+        setOpenDropdown(null);
     };
 
     // --- Direct Input Logic ---
@@ -411,44 +445,129 @@ const ActivityFilters = ({
             )}
 
             <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
-                {/* Time Type Filter */}
+                {/* Unified Time Filter */}
                 <div className="relative">
                     <button
-                        onClick={() => toggleDropdown('timeType')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md ${timeType !== 'today'
+                        onClick={() => toggleDropdown('timeSelector')}
+                        className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || timeType !== 'today'
                             ? 'bg-blue-600 border-blue-600 text-white'
                             : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
                             }`}
                     >
-                        <Calendar className={`w-3.5 h-3.5 ${timeType !== 'today' ? 'text-blue-100' : 'text-blue-500'}`} />
-                        <span className="text-xs font-bold truncate max-w-[100px]">
-                            {timeOptions.find(opt => opt.id === timeType)?.label || 'Hôm nay'}
-                        </span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'timeType' ? 'rotate-180' : ''}`} />
+                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || timeType !== 'today' ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <div className="flex flex-col items-start leading-tight">
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || timeType !== 'today' ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
+                                {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
+                            </span>
+                            <span className="text-[11px] font-bold">
+                                {filterMode === 'year' ? dateRange.start.getFullYear() :
+                                    filterMode === 'month' ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}` :
+                                        (timeType === 'custom' || filterMode === 'week' || filterMode === 'range')
+                                            ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
+                                            : formatDate(selectedDate)
+                                }
+                            </span>
+                        </div>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'timeSelector' ? 'rotate-180' : ''}`} />
                     </button>
 
                     <AnimatePresence>
-                        {openDropdown === 'timeType' && (
+                        {openDropdown === 'timeSelector' && (
                             <motion.div
-                                variants={dropdownVariants}
-                                initial="hidden"
-                                animate="visible"
-                                exit="exit"
-                                className="absolute top-full right-0 mt-2 w-44 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-[70] py-1"
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute top-full mt-2 right-0 w-[300px] bg-slate-900 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-slate-800 p-6 z-[80]"
                             >
-                                {timeOptions.map((opt) => (
-                                    <button
-                                        key={opt.id}
-                                        onClick={() => handleSelectTimeType(opt.id)}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-[11px] font-bold transition-colors ${timeType === opt.id
-                                            ? 'bg-blue-50 text-blue-700'
-                                            : 'text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        {opt.label}
-                                        {timeType === opt.id && <Check className="w-3 h-3" />}
-                                    </button>
-                                ))}
+                                {/* Tabbed Picker */}
+                                <div className="flex flex-col">
+                                    {/* Tabs */}
+                                    <div className="flex items-center gap-1 p-1 bg-slate-800/50 rounded-2xl mb-6">
+                                        {(['day', 'week', 'month', 'year', 'range'] as const).map(mode => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setFilterMode(mode)}
+                                                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${filterMode === mode ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                            >
+                                                {mode === 'day' ? 'Ngày' : mode === 'week' ? 'Tuần' : mode === 'month' ? 'Tháng' : mode === 'year' ? 'Năm' : 'Khoảng'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {filterMode === 'month' ? (
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {Array.from({ length: 12 }).map((_, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => handleMonthSelect(i)}
+                                                    className={`py-4 rounded-2xl text-xs font-bold border transition-all ${dateRange.start.getMonth() === i && dateRange.start.getFullYear() === viewDate.getFullYear()
+                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg'
+                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-blue-500/50 hover:text-white'
+                                                        }`}
+                                                >
+                                                    Tháng {i + 1}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : filterMode === 'year' ? (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[2024, 2025, 2026, 2027].map(yr => (
+                                                <button
+                                                    key={yr}
+                                                    onClick={() => handleYearSelect(yr)}
+                                                    className={`py-8 rounded-3xl text-lg font-black border transition-all ${dateRange.start.getFullYear() === yr
+                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg'
+                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-blue-500/50 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {yr}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Calendar Header */}
+                                            <div className="flex items-center justify-between mb-4">
+                                                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 rotate-90" /></button>
+                                                <div className="text-[11px] font-black text-white uppercase tracking-widest">{viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}</div>
+                                                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 -rotate-90" /></button>
+                                            </div>
+
+                                            {/* Calendar Grid */}
+                                            <div className="grid grid-cols-7 gap-1 mb-2">
+                                                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
+                                                    <div key={day} className="text-center text-[9px] font-black text-slate-500">{day}</div>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-7 gap-1">
+                                                {days.map((day, idx) => (
+                                                    <div key={idx} className="aspect-square flex items-center justify-center">
+                                                        {day ? (
+                                                            <button
+                                                                onClick={() => handleDateSelect(day)}
+                                                                className={`w-full h-full flex items-center justify-center text-[10px] font-bold rounded-lg transition-all
+                                                                    ${isSelected(day) || (filterMode === 'week' && isInRange(day))
+                                                                        ? 'bg-blue-600 text-white shadow-lg'
+                                                                        : isInRange(day)
+                                                                            ? 'bg-blue-500/20 text-blue-200'
+                                                                            : isToday(day)
+                                                                                ? 'bg-blue-900/40 text-blue-400 ring-1 ring-blue-500/30'
+                                                                                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                                                                    }`}
+                                                            >
+                                                                {day}
+                                                            </button>
+                                                        ) : <div className="w-full h-full" />}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="mt-auto pt-6 flex justify-end">
+                                        <button onClick={() => setOpenDropdown(null)} className="px-6 py-2 text-[10px] font-black text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition-all uppercase tracking-widest">Hoàn tất</button>
+                                    </div>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -477,133 +596,6 @@ const ActivityFilters = ({
                         </div>
                     </div>
                 )}
-
-                {/* Date Picker Button */}
-                <div className="relative">
-                    <button
-                        onClick={() => setShowDatePicker(!showDatePicker)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${showDatePicker
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 group-hover:bg-blue-50/30'
-                            }`}
-                    >
-                        <span className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${showDatePicker ? 'text-blue-100' : 'text-gray-400 group-hover:text-blue-500'}`}>
-                            {timeType === 'custom' || timeType.includes('week') || timeType.includes('month') ? 'KHOẢNG:' : 'NGÀY:'}
-                        </span>
-                        <span className="text-xs font-bold">
-                            {timeType === 'custom' || timeType.includes('week') || timeType.includes('month')
-                                ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
-                                : formatDate(selectedDate)
-                            }
-                        </span>
-                        <Calendar className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${showDatePicker ? 'text-white' : 'text-blue-500'}`} />
-                    </button>
-
-                    <AnimatePresence>
-                        {showDatePicker && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute top-full mt-2 right-0 w-80 bg-slate-900 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-slate-800 p-7 z-[60]"
-                            >
-                                {/* Typing Input Area */}
-                                <div className="mb-6 bg-slate-800/50 p-4 rounded-3xl border border-slate-700 group-within:border-blue-500 group-within:bg-blue-500/10 transition-all">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Nhập ngày (DD/MM/YYYY):</label>
-                                    <input
-                                        type="text"
-                                        value={inputValue}
-                                        onChange={handleInputChange}
-                                        placeholder="12/02/2026"
-                                        className="w-full bg-transparent text-xl font-black text-white focus:outline-none placeholder:text-slate-700 tracking-wider"
-                                        autoFocus
-                                    />
-                                </div>
-
-                                <div className="h-px bg-slate-800 mb-6 mx-2" />
-
-                                {/* Calendar Header */}
-                                <div className="flex items-center justify-between mb-6">
-                                    <button
-                                        onClick={() => changeMonth(-1)}
-                                        className="p-2.5 hover:bg-slate-800 rounded-2xl text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        <ChevronDown className="w-5 h-5 rotate-90" />
-                                    </button>
-                                    <div className="text-sm font-black text-white uppercase tracking-widest">
-                                        {viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}
-                                    </div>
-                                    <button
-                                        onClick={() => changeMonth(1)}
-                                        className="p-2.5 hover:bg-slate-800 rounded-2xl text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        <ChevronDown className="w-5 h-5 -rotate-90" />
-                                    </button>
-                                </div>
-
-                                {/* Weekday Headers */}
-                                <div className="grid grid-cols-7 gap-1 mb-3">
-                                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
-                                        <div key={day} className="text-center text-[10px] font-black text-slate-500">
-                                            {day}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Calendar Days */}
-                                <div className="grid grid-cols-7 gap-2">
-                                    {days.map((day, idx) => (
-                                        <div key={idx} className="aspect-square flex items-center justify-center">
-                                            {day ? (
-                                                <button
-                                                    onClick={() => handleDateSelect(day)}
-                                                    className={`w-full h-full flex items-center justify-center text-xs font-bold rounded-2xl transition-all duration-200
-                                                        ${isSelected(day)
-                                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-110 z-10'
-                                                            : isInRange(day)
-                                                                ? 'bg-blue-500/20 text-blue-200'
-                                                                : isToday(day)
-                                                                    ? 'bg-blue-900/50 text-blue-400 ring-1 ring-blue-500/30'
-                                                                    : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-                                                        }`}
-                                                >
-                                                    {day}
-                                                </button>
-                                            ) : (
-                                                <div className="w-full h-full" />
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Quick Actions */}
-                                <div className="mt-8 pt-4 border-t border-slate-800 flex justify-between gap-3">
-                                    <button
-                                        onClick={() => {
-                                            const today = new Date();
-                                            today.setHours(0, 0, 0, 0);
-                                            setSelectedDate(today);
-                                            setDateRange({ start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) });
-                                            setTimeType('today');
-                                            setInputValue(formatDate(today));
-                                            setViewDate(new Date(today));
-                                            setShowDatePicker(false);
-                                        }}
-                                        className="flex-1 py-3 text-[10px] font-black text-blue-400 uppercase tracking-widest bg-blue-500/10 rounded-2xl hover:bg-blue-500/20 transition-colors"
-                                    >
-                                        Hôm nay
-                                    </button>
-                                    <button
-                                        onClick={() => setShowDatePicker(false)}
-                                        className="flex-1 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-800 rounded-2xl hover:bg-slate-800 hover:text-slate-300 transition-colors"
-                                    >
-                                        Đóng
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
             </div>
         </div>
     );
