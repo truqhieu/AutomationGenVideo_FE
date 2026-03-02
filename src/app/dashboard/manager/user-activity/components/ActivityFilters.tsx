@@ -16,6 +16,10 @@ interface ActivityFiltersProps {
     activeTab?: string;
     globalTeams?: string[]; // New
     vnTeams?: string[];     // New
+    dateRange: { start: Date; end: Date };
+    setDateRange: (range: { start: Date; end: Date }) => void;
+    timeType: string;
+    setTimeType: (type: string) => void;
 }
 
 const ActivityFilters = ({
@@ -29,11 +33,16 @@ const ActivityFilters = ({
     userTeam,
     activeTab,
     globalTeams = [], // Fallback
-    vnTeams = []      // Fallback
+    vnTeams = [],      // Fallback
+    dateRange,
+    setDateRange,
+    timeType,
+    setTimeType
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const timeFilterRef = useRef<HTMLDivElement>(null);
 
     const isAdmin = userRole === 'admin';
     const isLeader = userRole === 'leader';
@@ -58,10 +67,22 @@ const ActivityFilters = ({
     const isVNActive = isAllVN || vnTeams.includes(activeTeam);
     const isAllActive = activeTeam === 'All' || (!isGlobalActive && !isVNActive && activeTeam !== 'All');
 
+    const timeOptions = [
+        { id: 'today', label: 'Hôm nay' },
+        { id: 'yesterday', label: 'Hôm qua' },
+        { id: 'this_week', label: 'Tuần này' },
+        { id: 'last_week', label: 'Tuần trước' },
+        { id: 'this_month', label: 'Tháng này' },
+        { id: 'last_month', label: 'Tháng trước' },
+        { id: 'custom', label: 'Chọn khoảng ngày' },
+    ];
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setOpenDropdown(null);
+                if (timeFilterRef.current && !timeFilterRef.current.contains(event.target as Node)) {
+                    setOpenDropdown(null);
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -82,6 +103,55 @@ const ActivityFilters = ({
     const handleSelectTeam = (team: string) => {
         setActiveTeam(team);
         setOpenDropdown(null);
+    };
+
+    const handleSelectTimeType = (typeId: string) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let start = new Date(today);
+        let end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+
+        switch (typeId) {
+            case 'today':
+                break;
+            case 'yesterday':
+                start.setDate(today.getDate() - 1);
+                end = new Date(start);
+                end.setHours(23, 59, 59, 999);
+                break;
+            case 'this_week':
+                const day = today.getDay(); // 0 is Sunday
+                const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+                start.setDate(diff);
+                break;
+            case 'last_week':
+                const lastWeekDay = today.getDay();
+                const lastWeekDiff = today.getDate() - lastWeekDay - 6;
+                start.setDate(lastWeekDiff);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
+                break;
+            case 'this_month':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                break;
+            case 'last_month':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                end.setHours(23, 59, 59, 999);
+                break;
+            case 'custom':
+                setShowDatePicker(true);
+                break;
+        }
+
+        setTimeType(typeId);
+        setDateRange({ start, end });
+        if (typeId !== 'custom') {
+            setSelectedDate(start); // For backward compatibility
+            setOpenDropdown(null);
+        }
     };
 
     const dropdownVariants = {
@@ -123,14 +193,38 @@ const ActivityFilters = ({
     };
 
     const isSelected = (day: number) => {
-        return selectedDate.getDate() === day && selectedDate.getMonth() === currentMonth && selectedDate.getFullYear() === currentYear;
+        const d = new Date(currentYear, currentMonth, day);
+        return d.getTime() === dateRange.start.getTime() || d.getTime() === dateRange.end.getTime();
+    };
+
+    const isInRange = (day: number) => {
+        const d = new Date(currentYear, currentMonth, day);
+        return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime();
     };
 
     const handleDateSelect = (day: number) => {
         const newDate = new Date(currentYear, currentMonth, day);
-        setSelectedDate(newDate);
-        setInputValue(formatDate(newDate)); // Update input when calendar date is picked
-        setShowDatePicker(false);
+
+        if (timeType !== 'custom') {
+            setSelectedDate(newDate);
+            setDateRange({ start: newDate, end: new Date(newDate.getTime() + 24 * 60 * 60 * 1000 - 1) });
+            setInputValue(formatDate(newDate));
+            setShowDatePicker(false);
+        } else {
+            // Range selection logic
+            if (dateRange.start.getTime() === dateRange.end.getTime()) {
+                if (newDate < dateRange.start) {
+                    setDateRange({ start: newDate, end: dateRange.start });
+                    setShowDatePicker(false);
+                } else {
+                    setDateRange({ start: dateRange.start, end: newDate });
+                    setShowDatePicker(false);
+                }
+            } else {
+                setDateRange({ start: newDate, end: newDate });
+                // Don't close yet, wait for second click
+            }
+        }
     };
 
     // --- Direct Input Logic ---
@@ -181,12 +275,15 @@ const ActivityFilters = ({
     };
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-gray-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-4 gap-x-6 py-4 px-2">
             {canSeeTeamFilter && (
-                <div className="flex items-center gap-3 flex-wrap" ref={dropdownRef}>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-2">
-                        <Layers className="w-3 h-3" /> Lọc Team:
-                    </span>
+                <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 mr-1">
+                        <Layers className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                            Nhóm Team
+                        </span>
+                    </div>
 
                     {/* ALL Button */}
                     <button
@@ -313,43 +410,93 @@ const ActivityFilters = ({
                 </div>
             )}
 
-            <div className="flex items-center gap-4 ml-auto">
+            <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
+                {/* Time Type Filter */}
+                <div className="relative">
+                    <button
+                        onClick={() => toggleDropdown('timeType')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md ${timeType !== 'today'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+                            }`}
+                    >
+                        <Calendar className={`w-3.5 h-3.5 ${timeType !== 'today' ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <span className="text-xs font-bold truncate max-w-[100px]">
+                            {timeOptions.find(opt => opt.id === timeType)?.label || 'Hôm nay'}
+                        </span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'timeType' ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                        {openDropdown === 'timeType' && (
+                            <motion.div
+                                variants={dropdownVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="absolute top-full right-0 mt-2 w-44 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-[70] py-1"
+                            >
+                                {timeOptions.map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        onClick={() => handleSelectTimeType(opt.id)}
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-[11px] font-bold transition-colors ${timeType === opt.id
+                                            ? 'bg-blue-50 text-blue-700'
+                                            : 'text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                        {timeType === opt.id && <Check className="w-3 h-3" />}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
                 {/* Name Filter - Hidden in Personal unless Admin/Leader */}
                 {(!isPersonalTab || isAdmin || isLeader) && (
                     <div className="relative group">
-                        <div className={`flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
-                            <Search className={`w-4 h-4 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
+                        <div className={`flex items-center gap-2 bg-white px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
+                            <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
                             <input
                                 type="text"
-                                placeholder="Tìm theo tên..."
+                                placeholder="Tìm tên..."
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                className="bg-transparent border-none focus:outline-none text-sm font-bold text-gray-700 w-40 placeholder:text-gray-300 placeholder:font-normal"
+                                className="bg-transparent border-none focus:outline-none text-xs font-bold text-gray-700 w-32 placeholder:text-gray-300 placeholder:font-normal"
                             />
                             {searchName && (
                                 <button
                                     onClick={() => setSearchName('')}
                                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                                 >
-                                    <X className="w-3 h-3 text-gray-400" />
+                                    <X className="w-2.5 h-2.5 text-gray-400" />
                                 </button>
                             )}
                         </div>
                     </div>
                 )}
 
-                {/* Date Picker */}
+                {/* Date Picker Button */}
                 <div className="relative">
                     <button
                         onClick={() => setShowDatePicker(!showDatePicker)}
-                        className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border transition-all duration-300 shadow-sm hover:shadow-md group ${showDatePicker
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${showDatePicker
                             ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-slate-900 border-slate-800 text-white hover:bg-black'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 group-hover:bg-blue-50/30'
                             }`}
                     >
-                        <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${showDatePicker ? 'text-blue-200' : 'text-slate-400 group-hover:text-blue-400'}`}>Ngày:</span>
-                        <span className="text-sm font-bold">{formatDate(selectedDate)}</span>
-                        <Calendar className={`w-4 h-4 transition-transform group-hover:scale-110 ${showDatePicker ? 'text-white' : 'text-blue-500'}`} />
+                        <span className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${showDatePicker ? 'text-blue-100' : 'text-gray-400 group-hover:text-blue-500'}`}>
+                            {timeType === 'custom' || timeType.includes('week') || timeType.includes('month') ? 'KHOẢNG:' : 'NGÀY:'}
+                        </span>
+                        <span className="text-xs font-bold">
+                            {timeType === 'custom' || timeType.includes('week') || timeType.includes('month')
+                                ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
+                                : formatDate(selectedDate)
+                            }
+                        </span>
+                        <Calendar className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${showDatePicker ? 'text-white' : 'text-blue-500'}`} />
                     </button>
 
                     <AnimatePresence>
@@ -413,9 +560,11 @@ const ActivityFilters = ({
                                                     className={`w-full h-full flex items-center justify-center text-xs font-bold rounded-2xl transition-all duration-200
                                                         ${isSelected(day)
                                                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-110 z-10'
-                                                            : isToday(day)
-                                                                ? 'bg-blue-900/50 text-blue-400 ring-1 ring-blue-500/30'
-                                                                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                                                            : isInRange(day)
+                                                                ? 'bg-blue-500/20 text-blue-200'
+                                                                : isToday(day)
+                                                                    ? 'bg-blue-900/50 text-blue-400 ring-1 ring-blue-500/30'
+                                                                    : 'hover:bg-slate-800 text-slate-400 hover:text-white'
                                                         }`}
                                                 >
                                                     {day}
@@ -432,7 +581,10 @@ const ActivityFilters = ({
                                     <button
                                         onClick={() => {
                                             const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
                                             setSelectedDate(today);
+                                            setDateRange({ start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) });
+                                            setTimeType('today');
                                             setInputValue(formatDate(today));
                                             setViewDate(new Date(today));
                                             setShowDatePicker(false);

@@ -68,6 +68,16 @@ const UserActivityPage = () => {
     const [searchName, setSearchName] = React.useState('');
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
 
+    // Time filter states
+    const [timeType, setTimeType] = React.useState('today');
+    const [dateRange, setDateRange] = React.useState<{ start: Date; end: Date }>(() => {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+    });
+
     // Categorize teams dynamically based on teamContributions data
     const { globalTeams, vnTeams } = React.useMemo(() => {
         const globals: string[] = [];
@@ -104,11 +114,9 @@ const UserActivityPage = () => {
         return safeTeam === activeTeam.toLowerCase();
     };
 
-
-
     React.useEffect(() => {
         fetchReports();
-    }, [selectedDate, activeTeam, user?.email]); // Fetch data whenever filters or user changes
+    }, [dateRange, activeTeam, user?.email]); // Fetch data whenever date range, filters or user changes
 
     React.useEffect(() => {
         if (activeTab === 'personal') {
@@ -139,12 +147,13 @@ const UserActivityPage = () => {
         try {
             // Build query params for the new API
             const params = new URLSearchParams();
-            if (selectedDate) {
-                // Format date as YYYY-MM-DD
-                const year = selectedDate.getFullYear();
-                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                const day = String(selectedDate.getDate()).padStart(2, '0');
-                params.append('date', `${year}-${month}-${day}`);
+            if (dateRange?.start) {
+                const start = dateRange.start;
+                params.append('startDate', `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`);
+            }
+            if (dateRange?.end) {
+                const end = dateRange.end;
+                params.append('endDate', `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`);
             }
             if (activeTeam !== 'All' && activeTeam !== 'All Global' && activeTeam !== 'All VN') {
                 params.append('team', activeTeam);
@@ -383,6 +392,10 @@ const UserActivityPage = () => {
                         activeTab={activeTab}
                         globalTeams={globalTeams}
                         vnTeams={vnTeams}
+                        dateRange={dateRange}
+                        setDateRange={setDateRange}
+                        timeType={timeType}
+                        setTimeType={setTimeType}
                     />
                 </div>
 
