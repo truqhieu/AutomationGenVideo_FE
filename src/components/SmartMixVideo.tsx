@@ -19,7 +19,7 @@ const FOLDER_TYPES = [
 
 const DEFAULT_PATHS: { [key: string]: string } = {
     'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
-    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Source HUYK',
+    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Source HUYK\\Source chế tác sản phẩm',
     'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Chế tác sản phẩm',
     'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
     'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\OUTRO HUYK',
@@ -137,18 +137,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             console.log('Index trống! Tự động chạy Auto-Scan Default Folders...');
             const folders: { [key: string]: string } = {};
 
-            FOLDER_TYPES.forEach(type => {
-                // Skip 'Sản phẩm' and 'Outtrol' - will be indexed by smart search
-                if (type === 'Sản phẩm' || type === 'Outtrol') return;
-
-                const path = DEFAULT_PATHS[type];
-                if (path) folders[type] = path;
-            });
+            // Chỉ index HuyK (chung). Sản phẩm/Sản phẩm HT/Chế tác → index theo SKU qua index-manufacturing-folder
+            const huykPath = DEFAULT_PATHS['HuyK'];
+            if (huykPath) folders['HuyK'] = huykPath;
 
             // Call indexing API
             const runAutoIndex = async () => {
                 setIsIndexing(true);
-                setIndexingProgress('⏳ Auto-indexing default folders (HuyK, Chế tác)...');
+                setIndexingProgress('⏳ Auto-indexing HuyK (Sản phẩm/Chế tác sẽ index theo SKU)...');
                 try {
                     // 1. Index default folders (HuyK, Chế tác...)
                     // Call AI service directly for indexing
