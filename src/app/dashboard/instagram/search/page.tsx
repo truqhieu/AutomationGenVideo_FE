@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Hash, Loader2, Heart, MessageCircle, ChevronDown, TrendingUp } from 'lucide-react';
+import { Search, Hash, Loader2, Heart, MessageCircle, Eye, ExternalLink, TrendingUp, AlertTriangle, Image, Film, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import GenerateContentButton from '@/components/content/GenerateContentButton';
 
 interface SearchResult {
     id: number;
@@ -19,24 +21,34 @@ interface SearchResult {
     is_video: boolean;
 }
 
+const ITEMS_PER_PAGE = 5;
+const VIDEOS_PER_BATCH = 5;
+const MIN_LIKES = 500;
+const MIN_VIEWS = 500;
+const MIN_COMMENTS = 50;
+
 export default function InstagramSearchPage() {
     const [hashtag, setHashtag] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [results, setResults] = useState<SearchResult[]>([]);
+    const [allResults, setAllResults] = useState<SearchResult[]>([]);
     const [error, setError] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [apiPage, setApiPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [filterFallback, setFilterFallback] = useState(false);
     const [searchMode, setSearchMode] = useState<'hashtag' | 'keyword'>('hashtag');
-
-    const VIDEOS_PER_BATCH = 5;
-    const MIN_LIKES = 500;
-    const MIN_VIEWS = 500;
-    const MIN_COMMENTS = 50;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [normalizedQuery, setNormalizedQuery] = useState('');
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+
+    // Pagination logic
+    const totalPages = Math.ceil(allResults.length / ITEMS_PER_PAGE);
+    const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+    const pageStart = (safePage - 1) * ITEMS_PER_PAGE;
+    const pageEnd = pageStart + ITEMS_PER_PAGE;
+    const visibleResults = allResults.slice(pageStart, pageEnd);
 
     const normalizeHashtag = (str: string) =>
         str.trim().toLowerCase()
@@ -44,7 +56,7 @@ export default function InstagramSearchPage() {
             .replace(/\s+/g, '').replace(/#/g, '');
 
     const getThumbnailSrc = (url: string) => {
-        if (!url) return '/placeholder-image.jpg';
+        if (!url) return '';
         if (url.startsWith('/')) return url;
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return `${apiUrl}/image-proxy/?url=${encodeURIComponent(url)}`;
@@ -55,38 +67,42 @@ export default function InstagramSearchPage() {
     const handleSearchModeChange = (mode: 'hashtag' | 'keyword') => {
         if (mode === searchMode) return;
         setSearchMode(mode);
-        setResults([]);
+        setAllResults([]);
         setHasSearched(false);
         setCurrentPage(1);
+        setApiPage(1);
         setHasMore(false);
         setFilterFallback(false);
         setError('');
+        setNormalizedQuery('');
     };
 
-    const performSearch = async (isLoadMore: boolean = false) => {
+    const performSearch = async (isLoadMore = false) => {
         if (!hashtag.trim()) {
-            setError('Please enter a hashtag');
+            setError('Vui lòng nhập hashtag hoặc keyword');
             return;
         }
 
-        const pageToFetch = isLoadMore ? currentPage + 1 : 1;
+        const pageToFetch = isLoadMore ? apiPage + 1 : 1;
+
         if (isLoadMore) {
             setLoadingMore(true);
         } else {
             setLoading(true);
-            setResults([]);
+            setAllResults([]);
             setCurrentPage(1);
+            setApiPage(1);
             setHasSearched(true);
+            const nq = searchMode === 'hashtag' ? normalizeHashtag(hashtag) : hashtag.replace(/^#/, '').trim();
+            setNormalizedQuery(nq);
         }
-
         setError('');
 
         try {
             const token = localStorage.getItem('auth_token');
-
             const keyword = searchMode === 'hashtag'
-                ? normalizeHashtag(hashtag)   // hashtag: "trang sức" -> "trangsuc"
-                : hashtag.replace(/^#/, '').trim();  // keyword: giữ nguyên "trang sức"
+                ? normalizeHashtag(hashtag)
+                : hashtag.replace(/^#/, '').trim();
 
             const response = await fetch(`${apiUrl}/ai/search`, {
                 method: 'POST',
@@ -112,22 +128,36 @@ export default function InstagramSearchPage() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || data.message || 'Search failed');
 
-            const newResults = data.videos || data.results || [];
+            const newResults: SearchResult[] = data.videos || data.results || [];
             setHasMore(data.has_more ?? false);
             setFilterFallback(data.filter_fallback ?? false);
-            setCurrentPage(pageToFetch);
+            setApiPage(pageToFetch);
 
             if (isLoadMore) {
-                setResults(prev => [...prev, ...newResults]);
+                setAllResults(prev => {
+                    // Lọc bỏ các video đã tồn tại (dedup theo video_id)
+                    const existingIds = new Set(prev.map(r => r.video_id));
+                    const uniqueNew = newResults.filter(r => !existingIds.has(r.video_id));
+                    const updated = [...prev, ...uniqueNew];
+                    const newTotalPages = Math.ceil(updated.length / ITEMS_PER_PAGE);
+                    setCurrentPage(newTotalPages);
+                    return updated;
+                });
             } else {
-                setResults(newResults);
+                setAllResults(newResults);
+                setCurrentPage(1);
             }
         } catch (err: any) {
-            setError(err.message || 'An error occurred during search');
+            setError(err.message || 'Có lỗi xảy ra khi tìm kiếm');
         } finally {
             setLoading(false);
             setLoadingMore(false);
         }
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const formatNumber = (num: number) => {
@@ -138,275 +168,428 @@ export default function InstagramSearchPage() {
     };
 
     const formatDate = (dateString: string) => {
-        if (!dateString) return 'Unknown date';
+        if (!dateString) return 'N/A';
         try {
             const date = new Date(dateString);
-            // Check if date is valid
-            if (isNaN(date.getTime())) return 'Invalid Date';
-
+            if (isNaN(date.getTime())) return 'N/A';
             const now = new Date();
             const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+            if (diff < 60) return 'vừa xong';
+            if (diff < 3600) return `${Math.floor(diff / 60)} phút`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
+            if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
+            return date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
+        } catch { return 'N/A'; }
+    };
 
-            if (diff < 60) return 'now';
-            if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-            if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        } catch (e) {
-            return 'Invalid Date';
+    const renderPageButtons = () => {
+        if (totalPages <= 1) return null;
+        const pages: (number | '...')[] = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (safePage > 3) pages.push('...');
+            for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
+            if (safePage < totalPages - 2) pages.push('...');
+            pages.push(totalPages);
         }
+        return pages;
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
-                            <Hash className="w-6 h-6 text-white" />
-                        </div>
-                        <h1 className="text-3xl font-bold text-gray-900">Instagram Hashtag Search</h1>
-                    </div>
-                    <p className="text-gray-600 ml-15">
-                        Tìm theo hashtag hoặc keyword • Filter: ≥1K likes OR ≥1K views OR ≥100 comments
-                    </p>
-                </div>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-6 md:p-10">
+            <div className="max-w-7xl mx-auto">
 
-                {/* Search Box */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    {/* Search Mode Toggle */}
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-10"
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-14 h-14 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                            <Image className="w-8 h-8 text-white" />
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+                            Instagram Posts Search
+                        </h1>
+                    </div>
+                    <p className="text-slate-600 text-lg ml-16">
+                        Tìm theo hashtag hoặc keyword • Filter: ≥{MIN_LIKES / 1000}K likes OR ≥{MIN_VIEWS / 1000}K views OR ≥{MIN_COMMENTS} comments
+                    </p>
+                </motion.div>
+
+                {/* Search Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white/80 backdrop-blur-xl border border-slate-200 rounded-3xl p-6 mb-8 shadow-xl"
+                >
+                    {/* Mode Toggle */}
                     <div className="flex gap-2 mb-4">
                         <button
                             type="button"
                             onClick={() => handleSearchModeChange('hashtag')}
-                            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${searchMode === 'hashtag'
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
+                            className={`flex-1 py-2.5 rounded-xl font-semibold transition-all ${searchMode === 'hashtag'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/30'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                         >
                             # Hashtag
                         </button>
                         <button
                             type="button"
                             onClick={() => handleSearchModeChange('keyword')}
-                            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${searchMode === 'keyword'
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
+                            className={`flex-1 py-2.5 rounded-xl font-semibold transition-all ${searchMode === 'keyword'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/30'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                         >
-                            Keyword
+                            🔍 Keyword
                         </button>
                     </div>
+
                     {/* Input */}
-                    <div className="relative mb-4">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600">
-                            {searchMode === 'hashtag' ? (
-                                <Hash className="w-5 h-5" />
-                            ) : (
-                                <Search className="w-5 h-5" />
-                            )}
+                    <div className="flex gap-3 mb-4">
+                        <div className="relative flex-1">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-500 z-10">
+                                {searchMode === 'hashtag' ? <Hash className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+                            </div>
+                            <input
+                                type="text"
+                                value={hashtag}
+                                onChange={(e) => setHashtag(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && performSearch(false)}
+                                placeholder={searchMode === 'hashtag' ? 'VD: trangsuc, fashion, beauty...' : 'VD: trang sức, jewelry, thời trang...'}
+                                className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all text-slate-700 placeholder-slate-400"
+                            />
                         </div>
-                        <input
-                            type="text"
-                            value={hashtag}
-                            onChange={(e) => setHashtag(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && performSearch(false)}
-                            placeholder={searchMode === 'hashtag' ? 'trangsuc, fashion, beauty...' : 'trang sức, jewelry, fashion...'}
-                            className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
-                        />
+                        <button
+                            onClick={() => performSearch(false)}
+                            disabled={loading || !hashtag.trim()}
+                            className="px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:scale-105 active:scale-95"
+                        >
+                            {loading ? (
+                                <><Loader2 className="w-5 h-5 animate-spin" /> Đang tìm...</>
+                            ) : (
+                                <><Search className="w-5 h-5" /> Tìm Kiếm</>
+                            )}
+                        </button>
                     </div>
 
-                    {/* Popular Hashtags */}
-                    <div className="flex items-center gap-2 mb-4 flex-wrap">
-                        <TrendingUp className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-500">Popular:</span>
-                        {['fashion', 'travel', 'food', 'fitness', 'photography'].map((tag) => (
+                    {/* Quick tags */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <TrendingUp className="w-4 h-4 text-slate-400" />
+                        <span className="text-xs text-slate-500">Phổ biến:</span>
+                        {['fashion', 'travel', 'food', 'fitness', 'photography', 'beauty', 'lifestyle'].map((tag) => (
                             <button
                                 key={tag}
                                 onClick={() => setHashtag(tag)}
-                                className="px-3 py-1 bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-purple-700 rounded-full text-xs font-medium transition-colors"
+                                className="px-3 py-1 bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-700 rounded-full text-xs font-medium transition-colors"
                             >
                                 #{tag}
                             </button>
                         ))}
                     </div>
-
-                    {/* Search Button */}
-                    <button
-                        onClick={() => performSearch(false)}
-                        disabled={loading || !hashtag.trim()}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Searching...
-                            </>
-                        ) : (
-                            <>
-                                <Search className="w-4 h-4" />
-                                Tìm Kiếm
-                            </>
-                        )}
-                    </button>
-                </div>
+                </motion.div>
 
                 {/* Error */}
-                {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                        <p className="text-red-700 text-sm">{error}</p>
-                    </div>
+                <AnimatePresence>
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-8 flex items-center gap-3"
+                        >
+                            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                            <p className="text-red-700 text-sm">{error}</p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Normalized Query Badge */}
+                {normalizedQuery && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-sm"
+                    >
+                        {searchMode === 'hashtag' ? <Hash className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                        {loading ? 'Đang tìm kiếm: ' : 'Kết quả cho: '}
+                        <strong>{searchMode === 'hashtag' ? `#${normalizedQuery}` : normalizedQuery}</strong>
+                    </motion.div>
                 )}
 
                 {/* Results */}
-                {results.length > 0 && (
-                    <>
-                        {filterFallback && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                                <p className="text-amber-800 text-sm">
-                                    Không có bài đạt ngưỡng (≥1K likes, ≥1K views hoặc ≥100 comments). Đang hiển thị tất cả {results.length} bài tìm được.
-                                </p>
-                            </div>
-                        )}
-                        {/* Results Header */}
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">
-                                    {results.length} {results.length === 1 ? 'Post' : 'Posts'}
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    Page {currentPage} • {searchMode === 'hashtag' ? `#${normalizeHashtag(hashtag)}` : hashtag.replace(/^#/, '').trim()}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-                            {results.map((post) => (
-                                <div key={post.video_id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
-                                    {/* Thumbnail */}
-                                    <div className="aspect-square relative bg-gray-100">
-                                        <img
-                                            src={getThumbnailSrc(post.thumbnail_url)}
-                                            alt={post.description || 'Instagram post'}
-                                            className="w-full h-full object-cover"
-                                            referrerPolicy="no-referrer"
-                                            onError={(e) => {
-                                                const t = e.target as HTMLImageElement;
-                                                if (t.src && t.src.includes('image-proxy')) {
-                                                    t.src = post.thumbnail_url || 'https://placehold.co/400x400?text=No+Image';
-                                                } else {
-                                                    t.src = 'https://placehold.co/400x400?text=No+Image';
-                                                }
-                                            }}
-                                        />
-                                        <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm flex items-center gap-1">
-                                            {post.is_video ? 'Video' : 'Image'}
-                                        </div>
-                                        <a
-                                            href={post.video_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"
-                                        >
-                                            <div className="bg-white/90 p-2 rounded-full transform translate-y-2 group-hover:translate-y-0 transition-transform">
-                                                <Search className="w-5 h-5 text-gray-900" />
-                                            </div>
-                                        </a>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="p-4">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs">
-                                                {post.author_username?.[0]?.toUpperCase() || '#'}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">
-                                                    @{post.author_username || 'unknown'}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    {formatDate(post.published_at)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <p className="text-sm text-gray-600 line-clamp-2 mb-3 h-10">
-                                            {post.description || post.title || 'No caption'}
-                                        </p>
-
-                                        <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
-                                            <div className="flex items-center gap-1">
-                                                <Heart className="w-3.5 h-3.5" />
-                                                {formatNumber(post.likes_count)}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <MessageCircle className="w-3.5 h-3.5" />
-                                                {formatNumber(post.comments_count)}
-                                            </div>
-                                        </div>
-                                    </div>
+                <AnimatePresence>
+                    {allResults.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            {/* Filter fallback banner */}
+                            {filterFallback && (
+                                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <p className="text-amber-800 text-sm">
+                                        ⚠️ Không có bài đạt ngưỡng tối thiểu. Đang hiển thị tất cả {allResults.length} bài tìm được.
+                                    </p>
                                 </div>
-                            ))}
-                        </div>
+                            )}
 
-                        {/* Scan Next Page Button */}
-                        {hasMore && (
-                            <div className="flex justify-center pb-8">
+                            {/* Result header */}
+                            <div className="flex items-center justify-between mb-5">
+                                <div>
+                                    <span className="text-slate-700 font-semibold">
+                                        Tìm thấy <span className="text-purple-600">{allResults.length}</span> bài viết
+                                    </span>
+                                    {totalPages > 1 && (
+                                        <span className="text-slate-500 text-sm ml-3">
+                                            — Trang {safePage}/{totalPages}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                    Hiển thị {pageStart + 1}–{Math.min(pageEnd, allResults.length)} / {allResults.length}
+                                </div>
+                            </div>
+
+                            {/* Grid */}
+                            <motion.div
+                                key={safePage}
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-8"
+                            >
+                                {visibleResults.map((post, idx) => (
+                                    <div
+                                        key={post.video_id || idx}
+                                        className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-purple-400/60 hover:shadow-xl transition-all duration-300 group flex flex-col"
+                                    >
+                                        {/* Thumbnail */}
+                                        <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                                            {post.thumbnail_url ? (
+                                                <img
+                                                    src={getThumbnailSrc(post.thumbnail_url)}
+                                                    alt={post.description || 'Post'}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    loading="lazy"
+                                                    referrerPolicy="no-referrer"
+                                                    onError={(e) => {
+                                                        const t = e.target as HTMLImageElement;
+                                                        if (t.src?.includes('image-proxy')) {
+                                                            t.src = post.thumbnail_url || 'https://placehold.co/400x400?text=No+Image';
+                                                        } else {
+                                                            t.src = 'https://placehold.co/400x400?text=No+Image';
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
+                                                    <Image className="w-10 h-10" />
+                                                    <span className="text-xs">No image</span>
+                                                </div>
+                                            )}
+
+                                            {/* Overlay gradient */}
+                                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/50" />
+
+                                            {/* Media type badge */}
+                                            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                                                {post.is_video
+                                                    ? <><Film className="w-3 h-3" /> Video</>
+                                                    : <><Image className="w-3 h-3" /> Photo</>
+                                                }
+                                            </div>
+
+                                            {/* Stats overlay bottom */}
+                                            <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center gap-2">
+                                                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px]">
+                                                    <Heart className="w-3 h-3 text-pink-400" />
+                                                    {formatNumber(post.likes_count)}
+                                                </div>
+                                                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px]">
+                                                    <Eye className="w-3 h-3 text-purple-300" />
+                                                    {formatNumber(post.views_count)}
+                                                </div>
+                                            </div>
+
+                                            {/* Hover CTA */}
+                                            <a
+                                                href={post.video_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                            >
+                                                <div className="bg-white/20 backdrop-blur-md border border-white/30 p-2.5 rounded-full">
+                                                    <ExternalLink className="w-5 h-5 text-white" />
+                                                </div>
+                                            </a>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-3 flex flex-col flex-1">
+                                            {/* Author */}
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                                    {post.author_username?.[0]?.toUpperCase() || '?'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-slate-800 truncate">@{post.author_username || 'unknown'}</p>
+                                                    <p className="text-[10px] text-slate-400">{formatDate(post.published_at)} trước</p>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-xs text-slate-600 line-clamp-2 mb-3 flex-1" title={post.description}>
+                                                {post.description || post.title || 'Không có caption'}
+                                            </p>
+
+                                            {/* Footer stats */}
+                                            <div className="flex items-center justify-between border-t border-slate-100 pt-2 mb-3 text-[10px] text-slate-500">
+                                                <div className="flex items-center gap-1">
+                                                    <Heart className="w-3 h-3 text-pink-500" />
+                                                    {formatNumber(post.likes_count)}
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <MessageCircle className="w-3 h-3 text-blue-500" />
+                                                    {formatNumber(post.comments_count)}
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Eye className="w-3 h-3 text-purple-500" />
+                                                    {formatNumber(post.views_count)}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                                <a
+                                                    href={post.video_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-lg text-center transition-colors flex items-center justify-center gap-1"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" /> Xem post
+                                                </a>
+                                                <GenerateContentButton
+                                                    videoId={post.id}
+                                                    videoTitle={post.title || post.description || 'Instagram Post'}
+                                                    className="text-[11px] py-2"
+                                                    compact={true}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </motion.div>
+
+                            {/* Pagination + Scan Next Batch */}
+                            <div className="flex flex-col items-center gap-5 pb-10">
+                                {/* Page nav */}
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handlePageChange(safePage - 1)}
+                                            disabled={safePage === 1}
+                                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </button>
+
+                                        {renderPageButtons()?.map((p, i) =>
+                                            p === '...' ? (
+                                                <span key={`dot-${i}`} className="px-1 text-slate-400 text-sm">...</span>
+                                            ) : (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => handlePageChange(p as number)}
+                                                    className={`w-9 h-9 rounded-xl text-sm font-semibold transition-all ${safePage === p
+                                                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/30'
+                                                        : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
+                                                        }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            )
+                                        )}
+
+                                        <button
+                                            onClick={() => handlePageChange(safePage + 1)}
+                                            disabled={safePage >= totalPages}
+                                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Scan Next Batch — luôn hiện để người dùng có thể quét thêm */}
                                 <button
                                     onClick={() => performSearch(true)}
                                     disabled={loadingMore}
-                                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                    className="px-7 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl font-bold disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
                                 >
                                     {loadingMore ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Đang tải...
-                                        </>
+                                        <><Loader2 className="w-5 h-5 animate-spin" /> Đang quét...</>
                                     ) : (
-                                        <>
-                                            <ChevronDown className="w-4 h-4" />
-                                            Scan Next Page
-                                        </>
+                                        <><RefreshCw className="w-5 h-5" /> Scan Next Batch (+{VIDEOS_PER_BATCH})</>
                                     )}
                                 </button>
                             </div>
-                        )}
-                    </>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Empty: loading skeleton */}
+                {loading && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                        {Array.from({ length: VIDEOS_PER_BATCH }).map((_, i) => (
+                            <div key={i} className="bg-white border border-slate-200 rounded-2xl overflow-hidden animate-pulse">
+                                <div className="aspect-square bg-slate-200" />
+                                <div className="p-3 space-y-2">
+                                    <div className="h-3 bg-slate-200 rounded w-2/3" />
+                                    <div className="h-2 bg-slate-100 rounded w-full" />
+                                    <div className="h-2 bg-slate-100 rounded w-4/5" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
 
-                {/* Empty State - No Results */}
-                {!loading && results.length === 0 && hasSearched && !error && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                            <Search className="w-8 h-8 text-gray-400" />
+                {/* Empty: no results after search */}
+                {!loading && allResults.length === 0 && hasSearched && !error && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white border border-slate-200 rounded-3xl p-16 text-center"
+                    >
+                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Search className="w-8 h-8 text-purple-400" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts found</h3>
-                        <p className="text-gray-600 mb-4">Try a different hashtag or check your spelling</p>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Không tìm thấy bài viết nào</h3>
+                        <p className="text-slate-500 mb-5">Thử đổi hashtag hoặc kiểm tra lại chính tả</p>
                         <button
-                            onClick={() => {
-                                setHashtag('');
-                                setResults([]);
-                                setHasSearched(false);
-                                setError('');
-                            }}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                            onClick={() => { setHashtag(''); setHasSearched(false); setNormalizedQuery(''); }}
+                            className="px-5 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
                         >
-                            Try Again
+                            Thử lại
                         </button>
-                    </div>
+                    </motion.div>
                 )}
 
-                {/* Empty State - Initial */}
+                {/* Empty: initial */}
                 {!loading && !hasSearched && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                        <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto mb-4">
-                            <Hash className="w-8 h-8 text-purple-600" />
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/60 backdrop-blur-md border border-slate-200 rounded-3xl p-16 text-center"
+                    >
+                        <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Hash className="w-10 h-10 text-purple-500" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to explore?</h3>
-                        <p className="text-gray-600">Enter a hashtag above to start discovering Instagram posts</p>
-                    </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Khám phá Instagram Posts</h3>
+                        <p className="text-slate-500">Nhập hashtag hoặc keyword phía trên để bắt đầu tìm kiếm</p>
+                    </motion.div>
                 )}
             </div>
         </div>

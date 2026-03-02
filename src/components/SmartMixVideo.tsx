@@ -18,12 +18,13 @@ const FOLDER_TYPES = [
 ];
 
 const DEFAULT_PATHS: { [key: string]: string } = {
-    'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\VIDEO Sản Phẩm',
-    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\Source daily HuyK',
-    'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\CHẾ TÁC SẢN PHẨM (xưởng)',
-    'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\VIDEO Sản Phẩm',
-    'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Source Outro',
+    'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
+    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Source HUYK',
+    'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Chế tác sản phẩm',
+    'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
+    'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\OUTRO HUYK',
 };
+
 
 interface CacheStats {
     indexed_videos: number;
@@ -117,8 +118,10 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     );
     const [customFolders, setCustomFolders] = useState<FolderInput[]>([]);
     const [isIndexing, setIsIndexing] = useState(false);
+    const [isClearingIndex, setIsClearingIndex] = useState(false);
     const [indexingProgress, setIndexingProgress] = useState('');
     const [videosPerFolder, setVideosPerFolder] = useState(1000);
+
 
     const audioInputRef = useRef<HTMLInputElement>(null);
 
@@ -343,6 +346,31 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             console.error('Failed to load cache stats:', error);
         } finally {
             setLoadingStats(false);
+        }
+    };
+
+    const handleClearIndex = async () => {
+        if (!confirm('⚠️ Bạn có chắc muốn XOÁ TOÀN BỘ index? Cần phải index lại từ đầu sau khi xoá!')) return;
+        setIsClearingIndex(true);
+        try {
+            const response = await fetch(`${AI_SERVICE_URL}/api/videos/clear-index/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clear_clips: true })
+            });
+            const data = await response.json();
+            if (data.success) {
+                toast.success(`🗑️ ${data.message}`, { duration: 4000 });
+                setCacheStats(null);
+                await loadCacheStats();
+                setShowIndexPanel(true); // Mở panel index để re-index ngay
+            } else {
+                toast.error(`❌ ${data.error || 'Clear index thất bại'}`);
+            }
+        } catch (error: any) {
+            toast.error(`❌ Không thể clear index: ${error.message}`);
+        } finally {
+            setIsClearingIndex(false);
         }
     };
 
@@ -675,17 +703,34 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                 </div>
                             </div>
 
-                            {/* Button to manage folders */}
-                            <button
-                                onClick={() => setShowIndexPanel(!showIndexPanel)}
-                                className="flex-shrink-0 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg text-white font-semibold transition-all flex items-center gap-2 shadow-lg h-full"
-                            >
-                                <Database className="w-5 h-5" />
-                                <div className="text-left">
-                                    <p className="text-xs opacity-80">Quản lý</p>
-                                    <p className="text-sm">Folders</p>
-                                </div>
-                            </button>
+                            {/* Buttons: Manage + Clear */}
+                            <div className="flex-shrink-0 flex flex-col gap-2 h-full">
+                                <button
+                                    onClick={() => setShowIndexPanel(!showIndexPanel)}
+                                    className="px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg text-white font-semibold transition-all flex items-center gap-2 shadow-lg"
+                                >
+                                    <Database className="w-5 h-5" />
+                                    <div className="text-left">
+                                        <p className="text-xs opacity-80">Quản lý</p>
+                                        <p className="text-sm">Folders</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={handleClearIndex}
+                                    disabled={isClearingIndex}
+                                    className="px-4 py-3 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 rounded-lg text-red-400 font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Xoá toàn bộ index để re-index lại từ đầu"
+                                >
+                                    {isClearingIndex
+                                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                                        : <Trash2 className="w-5 h-5" />
+                                    }
+                                    <div className="text-left">
+                                        <p className="text-xs opacity-80">Xoá & Reset</p>
+                                        <p className="text-sm">Clear Index</p>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Breakdown by folder */}

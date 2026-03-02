@@ -5,10 +5,10 @@ import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface GenerateContentButtonProps {
-    videoId: number;
+    videoId: number | string;   // DB integer id hoặc fallback string (video_id)
     videoTitle: string;
     className?: string;
-    compact?: boolean; // Show shorter text for compact layouts
+    compact?: boolean;
 }
 
 export default function GenerateContentButton({
@@ -20,22 +20,21 @@ export default function GenerateContentButton({
     const router = useRouter();
 
     const handleClick = () => {
-        // Validate inputs before navigation
-        if (!videoId || !videoTitle) {
-            console.error('Invalid video data:', { videoId, videoTitle });
+        if (!videoTitle) {
+            console.error('Invalid video data: missing title', { videoId, videoTitle });
             return;
         }
 
         // Navigate to product selection page with video info
         const params = new URLSearchParams({
-            videoId: videoId.toString(),
+            videoId: videoId?.toString() ?? '0',
             videoTitle: encodeURIComponent(videoTitle)
         });
         router.push(`/dashboard/content/product-selection?${params.toString()}`);
     };
 
-    // Disable button if invalid data
-    const isDisabled = !videoId || !videoTitle;
+    // Chỉ disable nếu không có title (id = 0 vẫn hợp lệ)
+    const isDisabled = !videoTitle;
 
     return (
         <button
