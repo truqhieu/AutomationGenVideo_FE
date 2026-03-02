@@ -172,7 +172,7 @@ const UserActivityPage = () => {
                 avatar: getAvatarUrl(item.avatar, item.name),
                 status: item.status, // Should be 'ĐÚNG HẠN' or 'CHƯA BÁO CÁO'
                 submittedAt: item.date,
-                time: item.date ? new Date(item.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa báo cáo',
+                time: item.date ? `${new Date(item.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/\//g, '-')}` : 'Chưa báo cáo',
                 dailyGoal: item.kpi_day || 0,
                 done: item.completed_day || 0,
                 traffic: item.traffic_month ? item.traffic_month.toLocaleString('vi-VN') : '0',
