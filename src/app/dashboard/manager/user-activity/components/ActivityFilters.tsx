@@ -14,6 +14,8 @@ interface ActivityFiltersProps {
     userRole?: string | null;
     userTeam?: string | null;
     activeTab?: string;
+    globalTeams?: string[]; // New
+    vnTeams?: string[];     // New
 }
 
 const ActivityFilters = ({
@@ -25,7 +27,9 @@ const ActivityFilters = ({
     setSearchName,
     userRole,
     userTeam,
-    activeTab
+    activeTab,
+    globalTeams = [], // Fallback
+    vnTeams = []      // Fallback
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -46,8 +50,7 @@ const ActivityFilters = ({
     // - Show only if main filter is hidden
     const showTeamLabel = !canSeeTeamFilter && isLeader && userTeam;
 
-    const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
-    const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
+
 
     const isAllGlobal = activeTeam === 'All Global';
     const isAllVN = activeTeam === 'All VN';

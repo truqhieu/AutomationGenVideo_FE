@@ -49,6 +49,7 @@ const UserActivityPage = () => {
     const [summary, setSummary] = React.useState<any>(null);
     const [rankings, setRankings] = React.useState<any>(null);
     const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
+    const [groupContributions, setGroupContributions] = React.useState<any>(null);
     const [kpiMeta, setKpiMeta] = React.useState<{ kpiTotalInDb?: number; kpiFilteredForMonth?: number; kpiMonthFallback?: boolean } | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [userRole, setUserRole] = React.useState<string | null>(null);
@@ -67,21 +68,40 @@ const UserActivityPage = () => {
     const [searchName, setSearchName] = React.useState('');
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
 
-    // Team group definitions
-    const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
-    const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
+    // Categorize teams dynamically based on teamContributions data
+    const { globalTeams, vnTeams } = React.useMemo(() => {
+        const globals: string[] = [];
+        const vns: string[] = [];
+
+        // Common keywords for Global teams
+        const globalKeywords = ['global', 'jp', 'thái lan', 'đài loan', 'indo'];
+
+        teamContributions.forEach(item => {
+            const teamName = item.team || 'Khác';
+            if (teamName === 'Khác') return;
+
+            const isGlobal = globalKeywords.some(kw => teamName.toLowerCase().includes(kw));
+
+            if (isGlobal && !globals.includes(teamName)) {
+                globals.push(teamName);
+            } else if (!isGlobal && !vns.includes(teamName)) {
+                vns.push(teamName);
+            }
+        });
+
+        return {
+            globalTeams: globals.sort(),
+            vnTeams: vns.sort()
+        };
+    }, [teamContributions]);
 
     // Helper to match team against active filter (supports 'All', 'All Global', 'All VN', individual team)
     const matchTeam = (teamName: string | null | undefined): boolean => {
+        const safeTeam = (teamName || 'Khác').toLowerCase();
         if (activeTeam === 'All') return true;
-        if (activeTeam === 'All Global') {
-            return globalTeams.some(t => t.toLowerCase() === (teamName || '').toLowerCase())
-                || (teamName || '').toLowerCase().includes('global');
-        }
-        if (activeTeam === 'All VN') {
-            return vnTeams.some(t => t.toLowerCase() === (teamName || '').toLowerCase());
-        }
-        return (teamName || '') === activeTeam;
+        if (activeTeam === 'All Global') return globalTeams.some(t => t.toLowerCase() === safeTeam);
+        if (activeTeam === 'All VN') return vnTeams.some(t => t.toLowerCase() === safeTeam);
+        return safeTeam === activeTeam.toLowerCase();
     };
 
 
@@ -202,9 +222,10 @@ const UserActivityPage = () => {
                 ]
             }));
             setReports(mappedReports);
-            setSummary(summaryData);
+            setSummary(data.summary || null);
             setRankings(rankingsData);
             setTeamContributions(data.teamContributions || []);
+            setGroupContributions(data.groupContributions || null);
             setReportOutstandings(data.reportOutstandings || []);
             setKpiMeta(data.meta || null);
         } catch (error) {
@@ -359,6 +380,8 @@ const UserActivityPage = () => {
                         userRole={userRole}
                         userTeam={userTeam}
                         activeTab={activeTab}
+                        globalTeams={globalTeams}
+                        vnTeams={vnTeams}
                     />
                 </div>
 
@@ -375,7 +398,7 @@ const UserActivityPage = () => {
                                 Đang hiển thị toàn bộ KPI trong DB vì không có bản ghi khớp tháng đang chọn. Để lọc đúng tháng, hãy đặt cột &quot;Tháng&quot; trong Lark đúng format (VD: T2, 2, Tháng 2) rồi đồng bộ lại.
                             </div>
                         )}
-                        <ActivityKPIs summary={summary} teamContributions={teamContributions} />
+                        <ActivityKPIs summary={summary} teamContributions={teamContributions} groupContributions={groupContributions} />
                     </div>
                 )}
 
