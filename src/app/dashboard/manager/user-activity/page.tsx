@@ -49,6 +49,7 @@ const UserActivityPage = () => {
     const [summary, setSummary] = React.useState<any>(null);
     const [rankings, setRankings] = React.useState<any>(null);
     const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
+    const [kpiMeta, setKpiMeta] = React.useState<{ kpiTotalInDb?: number; kpiFilteredForMonth?: number; kpiMonthFallback?: boolean } | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [userRole, setUserRole] = React.useState<string | null>(null);
     const [userTeam, setUserTeam] = React.useState<string | null>(null);
@@ -188,6 +189,7 @@ const UserActivityPage = () => {
             setRankings(rankingsData);
             setTeamContributions(data.teamContributions || []);
             setReportOutstandings(data.reportOutstandings || []);
+            setKpiMeta(data.meta || null);
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
@@ -345,7 +347,17 @@ const UserActivityPage = () => {
 
                 {/* KPI Cards section */}
                 {activeTab !== 'personal' && (
-                    <div className="relative z-10 transition-all duration-500">
+                    <div className="relative z-10 transition-all duration-500 space-y-3">
+                        {kpiMeta && kpiMeta.kpiTotalInDb === 0 && (
+                            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                                <strong>Chưa có dữ liệu bảng larkKPI.</strong> Số liệu thống kê và card nhân viên lấy từ bảng này. Vui lòng đồng bộ KPI từ Lark (gọi API sync KPI hoặc dùng menu cấu hình backend).
+                            </div>
+                        )}
+                        {kpiMeta?.kpiMonthFallback && (
+                            <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                                Đang hiển thị toàn bộ KPI trong DB vì không có bản ghi khớp tháng đang chọn. Để lọc đúng tháng, hãy đặt cột &quot;Tháng&quot; trong Lark đúng format (VD: T2, 2, Tháng 2) rồi đồng bộ lại.
+                            </div>
+                        )}
                         <ActivityKPIs summary={summary} teamContributions={teamContributions} />
                     </div>
                 )}

@@ -55,6 +55,10 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
         }
     ];
 
+    const hasAnyKpi = (summary?.totalVideoTarget || 0) + (summary?.totalVideoCompleted || 0) +
+        (summary?.totalTrafficTarget || 0) + (summary?.totalTrafficCompleted || 0) +
+        (summary?.totalRevenueTarget || 0) + (summary?.totalRevenueCompleted || 0) > 0;
+
     const getTeamColor = (idx: number) => {
         const colors = [
             'bg-blue-500',
@@ -128,6 +132,11 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
                 </Card>
             ))
             }
+            {!hasAnyKpi && summary && (
+                <p className="col-span-full text-center text-xs text-slate-500 mt-2">
+                    Nếu toàn bộ số liệu là 0: kiểm tra đã đồng bộ KPI từ Lark chưa và tháng đang chọn có dữ liệu trong Lark.
+                </p>
+            )}
         </div>
     );
 };
