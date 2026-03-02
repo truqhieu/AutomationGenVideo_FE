@@ -33,7 +33,8 @@ const PersonalCharts = ({ history, teamStats, companyStats, userActivity, member
     const [sortConfig, setSortConfig] = React.useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'video', direction: 'desc' });
 
     const sortedMembers = React.useMemo(() => {
-        let sortableMembers = [...members];
+        // Only show members who have a team name
+        let sortableMembers = members.filter(m => m.team && m.team.trim() !== '');
         if (sortConfig !== null) {
             sortableMembers.sort((a, b) => {
                 let aValue: any = a[sortConfig.key];

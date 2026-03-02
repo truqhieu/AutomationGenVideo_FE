@@ -67,6 +67,23 @@ const UserActivityPage = () => {
     const [searchName, setSearchName] = React.useState('');
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
 
+    // Team group definitions
+    const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
+    const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
+
+    // Helper to match team against active filter (supports 'All', 'All Global', 'All VN', individual team)
+    const matchTeam = (teamName: string | null | undefined): boolean => {
+        if (activeTeam === 'All') return true;
+        if (activeTeam === 'All Global') {
+            return globalTeams.some(t => t.toLowerCase() === (teamName || '').toLowerCase())
+                || (teamName || '').toLowerCase().includes('global');
+        }
+        if (activeTeam === 'All VN') {
+            return vnTeams.some(t => t.toLowerCase() === (teamName || '').toLowerCase());
+        }
+        return (teamName || '') === activeTeam;
+    };
+
 
 
     React.useEffect(() => {
@@ -109,7 +126,7 @@ const UserActivityPage = () => {
                 const day = String(selectedDate.getDate()).padStart(2, '0');
                 params.append('date', `${year}-${month}-${day}`);
             }
-            if (activeTeam !== 'All') {
+            if (activeTeam !== 'All' && activeTeam !== 'All Global' && activeTeam !== 'All VN') {
                 params.append('team', activeTeam);
             }
             params.append('requesterEmail', user.email);
@@ -370,7 +387,7 @@ const UserActivityPage = () => {
                         </div>
                     ) : activeTab === 'performance' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                            {reports.filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
+                            {reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                                 <UserActivityCard key={report.id || idx} data={{
                                     ...report,
                                     reportStatus: report.status
@@ -421,28 +438,28 @@ const UserActivityPage = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
                                     <button onClick={() => setDailyFilter(dailyFilter === 'video_win' ? 'all' : 'video_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'video_win' ? 'bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-600/20' : 'bg-emerald-50/50 border-emerald-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{reportOutstandings
-                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                             .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'product_win' ? 'all' : 'product_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'product_win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{reportOutstandings
-                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                             .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💎</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{reportOutstandings
-                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                             .filter(r => (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/)).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{reportOutstandings
-                                            .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                            .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                             .filter(r => {
                                                 const c = (r.content?.toLowerCase() || '').normalize('NFC');
@@ -478,7 +495,7 @@ const UserActivityPage = () => {
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {reportOutstandings
-                                                .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                                .filter(r => matchTeam(r.team))
                                                 .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                                 .filter(r => {
                                                     if (dailyFilter === 'all') return true;
@@ -492,7 +509,7 @@ const UserActivityPage = () => {
                                                     }
                                                     return true;
                                                 }).length > 0 ? reportOutstandings
-                                                    .filter(r => activeTeam === 'All' || r.team === activeTeam)
+                                                    .filter(r => matchTeam(r.team))
                                                     .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                                     .filter(r => {
                                                         if (dailyFilter === 'all') return true;
@@ -544,7 +561,7 @@ const UserActivityPage = () => {
                                     </h3>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {reports.length > 0 ? reports.filter(r => (activeTeam === 'All' || r.team === activeTeam) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map(report => (
+                                    {reports.length > 0 ? reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map(report => (
                                         <ReportCard key={report.id} report={report} />
                                     )) : (
                                         <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>

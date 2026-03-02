@@ -49,8 +49,10 @@ const ActivityFilters = ({
     const globalTeams = ['Global - JP1', 'Global - JP2', 'Global JP3', 'Global JP4'];
     const vnTeams = ['Team K0', 'Team K1', 'Team K2', 'AFF 01'];
 
-    const isGlobalActive = globalTeams.includes(activeTeam);
-    const isVNActive = vnTeams.includes(activeTeam);
+    const isAllGlobal = activeTeam === 'All Global';
+    const isAllVN = activeTeam === 'All VN';
+    const isGlobalActive = isAllGlobal || globalTeams.includes(activeTeam);
+    const isVNActive = isAllVN || vnTeams.includes(activeTeam);
     const isAllActive = activeTeam === 'All' || (!isGlobalActive && !isVNActive && activeTeam !== 'All');
 
     useEffect(() => {
@@ -162,6 +164,19 @@ const ActivityFilters = ({
         }
     };
 
+    // Get display label for dropdown buttons
+    const getGlobalLabel = () => {
+        if (isAllGlobal) return 'Tất cả Global';
+        if (globalTeams.includes(activeTeam)) return activeTeam;
+        return 'Global';
+    };
+
+    const getVNLabel = () => {
+        if (isAllVN) return 'Tất cả VN';
+        if (vnTeams.includes(activeTeam)) return activeTeam;
+        return 'Việt Nam';
+    };
+
     return (
         <div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-gray-100">
             {canSeeTeamFilter && (
@@ -191,7 +206,7 @@ const ActivityFilters = ({
                                 }`}
                         >
                             <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-gray-400'}`} />
-                            {isGlobalActive ? activeTeam : 'Global'}
+                            {getGlobalLabel()}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
 
@@ -205,6 +220,17 @@ const ActivityFilters = ({
                                     transition={{ duration: 0.2, ease: "easeOut" }}
                                     className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
                                 >
+                                    {/* All Global option */}
+                                    <button
+                                        onClick={() => handleSelectTeam('All Global')}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-blue-700 bg-blue-50/50 hover:bg-blue-100 transition-colors border-b border-blue-100/50"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            {activeTeam === 'All Global' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                            🌏 Tất cả Global
+                                        </span>
+                                        {activeTeam === 'All Global' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                    </button>
                                     {globalTeams.map((team) => (
                                         <button
                                             key={team}
@@ -233,7 +259,7 @@ const ActivityFilters = ({
                                 }`}
                         >
                             <MapPin className={`w-3.5 h-3.5 ${isVNActive ? 'text-blue-200' : 'text-gray-400'}`} />
-                            {isVNActive ? activeTeam : 'Việt Nam'}
+                            {getVNLabel()}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
 
@@ -247,6 +273,17 @@ const ActivityFilters = ({
                                     transition={{ duration: 0.2, ease: "easeOut" }}
                                     className="absolute top-full left-0 mt-2 w-52 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[60] py-1"
                                 >
+                                    {/* All VN option */}
+                                    <button
+                                        onClick={() => handleSelectTeam('All VN')}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-red-700 bg-red-50/50 hover:bg-red-100 transition-colors border-b border-red-100/50"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            {activeTeam === 'All VN' && <div className="w-1.5 h-1.5 rounded-full bg-red-600" />}
+                                            🇻🇳 Tất cả VN
+                                        </span>
+                                        {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-red-600" />}
+                                    </button>
                                     {vnTeams.map((team) => (
                                         <button
                                             key={team}
