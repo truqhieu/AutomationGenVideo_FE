@@ -45,6 +45,39 @@ export default function SearchAutocomplete({
         }
     }, [value, fetchSuggestions, clearSuggestions]);
 
+    // ── Auto Translation for Douyin & Xiaohongshu ───────────────────────────
+    useEffect(() => {
+        const needsTranslation = ['DOUYIN', 'XIAOHONGSHU'].includes(platform.toUpperCase());
+        if (!needsTranslation || !value || value.length < 2) return;
+
+        // Skip only if the string contains NO Latin/Vietnamese alphabetical characters
+        // This allows mixed strings (e.g. "首饰 mới") to still trigger translation
+        if (!/[a-zA-Z\u00C0-\u1EF9]/.test(value)) return;
+
+        const timer = setTimeout(async () => {
+            console.log(`🤖 [Translate] Triggering for: "${value}"`);
+            try {
+                const res = await fetch('/api/translate-chinese', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: value }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.translated && data.translated !== value) {
+                        console.log(`✅ [Translate] Success: "${value}" -> "${data.translated}"`);
+                        onChange(data.translated);
+                    }
+                }
+            } catch (err) {
+                console.error("Auto-translation failed:", err);
+            }
+        }, 800); // Faster debounce: 800ms
+
+        return () => clearTimeout(timer);
+    }, [value, platform, onChange]);
+
     // Handle click outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {

@@ -17,10 +17,12 @@ import {
   HelpCircle,
   Pin,
   FileText,
-  Film,
   Users,
   Activity,
   BookOpen, // Xiaohongshu icon
+  Volume2,
+  ClipboardCheck,
+  Film
 } from 'lucide-react';
 
 
@@ -56,15 +58,17 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     // Platform Folder Routes
     if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management')) {
       return 'user-management';
-    }
-
-    if (path.startsWith('/dashboard/ai') || path.startsWith('/dashboard/content')) return 'tiktok';
-    if (path.startsWith('/dashboard/instagram')) return 'instagram';
-    if (path.startsWith('/dashboard/douyin')) return 'douyin';
-    if (path.startsWith('/dashboard/xiaohongshu')) return 'xiaohongshu';
-
-    // 3. Defaults
-    if (path.startsWith('/dashboard/facebook') || path === '/dashboard' || path === '/') {
+    } else if (pathname.startsWith('/dashboard/ai/lipsync')) {
+      return 'ai-studio';
+    } else if (pathname.startsWith('/dashboard/ai')) {
+      return 'tiktok';
+    } else if (pathname.startsWith('/dashboard/instagram')) {
+      return 'instagram';
+    } else if (pathname.startsWith('/dashboard/douyin')) {
+      return 'douyin';
+    } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
+      return 'xiaohongshu';
+    } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
       return 'facebook';
     }
 
@@ -73,22 +77,26 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
 
   // Memoize platforms configuration to prevent re-creation on every render
   const platforms = useMemo(() => [
-    // 1. Management Section (Only for Admin/Manager)
-    ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [{
+    // 1. Management & Report Section (Consolidated)
+    {
       id: 'user-management',
       icon: Users,
-      label: 'Quản lý người dùng',
+      label: 'VCB Portal',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'HỆ THỐNG',
           items: [
-            { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-            { label: 'Theo dõi hoạt động người dùng', href: '/dashboard/manager/user-activity', icon: Activity },
-            { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
+            { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+              { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+            ] : []),
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+              { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
+            ] : []),
           ]
         }
       ]
-    }] : []),
+    },
 
     // 2. Apps Section (Visible to EVERYONE, including Admins)
     {
@@ -97,7 +105,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Facebook',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
             { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: Search },
@@ -112,7 +120,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Instagram',
       menus: [
         {
-          section: 'MANAGEMENT',
+          section: 'ANALYTICS',
           items: [
             { label: 'Channel Overview', href: '/dashboard/instagram/channels', icon: LayoutGrid },
             { label: 'Search Post', href: '/dashboard/instagram/search', icon: FileText },
@@ -141,9 +149,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Douyin',
       menus: [
         {
-          section: 'RESEARCH',
+          section: 'ANALYTICS',
           items: [
-            { label: 'Search Videos', href: '/dashboard/douyin', icon: Search },
+            { label: 'Channel Overview', href: '/dashboard/douyin/channels', icon: LayoutGrid },
+            { label: 'Search Video', href: '/dashboard/douyin', icon: Search },
           ]
         }
       ]
@@ -154,9 +163,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       label: 'Xiaohongshu',
       menus: [
         {
-          section: 'RESEARCH',
+          section: 'ANALYTICS',
           items: [
-            { label: 'Search Notes', href: '/dashboard/xiaohongshu', icon: Search },
+            { label: 'Channel Overview', href: '/dashboard/xiaohongshu/channels', icon: LayoutGrid },
+            { label: 'Search Video', href: '/dashboard/xiaohongshu', icon: Search },
           ]
         }
       ]
@@ -268,9 +278,22 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
               <CreditCard className="w-5 h-5" />
             </button>
-            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-              <Settings className="w-5 h-5" />
-            </button>
+
+            {/* Settings - Link to checklist settings for Manager/Admin */}
+            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+              <Link
+                href="/dashboard/manager/checklist-settings"
+                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
+                title="Cấu hình Checklist"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+            ) : (
+              <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
+
             <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
               <HelpCircle className="w-5 h-5" />
             </button>
@@ -328,23 +351,39 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                   {section.items.map((item: any) => {
                     const isActive = pathname === item.href;
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        prefetch={true}
-                        onClick={handleLinkClick}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
-                                           ${isActive
-                            ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20 scale-[1.02]'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1'
-                          }`}
-                        style={{
-                          willChange: isActive ? 'auto' : 'transform',
-                        }}
-                      >
-                        <item.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
-                        {item.label}
-                      </Link>
+                      typeof item.onClick === 'function' ? (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            item.onClick();
+                            handleLinkClick();
+                          }}
+                          className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
+                                             text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1`}
+                        >
+                          <item.icon className="w-4 h-4 transition-colors duration-200 text-slate-500" />
+                          {item.label}
+                        </button>
+                      ) : (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={true}
+                          onClick={handleLinkClick}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
+                                             ${isActive
+                              ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20 scale-[1.02]'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1'
+                            }`}
+                          style={{
+                            willChange: isActive ? 'auto' : 'transform',
+                          }}
+                        >
+                          <item.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
+                          {item.label}
+                        </Link>
+                      )
                     )
                   })}
                 </div>

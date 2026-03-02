@@ -77,7 +77,7 @@ export function useSearchSuggestions(options: UseSuggestionsOptions = {}) {
                 setLoading(true);
 
                 try {
-                    const url = `/api/proxy-tiktok-suggest?q=${encodeURIComponent(q)}&count=${maxResults}`;
+                    const url = `/api/proxy-tiktok-suggest?q=${encodeURIComponent(q)}&platform=${options.platform || 'tiktok'}&count=${maxResults}`;
 
                     const res = await fetch(url, { signal: abortRef.current.signal });
                     if (lastQuery.current !== q) return; // stale
