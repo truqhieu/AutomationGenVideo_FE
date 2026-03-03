@@ -160,6 +160,9 @@ const UserActivityPage = () => {
                 params.append('team', activeTeam);
             }
             params.append('requesterEmail', user.email);
+            if (timeType) {
+                params.append('timeType', timeType);
+            }
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/user-activity?${params.toString()}`;
             const response = await fetch(url);

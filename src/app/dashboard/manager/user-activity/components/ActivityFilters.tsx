@@ -464,17 +464,17 @@ const ActivityFilters = ({
 
             <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
                 {/* Unified Time Filter */}
-                <div className="relative">
+                <div className="relative group/time">
                     <button
                         onClick={() => toggleDropdown('timeSelector')}
-                        className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || timeType !== 'today'
+                        className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month')
                             ? 'bg-blue-600 border-blue-600 text-white'
                             : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
                             }`}
                     >
-                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || timeType !== 'today' ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-100' : 'text-blue-500'}`} />
                         <div className="flex flex-col items-start leading-tight">
-                            <span className={`text-[9px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || timeType !== 'today' ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
                                 {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
                             </span>
                             <span className="text-[11px] font-bold">
@@ -488,6 +488,24 @@ const ActivityFilters = ({
                         </div>
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'timeSelector' ? 'rotate-180' : ''}`} />
                     </button>
+
+                    {/* Quick Clear Time Filter Button - Top Right Edge */}
+                    {timeType !== 'month' && timeType !== 'this_month' && (
+                        <motion.button
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectTimeType('this_month');
+                            }}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors z-10 border-2 border-white"
+                            title="Tắt bộ lọc thời gian"
+                        >
+                            <X className="w-2.5 h-2.5 font-bold" />
+                        </motion.button>
+                    )}
 
                     <AnimatePresence>
                         {openDropdown === 'timeSelector' && (
