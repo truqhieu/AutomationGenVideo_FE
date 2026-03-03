@@ -32,13 +32,14 @@ export default function InstagramChannelsPage() {
   const router = useRouter();
   const [channels, setChannels] = useState<ChannelProfile[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
-  
+
   // Add Channel Modal States
   const [showAddModal, setShowAddModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [processing, setProcessing] = useState(false);
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
   const [searchChannelQuery, setSearchChannelQuery] = useState('');
+  const [loadingChannelId, setLoadingChannelId] = useState<string | null>(null);
 
   // Fetch tracked channels on mount
   useEffect(() => {
@@ -55,22 +56,22 @@ export default function InstagramChannelsPage() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.status === 401) {
         return; // Handle auth redirect globally or here
       }
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         // Merge posts_count from localStorage (since DB doesn't store it)
         const storedPostsCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
         const channelsWithPosts = (data.channels || []).map((ch: any) => ({
           ...ch,
           posts_count: storedPostsCounts[ch.username] || 0
         }));
-        
-        setChannels(channelsWithPosts); 
+
+        setChannels(channelsWithPosts);
       }
     } catch (error) {
       console.error('Error fetching tracked channels:', error);
@@ -80,27 +81,27 @@ export default function InstagramChannelsPage() {
   };
 
   const extractInstagramUsername = (input: string): string => {
-      let clean = input.trim();
-      // Remove @ if present
-      clean = clean.replace('@', '');
-      
-      // Remove trailing slash
-      if (clean.endsWith('/')) clean = clean.slice(0, -1);
-      
-      try {
-          if (clean.includes('instagram.com')) {
-              const url = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
-              
-              // Handle /username or /p/postid
-              const pathParts = url.pathname.split('/').filter(p => p && p !== 'p' && p !== 'reel');
-              if (pathParts.length > 0) {
-                  return pathParts[0]; 
-              }
-          }
-      } catch (e) {
-         // ignore
+    let clean = input.trim();
+    // Remove @ if present
+    clean = clean.replace('@', '');
+
+    // Remove trailing slash
+    if (clean.endsWith('/')) clean = clean.slice(0, -1);
+
+    try {
+      if (clean.includes('instagram.com')) {
+        const url = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
+
+        // Handle /username or /p/postid
+        const pathParts = url.pathname.split('/').filter(p => p && p !== 'p' && p !== 'reel');
+        if (pathParts.length > 0) {
+          return pathParts[0];
+        }
       }
-      return clean;
+    } catch (e) {
+      // ignore
+    }
+    return clean;
   };
 
   const fetchChannelProfile = async (input: string) => {
@@ -119,75 +120,75 @@ export default function InstagramChannelsPage() {
           max_results: 20 // Fetch sample posts for profile info
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         alert(data.error || 'Không thể tìm thấy tài khoản Instagram này. Vui lòng kiểm tra lại username.');
         setProcessing(false);
         return;
       }
-      
+
       let payload: any = {};
-      
+
       // Extract Data for Saving
       if (data.profile) {
-           // Extract posts_count for localStorage (NOT sent to BE)
-           const postsCount = data.profile.posts_count || 0;
-           
-           // Map Instagram profile fields from AI service response
-           // NOTE: posts_count is NOT sent to BE (DB doesn't have this field)
-           payload = {
-              platform: 'INSTAGRAM',
-              username: data.profile.username || username,
-              display_name: data.profile.display_name || data.profile.fullName || username,
-              avatar_url: data.profile.avatar_url || data.profile.profilePicUrl || '',
-              // Stats (now including posts_count!)
-              total_followers: data.profile.follower_count || data.profile.followersCount || 0,
-              total_likes: data.profile.total_likes || 0,
-              total_views: data.profile.total_views || 0,
-              total_videos: data.profile.total_videos || 0,
-              posts_count: postsCount,
-              engagement_rate: data.profile.engagement_rate || 0
-           };
-           
-           // Also keep in localStorage for backward compatibility
-           if (postsCount > 0) {
-              const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
-              storedCounts[payload.username] = postsCount;
-              localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
-              console.log(`💾 Saved posts_count for ${payload.username}: ${postsCount}`);
-           }
+        // Extract posts_count for localStorage (NOT sent to BE)
+        const postsCount = data.profile.posts_count || 0;
+
+        // Map Instagram profile fields from AI service response
+        // NOTE: posts_count is NOT sent to BE (DB doesn't have this field)
+        payload = {
+          platform: 'INSTAGRAM',
+          username: data.profile.username || username,
+          display_name: data.profile.display_name || data.profile.fullName || username,
+          avatar_url: data.profile.avatar_url || data.profile.profilePicUrl || '',
+          // Stats (now including posts_count!)
+          total_followers: data.profile.follower_count || data.profile.followersCount || 0,
+          total_likes: data.profile.total_likes || 0,
+          total_views: data.profile.total_views || 0,
+          total_videos: data.profile.total_videos || 0,
+          posts_count: postsCount,
+          engagement_rate: data.profile.engagement_rate || 0
+        };
+
+        // Also keep in localStorage for backward compatibility
+        if (postsCount > 0) {
+          const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
+          storedCounts[payload.username] = postsCount;
+          localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
+          console.log(`💾 Saved posts_count for ${payload.username}: ${postsCount}`);
+        }
       } else if (data.results && data.results.length > 0) {
-           // Fallback extraction from posts
-           const firstPost = data.results[0];
-           const postsCount = data.results.length;  // Fallback: count fetched posts
-           
-           payload = {
-              platform: 'INSTAGRAM',
-              username: username,
-              display_name: firstPost.author_name || username,
-              avatar_url: firstPost.author_avatar || firstPost.thumbnail_url || '',
-              total_followers: 0, // Will be updated on refresh
-              total_likes: data.results.reduce((sum: number, p: any) => sum + (p.likes_count || 0), 0),
-              total_views: data.results.reduce((sum: number, p: any) => sum + (p.video_view_count || 0), 0),
-              total_videos: data.results.filter((p: any) => p.content_type === 'reel').length,
-              posts_count: postsCount,
-              engagement_rate: 0
-           };
-           
-           // Also keep in localStorage for backward compatibility
-           if (postsCount > 0) {
-              const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
-              storedCounts[username] = postsCount;
-              localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
-              console.log(`💾 Fallback saved posts_count for ${username}: ${postsCount}`);
-           }
+        // Fallback extraction from posts
+        const firstPost = data.results[0];
+        const postsCount = data.results.length;  // Fallback: count fetched posts
+
+        payload = {
+          platform: 'INSTAGRAM',
+          username: username,
+          display_name: firstPost.author_name || username,
+          avatar_url: firstPost.author_avatar || firstPost.thumbnail_url || '',
+          total_followers: 0, // Will be updated on refresh
+          total_likes: data.results.reduce((sum: number, p: any) => sum + (p.likes_count || 0), 0),
+          total_views: data.results.reduce((sum: number, p: any) => sum + (p.video_view_count || 0), 0),
+          total_videos: data.results.filter((p: any) => p.content_type === 'reel').length,
+          posts_count: postsCount,
+          engagement_rate: 0
+        };
+
+        // Also keep in localStorage for backward compatibility
+        if (postsCount > 0) {
+          const storedCounts = JSON.parse(localStorage.getItem('instagram_posts_counts') || '{}');
+          storedCounts[username] = postsCount;
+          localStorage.setItem('instagram_posts_counts', JSON.stringify(storedCounts));
+          console.log(`💾 Fallback saved posts_count for ${username}: ${postsCount}`);
+        }
       } else {
-           alert('Tìm thấy tài khoản nhưng không có bài viết công khai nào để phân tích.');
-           setProcessing(false);
-           return;
-           return;
+        alert('Tìm thấy tài khoản nhưng không có bài viết công khai nào để phân tích.');
+        setProcessing(false);
+        return;
+        return;
       }
 
       console.log('[DEBUG] AI Response Profile:', data.profile);
@@ -196,23 +197,23 @@ export default function InstagramChannelsPage() {
       // Save to Database
       const token = localStorage.getItem('auth_token');
       const saveResponse = await fetch(`${apiUrl}/tracked-channels`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       });
 
       if (saveResponse.ok) {
-          // Fetch updated channels (posts_count already saved above)
-          await fetchTrackedChannels();
-          
-          setShowAddModal(false);
-          setUsernameInput('');
+        // Fetch updated channels (posts_count already saved above)
+        await fetchTrackedChannels();
+
+        setShowAddModal(false);
+        setUsernameInput('');
       } else {
-          const errorData = await saveResponse.json();
-          alert(errorData.message || 'Lỗi khi lưu kênh vào hệ thống.');
+        const errorData = await saveResponse.json();
+        alert(errorData.message || 'Lỗi khi lưu kênh vào hệ thống.');
       }
     } catch (error) {
       console.error('Error processing channel:', error);
@@ -230,19 +231,19 @@ export default function InstagramChannelsPage() {
   const handleRefreshChannel = async (channel: ChannelProfile) => {
     setRefreshingIds(prev => new Set(prev).add(channel.username));
     try {
-        const result = await fetchChannelProfile(channel.username);
-        // Result contains updated posts_count which is already saved in localStorage by fetchChannelProfile
-        setRefreshingIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(channel.username);
-            return newSet;
-        });
+      const result = await fetchChannelProfile(channel.username);
+      // Result contains updated posts_count which is already saved in localStorage by fetchChannelProfile
+      setRefreshingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(channel.username);
+        return newSet;
+      });
     } catch (error) {
-        setRefreshingIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(channel.username);
-            return newSet;
-        });
+      setRefreshingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(channel.username);
+        return newSet;
+      });
     }
   };
 
@@ -277,14 +278,14 @@ export default function InstagramChannelsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-pink-200">
-                 <InstagramIcon className="w-7 h-7 text-white" />
+                <InstagramIcon className="w-7 h-7 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Instagram Analytics</h1>
                 <p className="text-sm text-slate-500">Quản lý tài khoản Instagram</p>
               </div>
             </div>
-            
+
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-pink-600/30 active:scale-95"
@@ -298,34 +299,34 @@ export default function InstagramChannelsPage() {
 
       {/* Content */}
       <div className="container mx-auto px-4 max-w-7xl pt-8">
-        
+
         {/* Loading State */}
         {loadingInitial && (
-            <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="w-10 h-10 text-pink-600 animate-spin mb-4" />
-                <p className="text-slate-500 font-medium">Đang tải dữ liệu kênh...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-pink-600 animate-spin mb-4" />
+            <p className="text-slate-500 font-medium">Đang tải dữ liệu kênh...</p>
+          </div>
         )}
 
         {/* Empty State */}
         {!loadingInitial && channels.length === 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-pink-200 m-4"
           >
             <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mb-6 ring-8 ring-pink-50/50">
-               <InstagramIcon className="w-12 h-12 text-pink-600" />
+              <InstagramIcon className="w-12 h-12 text-pink-600" />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-2">Chưa có kênh nào</h3>
             <p className="text-slate-500 mb-8 max-w-md text-center">
-               Hãy thêm tài khoản Instagram đầu tiên của bạn để bắt đầu theo dõi và phân tích posts & reels.
+              Hãy thêm tài khoản Instagram đầu tiên của bạn để bắt đầu theo dõi và phân tích posts & reels.
             </p>
             <button
               onClick={() => setShowAddModal(true)}
               className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-2xl shadow-xl shadow-pink-600/30 hover:from-purple-700 hover:to-pink-700 transition-all hover:-translate-y-1"
             >
-              <Plus className="w-6 h-6" /> 
+              <Plus className="w-6 h-6" />
               <span>Thêm Kênh Ngay</span>
             </button>
           </motion.div>
@@ -333,121 +334,134 @@ export default function InstagramChannelsPage() {
 
         {/* Channels Grid */}
         {!loadingInitial && channels.length > 0 && (
-            <>
-               {/* Stats Bar */}
-               <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <BarChart3 className="w-5 h-5 text-pink-600" />
-                    <span className="text-lg font-bold text-slate-800">{channels.length}</span>
-                    <span className="text-slate-500 font-medium">Kênh đang theo dõi</span>
-                  </div>
-                  
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm kênh..."
-                      value={searchChannelQuery}
-                      onChange={(e) => setSearchChannelQuery(e.target.value)}
-                      className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 w-64 transition-all"
-                    />
-                  </div>
-               </div>
+          <>
+            {/* Stats Bar */}
+            <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="w-5 h-5 text-pink-600" />
+                <span className="text-lg font-bold text-slate-800">{channels.length}</span>
+                <span className="text-slate-500 font-medium">Kênh đang theo dõi</span>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredChannels.map((channel, idx) => (
-                  <div
-                    key={channel.id || idx}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden flex flex-col h-full"
-                  >
-                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleRefreshChannel(channel);
-                            }}
-                            disabled={refreshingIds.has(channel.username) || processing}
-                            className="bg-white/90 p-2 rounded-lg text-pink-600 shadow-sm border border-pink-100 hover:bg-pink-50 transition-colors"
-                            title="Làm mới dữ liệu"
-                        >
-                            <RotateCcw className={`w-4 h-4 ${refreshingIds.has(channel.username) ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm kênh..."
+                  value={searchChannelQuery}
+                  onChange={(e) => setSearchChannelQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 w-64 transition-all"
+                />
+              </div>
+            </div>
 
-                    {/* Header */}
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className="relative flex-shrink-0">
-                        <img 
-                          src={getAvatarUrl(channel)} 
-                          alt={channel.display_name}
-                          referrerPolicy="no-referrer"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-pink-100 shadow-md ring-2 ring-pink-50"
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`;
-                          }}
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center border-2 border-white text-white shadow-sm">
-                          <InstagramIcon className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-bold text-slate-900 truncate text-lg flex items-center gap-2" title={channel.display_name}>
-                          {channel.display_name}
-                          {channel.is_verified && (
-                            <span className="text-blue-500 flex-shrink-0" title="Verified">
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                              </svg>
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-sm text-slate-500 truncate font-medium flex items-center gap-1">
-                           @{channel.username}
-                        </p>
-
-                      </div>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
-                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
-                            <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
-                            <span className="text-purple-900 font-black text-lg block">
-                                {formatNumber(channel.total_followers || 0)}
-                            </span>
-                        </div>
-                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
-                            <span className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
-                            <span className="text-blue-900 font-black text-lg block">
-                                {formatNumber(channel.posts_count || 0)}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    {/* Engagement Badge */}
-                    {channel.engagement_rate > 0 && (
-                      <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-green-700 font-bold uppercase">Engagement</span>
-                          <span className="text-green-900 font-black text-base">{channel.engagement_rate.toFixed(2)}%</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredChannels.map((channel, idx) => (
+                <div
+                  key={channel.id || idx}
+                  className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden flex flex-col h-full"
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button
-                      onClick={() => router.push(`/dashboard/instagram/analytics/${channel.username}`)}
-                      className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:from-purple-700 hover:to-pink-700 transition-colors shadow-lg shadow-pink-600/20"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRefreshChannel(channel);
+                      }}
+                      disabled={refreshingIds.has(channel.username) || processing}
+                      className="bg-white/90 p-2 rounded-lg text-pink-600 shadow-sm border border-pink-100 hover:bg-pink-50 transition-colors"
+                      title="Làm mới dữ liệu"
                     >
-                      <span>Xem Chi Tiết</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <RotateCcw className={`w-4 h-4 ${refreshingIds.has(channel.username) ? 'animate-spin' : ''}`} />
                     </button>
                   </div>
-                ))}
-              </div>
-            </>
+
+                  {/* Header */}
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={getAvatarUrl(channel)}
+                        alt={channel.display_name}
+                        referrerPolicy="no-referrer"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-pink-100 shadow-md ring-2 ring-pink-50"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`;
+                        }}
+                      />
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center border-2 border-white text-white shadow-sm">
+                        <InstagramIcon className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <h3 className="font-bold text-slate-900 truncate text-lg flex items-center gap-2" title={channel.display_name}>
+                        {channel.display_name}
+                        {channel.is_verified && (
+                          <span className="text-blue-500 flex-shrink-0" title="Verified">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                            </svg>
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-slate-500 truncate font-medium flex items-center gap-1">
+                        @{channel.username}
+                      </p>
+
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
+                      <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
+                      <span className="text-purple-900 font-black text-lg block">
+                        {formatNumber(channel.total_followers || 0)}
+                      </span>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
+                      <span className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
+                      <span className="text-blue-900 font-black text-lg block">
+                        {formatNumber(channel.posts_count || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Engagement Badge */}
+                  {channel.engagement_rate > 0 && (
+                    <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-green-700 font-bold uppercase">Engagement</span>
+                        <span className="text-green-900 font-black text-base">{channel.engagement_rate.toFixed(2)}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action */}
+                  <button
+                    onClick={() => {
+                      setLoadingChannelId(channel.username);
+                      router.push(`/dashboard/instagram/analytics/${channel.username}?days=3`);
+                    }}
+                    disabled={loadingChannelId === channel.username}
+                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-pink-600/20 disabled:opacity-80"
+                  >
+                    {loadingChannelId === channel.username ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang tải...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Xem Chi Tiết</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -471,13 +485,13 @@ export default function InstagramChannelsPage() {
               {/* Modal Header */}
               <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-pink-600">
-                             <Plus className="w-5 h-5" />
-                        </div>
-                        Thêm Kênh Instagram
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-1">Theo dõi tài khoản Instagram mới</p>
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-pink-600">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    Thêm Kênh Instagram
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Theo dõi tài khoản Instagram mới</p>
                 </div>
                 <button
                   onClick={() => !processing && setShowAddModal(false)}
@@ -494,7 +508,7 @@ export default function InstagramChannelsPage() {
                 </label>
                 <div className="relative mb-6">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                      <InstagramIcon className="w-5 h-5" />
+                    <InstagramIcon className="w-5 h-5" />
                   </div>
                   <input
                     type="text"
@@ -507,71 +521,71 @@ export default function InstagramChannelsPage() {
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-pink-500 focus:bg-white transition-all font-medium text-lg placeholder:text-slate-400"
                   />
                   {usernameInput && (
-                      <button 
-                         onClick={() => setUsernameInput('')}
-                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                          <X className="w-4 h-4" />
-                      </button>
+                    <button
+                      onClick={() => setUsernameInput('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
 
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200 mb-6">
-                    <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
-                        <InstagramIcon className="w-4 h-4 text-purple-600" /> Hỗ trợ các định dạng:
-                    </h4>
-                    <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Username (vd: cristiano)</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Với @ (vd: @cristiano)</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Link profile (instagram.com/cristiano)</li>
-                    </ul>
+                  <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
+                    <InstagramIcon className="w-4 h-4 text-purple-600" /> Hỗ trợ các định dạng:
+                  </h4>
+                  <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
+                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Username (vd: cristiano)</li>
+                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Với @ (vd: @cristiano)</li>
+                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-600" /> Link profile (instagram.com/cristiano)</li>
+                  </ul>
                 </div>
 
                 <div className="bg-green-50 rounded-xl p-4 border border-green-200 mb-4">
-                    <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
-                        ✅ Dữ liệu hỗ trợ đầy đủ
-                    </h4>
-                    <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
-                        <li className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
-                            <span><strong className="font-extrabold text-black">Profile Info</strong> (Followers, Posts count, Bio)</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
-                            <span><strong className="font-extrabold text-black">Posts & Reels</strong> (Likes, Comments, Views)</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
-                            <span><strong className="font-extrabold text-black">Engagement Metrics</strong> (Tỷ lệ tương tác)</span>
-                        </li>
-                    </ul>
+                  <h4 className="text-sm font-extrabold text-black mb-2 flex items-center gap-2">
+                    ✅ Dữ liệu hỗ trợ đầy đủ
+                  </h4>
+                  <ul className="text-sm font-semibold text-black space-y-1.5 pl-1">
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                      <span><strong className="font-extrabold text-black">Profile Info</strong> (Followers, Posts count, Bio)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                      <span><strong className="font-extrabold text-black">Posts & Reels</strong> (Likes, Comments, Views)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2" />
+                      <span><strong className="font-extrabold text-black">Engagement Metrics</strong> (Tỷ lệ tương tác)</span>
+                    </li>
+                  </ul>
                 </div>
 
                 <div className="flex gap-4 pt-2">
-                    <button
-                      onClick={() => setShowAddModal(false)}
-                      disabled={processing}
-                      className="flex-1 py-4 border-2 border-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
-                    >
-                      Đóng
-                    </button>
-                    <button
-                      onClick={handleAddChannel}
-                      disabled={processing || !usernameInput.trim()}
-                      className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl transition-all shadow-xl shadow-pink-600/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
-                    >
-                      {processing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Đang Quét & Thêm...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-5 h-5" />
-                          <span>Thêm Kênh Này</span>
-                        </>
-                      )}
-                    </button>
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    disabled={processing}
+                    className="flex-1 py-4 border-2 border-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    onClick={handleAddChannel}
+                    disabled={processing || !usernameInput.trim()}
+                    className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl transition-all shadow-xl shadow-pink-600/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Đang Quét & Thêm...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5" />
+                        <span>Thêm Kênh Này</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 

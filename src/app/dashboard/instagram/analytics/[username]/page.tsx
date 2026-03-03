@@ -1,7 +1,9 @@
 'use client';
 
+import { Suspense } from 'react';
+
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   TrendingUp,
   Users,
@@ -47,12 +49,22 @@ const InstagramViralVideos = dynamic(() => import('./InstagramViralVideos'), {
   ssr: false
 });
 
-export default function InstagramAnalyticsPage() {
+function InstagramAnalyticsInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const username = (params.username as string) || '';
   const platform = 'instagram'; // Hardcoded for Instagram
+
+  // Helper: tính ngày gần đây theo số ngày
+  const getDateRange = (days: number) => {
+    const today = new Date();
+    const end = today.toISOString().split('T')[0];
+    const start = new Date(today);
+    start.setDate(today.getDate() - (days - 1)); // include today
+    return { start: start.toISOString().split('T')[0], end };
+  };
 
   const [loading, setLoading] = useState(false);  // Don't show loading on initial load
   const [hasFetched, setHasFetched] = useState(false);  // Track if user has fetched data
@@ -179,14 +191,7 @@ export default function InstagramAnalyticsPage() {
 
       // Mark as fetched
       setHasFetched(true);
-
-      // Auto-clear filter after successful fetch
-      if (effectiveStart && effectiveEnd) {
-        ignoreNextFetch.current = true;
-        setStartDate('');
-        setEndDate('');
-        console.log('✅ Filters auto-cleared, data preserved.');
-      }
+      // NOTE: Intentionally NOT clearing dates so user can see what range was fetched
 
     } catch (error: any) {
       console.error('Error fetching analytics:', error);
@@ -196,11 +201,35 @@ export default function InstagramAnalyticsPage() {
     }
   }, [username]);
 
-  // Removed auto-fetch - user must click button to fetch
+  // Auto-fetch nếu có query param ?days=N (từ channel list "Xem Chi Tiết")
+  useEffect(() => {
+    const daysParam = searchParams.get('days');
+    if (username && daysParam) {
+      const days = parseInt(daysParam, 10) || 3;
+      const { start, end } = getDateRange(days);
+      console.log(`[INSTAGRAM] Auto-fetch last ${days} days: ${start} → ${end}`);
+      setStartDate(start);
+      setEndDate(end);
+      fetchChannelData(start, end);
+    }
+  }, [username]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Manual fetch button handler
   const handleFetchData = () => {
     if (username && startDate && endDate) {
       fetchChannelData(startDate, endDate);
     }
+  };
+
+  // Avatar proxy – Instagram CDN URLs gây CORS, cần proxy qua BE
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  const getAvatarUrl = (url?: string | null) => {
+    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || username)}&background=ec4899&color=fff&size=128`;
+    if (!url) return fallback;
+    if (url.includes('cdninstagram.com') || url.includes('instagram.com') || url.includes('fbcdn.net')) {
+      return `${apiUrl}/ai/proxy/avatar?url=${encodeURIComponent(url)}`;
+    }
+    return url;
   };
 
   const formatNumber = (num: number | undefined | null) => {
@@ -325,7 +354,7 @@ export default function InstagramAnalyticsPage() {
           <div className="flex items-center gap-5 min-w-[300px]">
             <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-pink-500 via-purple-500 to-orange-500 flex-shrink-0">
               <img
-                src={profile?.avatar_url || `https://www.instagram.com/${username}/profile_pic.jpg`}
+                src={getAvatarUrl(profile?.avatar_url)}
                 alt={profile?.name}
                 className="w-full h-full rounded-full object-cover border-2 border-white"
                 referrerPolicy="no-referrer"
@@ -498,5 +527,21 @@ function StatsCard({ icon, label, value, change, isNumberString = false, subLabe
         {subLabel && <span className="text-[10px] text-emerald-600 font-medium ml-1">{subLabel}</span>}
       </div>
     </div>
+  );
+}
+
+// Suspense wrapper (required for useSearchParams in Next.js App Router)
+export default function InstagramAnalyticsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 font-medium">Loading Instagram analytics...</p>
+        </div>
+      </div>
+    }>
+      <InstagramAnalyticsInner />
+    </Suspense>
   );
 }
