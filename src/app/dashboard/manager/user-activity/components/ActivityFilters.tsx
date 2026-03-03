@@ -463,21 +463,6 @@ const ActivityFilters = ({
             )}
 
             <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
-                {/* Clear Filters Button */}
-                {(activeTeam !== 'All' || searchName !== '' || (timeType !== 'this_month' && timeType !== 'month')) && (
-                    <button
-                        onClick={() => {
-                            setActiveTeam('All');
-                            setSearchName('');
-                            handleSelectTimeType('this_month');
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 text-red-500 hover:bg-red-50/80 rounded-lg transition-all duration-300 border border-red-100/50"
-                    >
-                        <X className="w-3 h-3" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Tắt lọc</span>
-                    </button>
-                )}
-
                 {/* Unified Time Filter */}
                 <div className="relative">
                     <button
@@ -630,13 +615,28 @@ const ActivityFilters = ({
                     </div>
                 )}
 
+                {/* Clear Filters Button - Minimalist Style */}
+                {(activeTeam !== 'All' || searchName !== '' || (timeType !== 'this_month' && timeType !== 'month')) && (
+                    <button
+                        onClick={() => {
+                            setActiveTeam('All');
+                            setSearchName('');
+                            handleSelectTimeType('this_month');
+                        }}
+                        className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:text-red-500 transition-all duration-300 group"
+                    >
+                        <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+                        <span className="text-[10px] font-bold uppercase tracking-tight">Xóa lọc</span>
+                    </button>
+                )}
+
                 {/* Screenshot Button */}
                 {onCapture && (
                     <button
                         type="button"
                         onClick={onCapture}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
-                                   bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md"
+                                   bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md ml-1"
                     >
                         <Camera className="w-3.5 h-3.5" />
                         Chụp
