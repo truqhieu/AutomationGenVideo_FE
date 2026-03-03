@@ -24,12 +24,10 @@ interface ContentType {
 }
 
 const CONTENT_TYPES: ContentType[] = [
-    { id: 'A1', name: 'A1 - Traffic (Viral)', description: 'Mẹo, tin tức, soi sản phẩm - Thu hút lượt view', color: 'from-red-500 to-pink-500', examples: ['Mẹo đánh sáng vàng bạc', 'Soi trang sức sao Việt', 'Tin tức ngành kim hoàn'] },
-    { id: 'A2', name: 'A2 - Knowledge (Giáo dục)', description: 'Kiến thức chuyên môn - Xây dựng uy tín', color: 'from-teal-500 to-cyan-500', examples: ['Phân biệt vàng/bạc/đá quý', 'Ý nghĩa phật bản mệnh', 'Lịch sử thương hiệu'] },
-    { id: 'A3', name: 'A3 - Credibility (Uy tín)', description: 'Xây dựng niềm tin - Flex thành tựu', color: 'from-blue-500 to-indigo-500', examples: ['Flex giải thưởng, từ thiện', 'Giao hàng cho người nổi tiếng', 'Kể chuyện bảo hành khách'] },
     { id: 'A4', name: 'A4 - Conversion (Bán hàng)', description: 'Chuyển đổi trực tiếp - Giới thiệu sản phẩm', color: 'from-green-500 to-emerald-500', examples: ['Top list sản phẩm hot', 'Ngân sách X mua được gì?', 'Combo quà tặng'] },
     { id: 'A5', name: 'A5 - Combined (Tổng hợp)', description: 'Kết hợp A1-A4 - Content đa chiều', color: 'from-yellow-500 to-orange-500', examples: ['Storytelling hoàn chỉnh', 'Từ hook đến CTA', 'Nội dung đa chiều'] },
-];  
+];
+
 
 // ─── Default optimal prompt (auto-filled for Regenerate) ───
 const DEFAULT_OPTIMAL_PROMPT = `YÊU CẦU NỘI DUNG CHUẨN TỐI ƯU:

@@ -26,13 +26,17 @@ interface DouyinVideo {
 export default function DouyinScraperPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'keyword' | 'hashtag'>('keyword');
-  const [maxPosts, setMaxPosts] = useState(6);
   const [loading, setLoading] = useState(false);
+  const [scanningNext, setScanningNext] = useState(false);
   const [videos, setVideos] = useState<DouyinVideo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [trackedChannels, setTrackedChannels] = useState<Set<string>>(new Set());
-  const [followingChannels, setFollowingChannels] = useState<Set<string>>(new Set()); // per-channel loading
+  const [followingChannels, setFollowingChannels] = useState<Set<string>>(new Set());
+  const [seenVideoIds, setSeenVideoIds] = useState<Set<string>>(new Set()); // track IDs đã hiển thị
+  const [batchOffset, setBatchOffset] = useState(0); // offset cho next batch
+  const BATCH_SIZE = 5;
+
 
   const handleFollowChannel = async (video: DouyinVideo) => {
     const username = video.author_username.replace('@', '').trim();
@@ -79,18 +83,29 @@ export default function DouyinScraperPage() {
     }
   };
 
+  // Douyin: chỉ cho search khi đã dịch sang tiếng Trung (keyword mode)
+  const hasLatinOrVietnamese = (text: string) => /[a-zA-Z\u00C0-\u1EF9]/.test(text);
+  const needsTranslation = searchType === 'keyword' && hasLatinOrVietnamese(searchTerm.trim());
+  const canSearch = !needsTranslation;
+
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setError('Vui lòng nhập từ khóa hoặc hashtag');
       return;
     }
+    if (!canSearch) return; // Chưa dịch → không cho tìm
 
     setLoading(true);
     setError(null);
+    // Reset batch state on new search
+    setVideos([]);
+    setSeenVideoIds(new Set());
+    setBatchOffset(0);
+    setHasMore(false);
 
     let finalSearchTerm = searchTerm.trim();
 
-    // Pre-search Translation: convert Vietnamese/Latin to Chinese for better Douyin results
+    // Pre-search Translation
     if (searchType === 'keyword' && /[a-zA-Z\u00C0-\u1EF9]/.test(finalSearchTerm)) {
       try {
         const transRes = await fetch('/api/translate-chinese', {
@@ -102,37 +117,41 @@ export default function DouyinScraperPage() {
           const transData = await transRes.json();
           if (transData.success && transData.translated) {
             finalSearchTerm = transData.translated;
-            setSearchTerm(finalSearchTerm); // Show translated text to user
+            setSearchTerm(finalSearchTerm);
           }
         }
       } catch (err) {
-        console.warn('Pre-search translation failed, searching with original:', err);
+        console.warn('Pre-search translation failed:', err);
       }
     }
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      // Fetch nhiều hơn BATCH_SIZE để có buffer filter trùng
       const response = await fetch(`${apiUrl}/douyin/search`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           searchTerm: finalSearchTerm,
           searchType,
-          maxPosts,
+          maxPosts: 7,
+          sortBy: 'most_liked',
         }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed');
-      }
+      if (!response.ok) throw new Error(data.error || 'Search failed');
 
       if (data.success && data.data) {
-        setVideos(data.data.videos || []);
-        setHasMore(data.data.total >= maxPosts);
+        const allVideos: DouyinVideo[] = data.data.videos || [];
+        // Lấy đúng BATCH_SIZE video đầu tiên
+        const batch = allVideos.slice(0, BATCH_SIZE);
+        const newSeenIds = new Set(batch.map(v => v.video_id));
+        setVideos(batch);
+        setSeenVideoIds(newSeenIds);
+        setBatchOffset(BATCH_SIZE);
+        // Có thể scan next nếu còn video chưa hiển thị
+        setHasMore(allVideos.length > BATCH_SIZE);
       } else {
         throw new Error(data.error || 'No data returned');
       }
@@ -143,10 +162,63 @@ export default function DouyinScraperPage() {
     }
   };
 
-  const loadMore = () => {
-    setMaxPosts(prev => prev + 6);
-    handleSearch();
+  const scanNextBatch = async () => {
+    if (!searchTerm.trim() || scanningNext) return;
+    setScanningNext(true);
+    setError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+      // Fetch với offset lớn hơn + random seed để tránh trùng
+      const randomSeed = Math.floor(Math.random() * 1000);
+      const response = await fetch(`${apiUrl}/douyin/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          searchTerm: searchTerm.trim(),
+          searchType,
+          maxPosts: 7,
+          sortBy: 'most_liked',
+          offset: batchOffset,
+          seed: randomSeed,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Scan failed');
+
+      if (data.success && data.data) {
+        const allVideos: DouyinVideo[] = data.data.videos || [];
+        // Lọc bỏ video đã hiển thị trước đó
+        const newVideos = allVideos.filter(v => !seenVideoIds.has(v.video_id));
+        const batch = newVideos.slice(0, BATCH_SIZE);
+
+        if (batch.length === 0) {
+          setError('Không tìm thấy video mới. Thử thay đổi từ khóa hoặc tìm kiếm lại.');
+          setHasMore(false);
+          return;
+        }
+
+        // Cập nhật danh sách seen và batch offset
+        const updatedSeen = new Set(Array.from(seenVideoIds).concat(batch.map(v => v.video_id)));
+        setSeenVideoIds(updatedSeen);
+        setBatchOffset(prev => prev + BATCH_SIZE);
+        setVideos(batch); // Thay thế batch cũ = hiển thị 5 video mới
+        setHasMore(newVideos.length > BATCH_SIZE);
+      } else {
+        throw new Error(data.error || 'No data');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to scan next batch');
+    } finally {
+      setScanningNext(false);
+    }
   };
+
+  const loadMore = () => {
+    scanNextBatch();
+  };
+
 
   const formatNumber = (num: number | null) => {
     if (num === null || num === undefined) return 'N/A';
@@ -207,12 +279,17 @@ export default function DouyinScraperPage() {
               value={searchTerm}
               onChange={setSearchTerm}
               onSearch={handleSearch}
-              placeholder={searchType === 'keyword' ? 'Nhập từ khóa...' : 'Nhập hashtag (không cần #)...'}
+              placeholder={searchType === 'keyword' ? 'Nhập từ khóa (tiếng Việt)...' : 'Nhập hashtag (không cần #)...'}
               className="mb-4"
             />
+            {needsTranslation && (
+              <p className="text-amber-400/90 text-sm mb-3">
+                Đang chờ dịch sang tiếng Trung... Nhập xong và đợi vài giây.
+              </p>
+            )}
             <button
               onClick={handleSearch}
-              disabled={loading}
+              disabled={loading || !canSearch}
               className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
             >
               {loading ? (
@@ -320,10 +397,12 @@ export default function DouyinScraperPage() {
                             <Eye className="w-3 h-3" />
                             {formatNumber(video.views_count)}
                           </div>
-                          <div className="flex items-center gap-1 text-xs text-slate-400">
-                            <Heart className="w-3 h-3" />
-                            {formatNumber(video.likes_count)}
-                          </div>
+                          {video.likes_count != null && (
+                            <div className="flex items-center gap-1 text-xs text-slate-400">
+                              <Heart className="w-3 h-3" />
+                              {formatNumber(video.likes_count)}
+                            </div>
+                          )}
                           <div className="flex items-center gap-1 text-xs text-slate-400">
                             <MessageCircle className="w-3 h-3" />
                             {formatNumber(video.comments_count)}
@@ -368,10 +447,10 @@ export default function DouyinScraperPage() {
                             onClick={() => handleFollowChannel(video)}
                             disabled={isTracked || isFollowing}
                             className={`flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:cursor-not-allowed ${isTracked
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : isFollowing
-                                  ? 'bg-slate-700 text-slate-400 border border-slate-600'
-                                  : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20 hover:scale-105 active:scale-95'
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                              : isFollowing
+                                ? 'bg-slate-700 text-slate-400 border border-slate-600'
+                                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20 hover:scale-105 active:scale-95'
                               }`}
                             title={isTracked ? 'Đã theo dõi' : isFollowing ? 'Đang xử lý...' : 'Theo dõi kênh này'}
                           >
@@ -399,18 +478,34 @@ export default function DouyinScraperPage() {
                 })}
               </motion.div>
 
-              {/* Load More */}
-              {hasMore && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={loadMore}
-                    disabled={loading}
-                    className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium disabled:opacity-50 transition-all"
-                  >
-                    Xem thêm 6 video
-                  </button>
+              {/* Scan Next Batch */}
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <div className="text-xs text-slate-500">
+                  Đã xem <span className="text-slate-300 font-medium">{seenVideoIds.size}</span> video •
+                  Batch <span className="text-slate-300 font-medium">{Math.ceil(seenVideoIds.size / BATCH_SIZE)}</span>
                 </div>
-              )}
+                {hasMore && (
+                  <button
+                    onClick={scanNextBatch}
+                    disabled={scanningNext}
+                    className="group flex items-center gap-3 px-8 py-3.5 bg-gradient-to-r from-red-600/20 to-orange-600/20 hover:from-red-600/40 hover:to-orange-600/40 border border-red-500/30 hover:border-red-500/60 text-red-400 hover:text-red-300 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-red-900/20"
+                  >
+                    {scanningNext ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Đang quét batch mới...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span>Scan Next Batch</span>
+                        <span className="text-xs bg-red-500/20 px-2 py-0.5 rounded-full">+5 video mới</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
             </motion.div>
           )}
         </AnimatePresence>

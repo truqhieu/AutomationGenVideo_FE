@@ -99,20 +99,27 @@ export default function SearchAutocomplete({
         setSelectedIndex(-1);
     };
 
+    // Douyin/Xiaohongshu: chỉ cho search khi đã dịch sang tiếng Trung
+    const requiresChinese = ['DOUYIN', 'XIAOHONGSHU'].includes(platform.toUpperCase());
+    const hasLatinOrVietnamese = (text: string) => /[a-zA-Z\u00C0-\u1EF9]/.test(text);
+    const canSearch = !requiresChinese || !hasLatinOrVietnamese(value);
+    const safeOnSearch = (query: string) => {
+        if (requiresChinese && hasLatinOrVietnamese(query)) return;
+        trackSearch(query);
+        onSearch(query);
+        setIsFocused(false);
+    };
+
     const handleSuggestionClick = (suggestion: SearchSuggestion) => {
         onChange(suggestion.text);
-        setIsFocused(false);
-        trackSearch(suggestion.text);
-        onSearch(suggestion.text);
+        safeOnSearch(suggestion.text);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (!suggestions.length) {
             if (e.key === 'Enter' && value) {
                 e.preventDefault();
-                trackSearch(value);
-                onSearch(value);
-                setIsFocused(false);
+                safeOnSearch(value);
             }
             return;
         }
@@ -131,9 +138,7 @@ export default function SearchAutocomplete({
                 if (selectedIndex >= 0) {
                     handleSuggestionClick(suggestions[selectedIndex]);
                 } else if (value) {
-                    trackSearch(value);
-                    onSearch(value);
-                    setIsFocused(false);
+                    safeOnSearch(value);
                 }
                 break;
             case 'Escape':
@@ -144,11 +149,7 @@ export default function SearchAutocomplete({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (value) {
-            trackSearch(value);
-            onSearch(value);
-            setIsFocused(false);
-        }
+        if (value) safeOnSearch(value);
     };
 
     const handleClear = () => {

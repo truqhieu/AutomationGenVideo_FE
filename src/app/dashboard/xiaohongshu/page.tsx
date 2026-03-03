@@ -121,11 +121,16 @@ export default function XiaohongshuPage() {
     }
   };
 
+  const hasLatinOrVietnamese = (text: string) => /[a-zA-Z\u00C0-\u1EF9]/.test(text);
+  const needsTranslation = searchType === 'keyword' && hasLatinOrVietnamese(searchTerm.trim());
+  const canSearch = !needsTranslation;
+
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setError('Vui lòng nhập từ khóa');
       return;
     }
+    if (!canSearch) return;
 
     setLoading(true);
     setError(null);
@@ -276,12 +281,17 @@ export default function XiaohongshuPage() {
               value={searchTerm}
               onChange={setSearchTerm}
               onSearch={handleSearch}
-              placeholder={searchType === 'keyword' ? 'Nhập từ khóa tìm kiếm...' : 'Nhập hashtag (không cần #)...'}
+              placeholder={searchType === 'keyword' ? 'Nhập từ khóa (tiếng Việt)...' : 'Nhập hashtag (không cần #)...'}
               className="mb-4"
             />
+            {needsTranslation && (
+              <p className="text-amber-400/90 text-sm mb-3">
+                Đang chờ dịch sang tiếng Trung... Nhập xong và đợi vài giây.
+              </p>
+            )}
             <button
               onClick={handleSearch}
-              disabled={loading}
+              disabled={loading || !canSearch}
               className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:shadow-xl hover:scale-105 active:scale-95"
             >
               {loading ? (
