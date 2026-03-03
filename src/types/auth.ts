@@ -29,7 +29,8 @@ export interface RegisterRequest {
   email: string;
   password: string;
   full_name: string;
-  role: UserRole;
+  role?: UserRole;
+  roles?: UserRole[];
   manager_id?: string;
 }
 
