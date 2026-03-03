@@ -124,6 +124,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
 
     const audioInputRef = useRef<HTMLInputElement>(null);
+    const hasAutoIndexedRef = useRef(false);
 
     // Load cache stats and voices on mount
     useEffect(() => {
@@ -133,8 +134,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     // AUTO-SCAN IF EMPTY INDEX
     useEffect(() => {
-        if (cacheStats && cacheStats.indexed_videos === 0 && !isIndexing) {
-            console.log('Index trống! Tự động chạy Auto-Scan Default Folders...');
+        if (cacheStats && cacheStats.indexed_videos === 0 && !isIndexing && !hasAutoIndexedRef.current) {
+            hasAutoIndexedRef.current = true;
+            console.log('Index trống! Tự động chạy Auto-Scan Default Folders (1 lần)...');
             const folders: { [key: string]: string } = {};
 
             // Chỉ index HuyK (chung). Sản phẩm/Sản phẩm HT/Chế tác → index theo SKU qua index-manufacturing-folder
