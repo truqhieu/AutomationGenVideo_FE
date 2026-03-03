@@ -267,43 +267,40 @@ const UserActivityPage = () => {
     };
 
     const handleCaptureFullPage = async () => {
+        const container = document.getElementById('report-view-container');
+        if (!container) return;
+
         try {
-            const html2canvas = (await import('html2canvas')).default;
+            const { toPng } = await import('html-to-image');
 
+            // Scroll to top and wait for full stability
             const scrollY = window.scrollY;
-            window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-            await new Promise((r) => setTimeout(r, 50));
+            window.scrollTo(0, 0);
+            await new Promise((r) => setTimeout(r, 1000));
 
-            const el = document.documentElement;
-            const canvas = await html2canvas(document.body, {
+            // Generate PNG using modern library
+            const dataUrl = await toPng(container, {
+                quality: 1.0,
+                pixelRatio: 2,
                 backgroundColor: '#ffffff',
-                useCORS: true,
-                allowTaint: true,
-                scale: Math.min(window.devicePixelRatio || 1, 2),
-                windowWidth: el.scrollWidth,
-                windowHeight: el.scrollHeight,
-                scrollX: 0,
-                scrollY: 0,
+                style: {
+                    transform: 'scale(1)',
+                    transformOrigin: 'top left',
+                }
             });
 
-            canvas.toBlob((blob) => {
-                if (!blob) return;
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const now = new Date();
-                const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).toString().padStart(2, '0')}${String(now.getMinutes()).toString().padStart(2, '0')}`;
-                a.href = url;
-                a.download = `VCB_screenshot_${ts}.png`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-            }, 'image/png');
+            const link = document.createElement('a');
+            const now = new Date();
+            const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
 
-            window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+            link.href = dataUrl;
+            link.download = `VCB_Report_${ts}.png`;
+            link.click();
+
+            window.scrollTo(0, scrollY);
         } catch (e) {
             console.error('Capture screenshot failed:', e);
-            alert('Không chụp được màn hình. Hãy thử lại sau.');
+            alert('Lỗi chụp màn hình. Hãy thử lại.');
         }
     };
 
@@ -318,7 +315,7 @@ const UserActivityPage = () => {
     const visibleTabs = allTabs;
 
     return (
-        <div className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
+        <div id="report-view-container" className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
             {/* Top Header Section with Xanh Trắng Theme */}
             <div className="absolute top-0 left-0 right-0 h-80 bg-blue-600 z-0 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500" />
