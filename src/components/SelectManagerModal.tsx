@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types/auth';
 import { Users, X, CheckCircle } from 'lucide-react';
 
 interface Manager {
@@ -18,20 +19,20 @@ export default function SelectManagerModal() {
   const [selectedManager, setSelectedManager] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Track if we already checked in this component lifecycle
   const hasChecked = useRef(false);
 
   useEffect(() => {
     // Only check once per component mount
     if (hasChecked.current) return;
-    
+
     // Show modal if user is EDITOR or CONTENT and doesn't have a manager
     // Only show on first login, not during navigation within dashboard
-    if (user && (user.role === 'EDITOR' || user.role === 'CONTENT') && !user.manager_id) {
+    if (user && (user.roles?.includes(UserRole.EDITOR) || user.roles?.includes(UserRole.CONTENT)) && !user.manager_id) {
       // Check if modal was already shown/dismissed in this session
       const modalDismissed = localStorage.getItem('manager_modal_dismissed');
-      
+
       if (!modalDismissed) {
         hasChecked.current = true;
         setShowModal(true);

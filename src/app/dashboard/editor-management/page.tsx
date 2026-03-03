@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types/auth';
 import {
   Users,
   Video,
@@ -47,7 +48,7 @@ interface Editor {
   email: string;
   full_name: string;
   avatar: string | null;
-  role: string;
+  roles: string[];
   is_active: boolean;
   last_login_at: string | null;
   created_at: string;
@@ -70,7 +71,7 @@ const PLATFORMS = [
 export default function EditorManagementPage() {
   const { user, token } = useAuthStore();
   const router = useRouter();
-  
+
   const [data, setData] = useState<MyEditorsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +80,8 @@ export default function EditorManagementPage() {
 
   useEffect(() => {
     // Check if user is manager
-    if (user && user.role !== 'MANAGER' && user.role !== 'ADMIN') {
+    const roles = user?.roles || [];
+    if (user && !roles.includes(UserRole.MANAGER) && !roles.includes(UserRole.ADMIN)) {
       router.push('/dashboard/ai');
       return;
     }
@@ -302,9 +304,8 @@ export default function EditorManagementPage() {
 
                     {/* Expand Icon */}
                     <div
-                      className={`transform transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
+                      className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''
+                        }`}
                     >
                       <ChevronDown className="w-6 h-6 text-slate-400" />
                     </div>

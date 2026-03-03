@@ -24,6 +24,7 @@ import {
   ClipboardCheck,
   Film
 } from 'lucide-react';
+import { UserRole } from '@/types/auth';
 
 
 
@@ -87,10 +88,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           section: 'HỆ THỐNG',
           items: [
             { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
-            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+            ...(user?.roles?.includes(UserRole.MANAGER) || user?.roles?.includes(UserRole.ADMIN) ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
             ] : []),
-            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+            ...(user?.roles?.includes(UserRole.MANAGER) || user?.roles?.includes(UserRole.ADMIN) ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
             ] : []),
           ]
@@ -171,7 +172,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         }
       ]
     }
-  ], [user?.role]); // Dependency on primitive string ensures stability
+  ], [user?.roles]); // Dependency on roles array
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
@@ -280,7 +281,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             </button>
 
             {/* Settings - Link to checklist settings for Manager/Admin */}
-            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+            {(user?.roles?.includes(UserRole.MANAGER) || user?.roles?.includes(UserRole.ADMIN)) ? (
               <Link
                 href="/dashboard/manager/checklist-settings"
                 className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"

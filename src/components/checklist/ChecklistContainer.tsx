@@ -6,6 +6,7 @@ import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
 import { Send } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types/auth';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
@@ -48,11 +49,13 @@ const ChecklistContainer = () => {
         fetchLarkRole();
     }, [user?.email]);
 
-    const isLeader =
-        larkRole?.toLowerCase() === 'leader' ||
-        larkRole?.toLowerCase() === 'admin' ||
-        user?.role === 'ADMIN' ||
-        user?.role === 'MANAGER';
+    const roles = user?.roles || [];
+    const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
+    const isLeader = roles.includes(UserRole.LEADER) || larkRole?.toLowerCase() === 'leader';
+    const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT);
+
+    const showForm12 = isAdmin || isStaff;
+    const showForm3 = isAdmin || isLeader;
 
     const handleCheckChange = useCallback((index: number, checked: boolean) => {
         setChecks((prev) => {
@@ -90,14 +93,14 @@ const ChecklistContainer = () => {
         });
 
         // Add Leader answers only if user is authorized as leader
-        if (isLeader) {
+        if (showForm3) {
             LEADER_QUESTIONS.forEach((item, i) => {
                 payload[item.question] = (leaderAnswers[i] ?? '').trim() || '';
             });
         }
 
         return payload;
-    }, [checks, details, leaderAnswers, isLeader]);
+    }, [checks, details, leaderAnswers, showForm3]);
 
     const handleSubmit = async () => {
         if (!user) {
@@ -157,16 +160,20 @@ const ChecklistContainer = () => {
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-                <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
-                    <ChecklistSection values={checks} onChange={handleCheckChange} />
-                </div>
-                <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
-                    <DetailSection values={details} onChange={handleDetailChange} />
-                </div>
+                {showForm12 && (
+                    <>
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
+                            <ChecklistSection values={checks} onChange={handleCheckChange} />
+                        </div>
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
+                            <DetailSection values={details} onChange={handleDetailChange} />
+                        </div>
+                    </>
+                )}
             </div>
 
-            {/* Leader Section - Show if user has Leader/Admin role in Lark Permission */}
-            {isLeader && (
+            {/* Leader Section - Show if user has Leader/Admin role */}
+            {showForm3 && (
                 <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                     <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
                 </div>
