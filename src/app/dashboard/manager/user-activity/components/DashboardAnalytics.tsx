@@ -81,42 +81,42 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
         return (
             <div className="space-y-6 mt-10">
                 {/* Region Summary Bar */}
-                <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                <div className="bg-white rounded-lg shadow-sm border border-slate-100 overflow-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-5 divide-x divide-slate-100">
-                        <div className="bg-slate-900 text-white p-6 flex flex-col justify-center">
-                            <h3 className="text-sm font-black uppercase tracking-widest">{title}</h3>
+                        <div className="bg-slate-900 text-white px-4 py-2.5 flex flex-col justify-center">
+                            <h3 className="text-[11px] font-black uppercase tracking-widest">{title}</h3>
                         </div>
-                        <div className="p-6 text-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Số video</p>
-                            <p className="text-2xl font-black text-rose-600">{formatNumber(stats.summary.videos)}</p>
+                        <div className="px-2 py-2 text-center">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số video</p>
+                            <p className="text-lg font-black text-rose-600 leading-none">{formatNumber(stats.summary.videos)}</p>
                         </div>
-                        <div className="p-6 text-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Số traffic</p>
-                            <p className="text-2xl font-black text-blue-600">{formatNumber(stats.summary.traffic)}</p>
+                        <div className="px-2 py-2 text-center">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số traffic</p>
+                            <p className="text-lg font-black text-blue-600 leading-none">{formatNumber(stats.summary.traffic)}</p>
                         </div>
-                        <div className="p-6 text-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Số doanh thu</p>
-                            <p className="text-2xl font-black text-emerald-600 font-mono italic">{formatNumber(stats.summary.revenue)}</p>
+                        <div className="px-2 py-2 text-center">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số doanh thu</p>
+                            <p className="text-lg font-black text-emerald-600 font-mono italic leading-none">{formatNumber(stats.summary.revenue)}</p>
                         </div>
-                        <div className="p-6 text-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Số kênh</p>
-                            <p className="text-2xl font-black text-amber-500">{formatNumber(stats.summary.channels)}</p>
+                        <div className="px-2 py-2 text-center">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số kênh</p>
+                            <p className="text-lg font-black text-amber-500 leading-none">{formatNumber(stats.summary.channels)}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Detailed Table */}
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Tên nv</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Team</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Số vd</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Số traffic</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Số doanh thu</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Số kênh</th>
+                <div className="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
+                    <div className="overflow-auto max-h-[400px] custom-scrollbar">
+                        <table className="w-full text-left border-collapse relative">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-slate-50/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">Tên nv</th>
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">Team</th>
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 text-center">Số vd</th>
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 text-center">Số traffic</th>
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 text-center">Số doanh thu</th>
+                                    <th className="px-3 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 text-center">Số kênh</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -124,31 +124,31 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                                     <React.Fragment key={team.name}>
                                         {team.members.map((member: any, idx: number) => (
                                             <tr key={member.email} className={`hover:bg-blue-50/30 transition-colors ${member.isLeader ? 'bg-amber-50/20' : ''}`}>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className={`font-bold ${member.isLeader ? 'text-amber-700' : 'text-slate-700'}`}>
+                                                <td className="px-3 py-1.5 border-b border-slate-50">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`text-[13px] font-bold ${member.isLeader ? 'text-amber-700' : 'text-slate-700'}`}>
                                                             {member.name}
-                                                            {member.isLeader && <span className="ml-2 text-[8px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Leader</span>}
+                                                            {member.isLeader && <span className="ml-1.5 text-[7px] bg-amber-100 text-amber-600 px-1 py-0.5 rounded-full uppercase tracking-tighter">Leader</span>}
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-xs font-black text-blue-600 italic uppercase">{member.team}</span>
+                                                <td className="px-3 py-1.5 border-b border-slate-50">
+                                                    <span className="text-[9px] font-black text-blue-600 italic uppercase">{member.team}</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
+                                                <td className="px-3 py-1.5 text-center border-b border-slate-50">
                                                     <div className="flex flex-col items-center">
-                                                        <span className="font-black text-slate-900">{member.videoCount}</span>
-                                                        <span className="text-[9px] font-bold text-rose-500 italic">({member.contribution} đóng góp)</span>
+                                                        <span className="text-[13px] font-black text-slate-900 leading-none">{member.videoCount}</span>
+                                                        <span className="text-[7.5px] font-bold text-rose-500 italic mt-0.5">({member.contribution} đóng góp)</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="font-bold text-slate-600">{formatNumber(member.traffic)}</span>
+                                                <td className="px-3 py-1.5 text-center border-b border-slate-50">
+                                                    <span className="text-[13px] font-bold text-slate-600">{formatNumber(member.traffic)}</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="font-mono text-emerald-600 font-bold">{formatNumber(member.revenue)}</span>
+                                                <td className="px-3 py-1.5 text-center border-b border-slate-50">
+                                                    <span className="text-[13px] font-mono text-emerald-600 font-bold">{formatNumber(member.revenue)}</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="font-bold text-slate-600">{member.channels}</span>
+                                                <td className="px-3 py-1.5 text-center border-b border-slate-50">
+                                                    <span className="text-[13px] font-bold text-slate-600">{member.channels}</span>
                                                 </td>
                                             </tr>
                                         ))}
