@@ -187,7 +187,7 @@ export default function TikTokSearchPage() {
           use_cache: false,
           min_views: 0,
           min_likes: 0,
-          async_mode: true
+          async_mode: false
         }),
       });
 
