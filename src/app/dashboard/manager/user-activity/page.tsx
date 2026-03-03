@@ -69,9 +69,10 @@ const UserActivityPage = () => {
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
 
     // Time filter states
-    const [timeType, setTimeType] = React.useState('today');
+    const [timeType, setTimeType] = React.useState('month');
     const [dateRange, setDateRange] = React.useState<{ start: Date; end: Date }>(() => {
         const start = new Date();
+        start.setDate(1); // Mặc định từ đầu tháng
         start.setHours(0, 0, 0, 0);
         const end = new Date();
         end.setHours(23, 59, 59, 999);
