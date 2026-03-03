@@ -2,6 +2,7 @@
 
 import React from 'react';
 import ActivityKPIs from './components/ActivityKPIs';
+import DashboardAnalytics from './components/DashboardAnalytics';
 import ActivityFilters from './components/ActivityFilters';
 import UserActivityCard, { UserActivity } from './components/UserActivityCard';
 import ReportCard from './components/ReportCard';
@@ -409,8 +410,11 @@ const UserActivityPage = () => {
                 {/* Main Content Area */}
                 <main className="min-h-[60vh]">
                     {activeTab === 'dashboard' ? (
-                        <div className="flex items-center justify-center py-20 bg-white/50 backdrop-blur rounded-[2rem] border border-dashed border-slate-200">
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest italic">Dashboard đang được phát triển...</p>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <DashboardAnalytics
+                                dateRange={dateRange}
+                                activeTeam={activeTeam}
+                            />
                         </div>
                     ) : activeTab === 'performance' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
