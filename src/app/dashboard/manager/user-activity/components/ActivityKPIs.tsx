@@ -12,11 +12,12 @@ interface ActivityKPIsProps {
         totalTrafficCompleted: number;
         totalRevenueTarget: number;
         totalRevenueCompleted: number;
+        totalChannels: number;
     };
     teamContributions?: any[];
     groupContributions?: {
-        global: { videos: number, traffic: number, revenue: number, videoPct: number, trafficPct: number, revenuePct: number };
-        vn: { videos: number, traffic: number, revenue: number, videoPct: number, trafficPct: number, revenuePct: number };
+        global: { videos: number, traffic: number, revenue: number, channels: number, videoPct: number, trafficPct: number, revenuePct: number, channelPct: number };
+        vn: { videos: number, traffic: number, revenue: number, channels: number, videoPct: number, trafficPct: number, revenuePct: number, channelPct: number };
     } | null;
 }
 
@@ -54,15 +55,24 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             percentage: calculatePercentage(summary?.totalRevenueCompleted || 0, summary?.totalRevenueTarget || 0),
             groupKey: 'revenue',
             pctKey: 'revenuePct'
+        },
+        {
+            title: 'SỐ KÊNH',
+            value: formatNumber(summary?.totalChannels || 0),
+            total: `Kênh`,
+            percentage: 100,
+            groupKey: 'channels',
+            pctKey: 'channelPct'
         }
     ];
 
     const hasAnyKpi = (summary?.totalVideoTarget || 0) + (summary?.totalVideoCompleted || 0) +
         (summary?.totalTrafficTarget || 0) + (summary?.totalTrafficCompleted || 0) +
-        (summary?.totalRevenueTarget || 0) + (summary?.totalRevenueCompleted || 0) > 0;
+        (summary?.totalRevenueTarget || 0) + (summary?.totalRevenueCompleted || 0) +
+        (summary?.totalChannels || 0) > 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
                 <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-4">
@@ -74,42 +84,48 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                         </div>
 
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
-                                <svg className="w-full h-full transform -rotate-90">
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r="28"
-                                        stroke="currentColor"
-                                        strokeWidth="6"
-                                        fill="transparent"
-                                        className="text-slate-50"
-                                    />
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r="28"
-                                        stroke="currentColor"
-                                        strokeWidth="6"
-                                        fill="transparent"
-                                        strokeDasharray={175.9}
-                                        strokeDashoffset={175.9 * (1 - kpi.percentage / 100)}
-                                        strokeLinecap="round"
-                                        className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
-                                    />
-                                </svg>
-                                <span className="absolute text-[12px] font-black text-slate-900">
-                                    {kpi.percentage}%
-                                </span>
-                            </div>
+                            {kpi.title !== 'SỐ KÊNH' && (
+                                <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                    <svg className="w-full h-full transform -rotate-90">
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            stroke="currentColor"
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                            className="text-slate-50"
+                                        />
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            stroke="currentColor"
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                            strokeDasharray={175.9}
+                                            strokeDashoffset={175.9 * (1 - kpi.percentage / 100)}
+                                            strokeLinecap="round"
+                                            className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
+                                        />
+                                    </svg>
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="absolute text-[12px] font-black text-slate-900">
+                                            {kpi.percentage}%
+                                        </span>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="flex-1 min-w-0">
-                                <div className="text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm">
+                                <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.title === 'SỐ KÊNH' ? 'text-center py-2' : ''}`}>
                                     {kpi.value}
                                 </div>
-                                <div className="text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1.5">
+                                <div className={`text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    MT: <span className="text-blue-700">{kpi.total}</span>
+                                    {kpi.title === 'SỐ KÊNH' ? 'Đang chạy' : (
+                                        <>MT: <span className="text-blue-700">{kpi.total}</span></>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -123,9 +139,11 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 </div>
                                 <div className="flex items-baseline gap-1.5">
                                     <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
-                                    <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
-                                        {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
-                                    </span>
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
+                                            {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -137,9 +155,11 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     <Flag className="w-2.5 h-2.5 text-blue-500" />
                                 </div>
                                 <div className="flex items-baseline justify-end gap-1.5">
-                                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
-                                        {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
-                                    </span>
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
+                                            {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
+                                        </span>
+                                    )}
                                     <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
                                 </div>
                             </div>

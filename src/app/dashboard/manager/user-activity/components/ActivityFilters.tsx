@@ -43,7 +43,23 @@ const ActivityFilters = ({
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-    const [filterMode, setFilterMode] = useState<'day' | 'week' | 'month' | 'year' | 'range'>('day');
+    const [filterMode, setFilterMode] = useState<'day' | 'week' | 'month' | 'year' | 'range'>(() => {
+        if (timeType === 'month' || timeType === 'this_month' || timeType === 'last_month') return 'month';
+        if (timeType === 'this_week' || timeType === 'last_week') return 'week';
+        if (timeType === 'this_year') return 'year';
+        if (timeType === 'custom') return 'range';
+        return 'day';
+    });
+
+    // Sync filterMode when timeType changes from outside
+    useEffect(() => {
+        if (timeType === 'month' || timeType === 'this_month' || timeType === 'last_month') setFilterMode('month');
+        else if (timeType === 'this_week' || timeType === 'last_week') setFilterMode('week');
+        else if (timeType === 'this_year') setFilterMode('year');
+        else if (timeType === 'custom') setFilterMode('range');
+        else setFilterMode('day');
+    }, [timeType]);
+
     const dropdownRef = useRef<HTMLDivElement>(null);
     const timeFilterRef = useRef<HTMLDivElement>(null);
 
@@ -447,6 +463,21 @@ const ActivityFilters = ({
             )}
 
             <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
+                {/* Clear Filters Button */}
+                {(activeTeam !== 'All' || searchName !== '' || (timeType !== 'this_month' && timeType !== 'month')) && (
+                    <button
+                        onClick={() => {
+                            setActiveTeam('All');
+                            setSearchName('');
+                            handleSelectTimeType('this_month');
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 text-red-500 hover:bg-red-50/80 rounded-lg transition-all duration-300 border border-red-100/50"
+                    >
+                        <X className="w-3 h-3" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Tắt lọc</span>
+                    </button>
+                )}
+
                 {/* Unified Time Filter */}
                 <div className="relative">
                     <button
