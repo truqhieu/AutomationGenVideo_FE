@@ -62,93 +62,86 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
         (summary?.totalRevenueTarget || 0) + (summary?.totalRevenueCompleted || 0) > 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/50 border-slate-200/60 shadow-[0_10px_40px_-15px_rgba(59,130,246,0.1)] rounded-[2rem] overflow-hidden hover:scale-[1.01] transition-all duration-300 border-b-2 border-b-blue-500">
-                    <CardContent className="p-8 pb-6">
-                        <div className="flex justify-between items-start mb-6">
-                            <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">{kpi.title}</h3>
-                            <div className="bg-blue-600/10 p-2 rounded-xl">
-                                <Target className="w-4 h-4 text-blue-600" />
+                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
+                    <CardContent className="p-4">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
+                            <div className="bg-blue-600/5 p-1.5 rounded-lg">
+                                <Target className="w-3 h-3 text-blue-600" />
                             </div>
                         </div>
 
-                        <div className="flex flex-col xl:flex-row items-center justify-between gap-6 mb-10">
-                            <div className="relative w-24 h-24 flex-shrink-0 flex items-center justify-center">
-                                {/* Enhanced Circular Progress */}
-                                <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.1)]">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="relative w-14 h-14 flex-shrink-0 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
                                     <circle
-                                        cx="48"
-                                        cy="48"
-                                        r="38"
+                                        cx="28"
+                                        cy="28"
+                                        r="24"
                                         stroke="currentColor"
-                                        strokeWidth="8"
+                                        strokeWidth="5"
                                         fill="transparent"
-                                        className="text-slate-100"
+                                        className="text-slate-50"
                                     />
                                     <circle
-                                        cx="48"
-                                        cy="48"
-                                        r="38"
+                                        cx="28"
+                                        cy="28"
+                                        r="24"
                                         stroke="currentColor"
-                                        strokeWidth="8"
+                                        strokeWidth="5"
                                         fill="transparent"
-                                        strokeDasharray={238.76}
-                                        strokeDashoffset={238.76 * (1 - kpi.percentage / 100)}
+                                        strokeDasharray={150.8}
+                                        strokeDashoffset={150.8 * (1 - kpi.percentage / 100)}
                                         strokeLinecap="round"
                                         className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
                                     />
                                 </svg>
-                                <div className="absolute flex flex-col items-center">
-                                    <span className="text-xl font-black text-slate-900">
-                                        {kpi.percentage}%
-                                    </span>
-                                </div>
+                                <span className="absolute text-[10px] font-black text-slate-900">
+                                    {kpi.percentage}%
+                                </span>
                             </div>
 
-                            <div className="text-center xl:text-right min-w-0 flex-1">
-                                <div className="text-3xl 2xl:text-4xl font-black text-blue-600 leading-tight mb-3 tracking-tighter break-all">
+                            <div className="flex-1 min-w-0">
+                                <div className="text-2xl font-black text-blue-600 leading-none mb-1 tracking-tighter truncate">
                                     {kpi.value}
                                 </div>
-                                <div className="inline-block px-3 py-1 bg-blue-50 rounded-full border border-blue-100">
-                                    <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap uppercase">MT: {kpi.total}</span>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">
+                                    MT: <span className="text-blue-500">{kpi.total}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Breakdown Global vs VN */}
-                        <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
-                            <div className="relative pl-4 border-l-2 border-amber-400">
-                                <div className="text-[10px] font-black text-amber-600 uppercase mb-1 flex items-center gap-1.5">
-                                    <Globe className="w-3 h-3 text-amber-500 animate-pulse-slow" />
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <div className="flex flex-col">
+                                <div className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1">
+                                    <Globe className="w-2.5 h-2.5 text-amber-500" />
                                     Global
                                 </div>
-                                <div className="text-sm font-black text-slate-800">
-                                    {formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}
-                                </div>
-                                <div className="text-[10px] font-bold text-amber-500 mt-0.5">
-                                    {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}% Đóng góp
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-xs font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
+                                    <span className="text-[8px] font-bold text-amber-500 italic">({groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%)</span>
                                 </div>
                             </div>
 
-                            <div className="relative pl-4 border-l-2 border-blue-400">
-                                <div className="text-[10px] font-black text-blue-600 uppercase mb-1 flex items-center gap-1.5">
-                                    <Flag className="w-3 h-3 text-blue-500" />
+                            <div className="w-px h-6 bg-slate-100"></div>
+
+                            <div className="flex flex-col text-right">
+                                <div className="text-[8px] font-black text-blue-600 uppercase flex items-center justify-end gap-1">
                                     Việt Nam
+                                    <Flag className="w-2.5 h-2.5 text-blue-500" />
                                 </div>
-                                <div className="text-sm font-black text-slate-800">
-                                    {formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}
-                                </div>
-                                <div className="text-[10px] font-bold text-blue-500 mt-0.5">
-                                    {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}% Đóng góp
+                                <div className="flex items-baseline justify-end gap-1">
+                                    <span className="text-[8px] font-bold text-blue-500 italic">({groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%)</span>
+                                    <span className="text-xs font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
                                 </div>
                             </div>
                         </div>
-
                     </CardContent>
                 </Card>
-            ))
-            }
+            ))}
             {!hasAnyKpi && summary && (
                 <p className="col-span-full text-center text-xs text-slate-500 mt-2">
                     Nếu toàn bộ số liệu là 0: kiểm tra đã đồng bộ KPI từ Lark chưa và tháng đang chọn có dữ liệu trong Lark.

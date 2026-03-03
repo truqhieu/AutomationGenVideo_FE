@@ -345,18 +345,6 @@ const UserActivityPage = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={handleCaptureFullPage}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest
-                                       bg-black/70 text-white border border-white/40 hover:bg-black hover:border-white
-                                       transition-all shadow-md shadow-black/40 backdrop-blur-sm"
-                        >
-                            <Camera className="w-3.5 h-3.5" />
-                            Chụp màn hình
-                        </button>
-                    </div>
                 </div>
 
                 {/* Navigation - Centered & Glassmorphic */}
@@ -396,6 +384,7 @@ const UserActivityPage = () => {
                         setDateRange={setDateRange}
                         timeType={timeType}
                         setTimeType={setTimeType}
+                        onCapture={handleCaptureFullPage}
                     />
                 </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X } from 'lucide-react';
+import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActivityFiltersProps {
@@ -20,6 +20,7 @@ interface ActivityFiltersProps {
     setDateRange: (range: { start: Date; end: Date }) => void;
     timeType: string;
     setTimeType: (type: string) => void;
+    onCapture?: () => void;
 }
 
 const ActivityFilters = ({
@@ -37,7 +38,8 @@ const ActivityFilters = ({
     dateRange,
     setDateRange,
     timeType,
-    setTimeType
+    setTimeType,
+    onCapture
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -595,6 +597,19 @@ const ActivityFilters = ({
                             )}
                         </div>
                     </div>
+                )}
+
+                {/* Screenshot Button */}
+                {onCapture && (
+                    <button
+                        type="button"
+                        onClick={onCapture}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
+                                   bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md"
+                    >
+                        <Camera className="w-3.5 h-3.5" />
+                        Chụp
+                    </button>
                 )}
             </div>
         </div>
