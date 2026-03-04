@@ -1,7 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types/auth';
+import AccountManagement from '@/components/checklist/AccountManagement';
+import PermissionManagement from '@/components/checklist/PermissionManagement';
+import {
+    Settings,
+    Users,
+    Clock,
+    ShieldCheck,
+    Loader2,
+    Shield
+} from 'lucide-react';
 
 interface DaySchedule {
     start: string;
@@ -31,10 +42,13 @@ const DAYS = [
 
 export default function ChecklistSettingsPage() {
     const { user } = useAuthStore();
+    const [activeTab, setActiveTab] = useState<'checklist' | 'accounts' | 'permissions'>('checklist');
     const [settings, setSettings] = useState<ReportSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const isAdmin = useMemo(() => user?.roles?.includes(UserRole.ADMIN), [user]);
 
     // Load settings
     useEffect(() => {
@@ -43,13 +57,15 @@ export default function ChecklistSettingsPage() {
 
     const fetchSettings = async () => {
         try {
-            const response = await fetch('http://localhost:8001/api/checklist/settings/');
+            // Using NEXT_PUBLIC_AI_SERVICE_URL if available, else fallback to 8001
+            const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+            const response = await fetch(`${baseUrl}/api/checklist/settings/`);
             if (!response.ok) throw new Error('Failed to fetch settings');
             const data = await response.json();
             setSettings(data);
         } catch (error) {
             console.error('Error fetching settings:', error);
-            setMessage({ type: 'error', text: 'Không thể tải cấu hình' });
+            // Non-critical error if we are just managing accounts
         } finally {
             setLoading(false);
         }
@@ -89,7 +105,8 @@ export default function ChecklistSettingsPage() {
         setMessage(null);
 
         try {
-            const response = await fetch('http://localhost:8001/api/checklist/settings/', {
+            const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+            const response = await fetch(`${baseUrl}/api/checklist/settings/`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -113,145 +130,224 @@ export default function ChecklistSettingsPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg">Đang tải...</div>
-            </div>
-        );
-    }
-
-    if (!settings) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-red-500">Không thể tải cấu hình</div>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-[#0f172a] p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">⚙️ Cấu Hình Báo Cáo Checklist</h1>
-                    <p className="text-gray-300">Quản lý khung giờ cho phép báo cáo của nhân viên</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                            <Settings className="w-8 h-8 text-blue-500" />
+                            Cài đặt hệ thống
+                        </h1>
+                        <p className="text-slate-400 mt-1">Quản lý cấu hình checklist và tài khoản người dùng</p>
+                    </div>
                 </div>
 
-                {/* Message */}
-                {message && (
-                    <div
-                        className={`mb-6 p-4 rounded-lg ${message.type === 'success'
-                                ? 'bg-green-500/20 border border-green-500/50 text-green-300'
-                                : 'bg-red-500/20 border border-red-500/50 text-red-300'
+                {/* Tabs Navigation */}
+                <div className="flex items-center gap-1 p-1 bg-slate-800/50 rounded-xl w-fit">
+                    <button
+                        onClick={() => setActiveTab('checklist')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'checklist'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                             }`}
                     >
-                        {message.text}
-                    </div>
-                )}
+                        <Clock className="w-4 h-4" />
+                        Giờ báo cáo
+                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => setActiveTab('accounts')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'accounts'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                                }`}
+                        >
+                            <Users className="w-4 h-4" />
+                            Quản lý tài khoản
+                        </button>
+                    )}
+                    {isAdmin && (
+                        <button
+                            onClick={() => setActiveTab('permissions')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'permissions'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                                }`}
+                        >
+                            <Shield className="w-4 h-4" />
+                            Phân quyền Tab
+                        </button>
+                    )}
+                </div>
 
-                {/* Main Card */}
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/20">
-                    {/* One Report Per Day Toggle */}
-                    <div className="mb-8 p-6 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
-                        <label className="flex items-center justify-between cursor-pointer">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-1">📅 Giới hạn 1 lần/ngày</h3>
-                                <p className="text-sm text-gray-300">Mỗi nhân viên chỉ được báo cáo 1 lần mỗi ngày</p>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.one_report_per_day}
-                                    onChange={(e) =>
-                                        setSettings({ ...settings, one_report_per_day: e.target.checked })
-                                    }
-                                    className="sr-only peer"
-                                />
-                                <div className="w-14 h-8 bg-gray-600 peer-checked:bg-green-500 rounded-full peer transition-all duration-300"></div>
-                                <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full peer-checked:translate-x-6 transition-transform duration-300"></div>
-                            </div>
-                        </label>
-                    </div>
+                {/* Tab Content */}
+                <div className="animate-in fade-in duration-500">
+                    {activeTab === 'checklist' && (
+                        <div className="space-y-6">
+                            {/* Message */}
+                            {message && (
+                                <div className={`p-4 rounded-xl border ${message.type === 'success'
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                                    : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                    } flex items-center gap-3`}>
+                                    <div className={`w-2 h-2 rounded-full ${message.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    {message.text}
+                                </div>
+                            )}
 
-                    {/* Schedule for each day */}
-                    <div className="space-y-4">
-                        <h3 className="text-xl font-semibold text-white mb-4">🕐 Khung Giờ Cho Phép Báo Cáo</h3>
+                            {loading ? (
+                                <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
+                                    <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                                    <p className="text-slate-400">Đang tải cấu hình...</p>
+                                </div>
+                            ) : !settings ? (
+                                <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 text-center px-6">
+                                    <ShieldCheck className="w-12 h-12 text-slate-700 mb-4" />
+                                    <p className="text-slate-400 max-w-md">
+                                        Không thể kết nối với dịch vụ cấu hình. Vui lòng kiểm tra lại AI Service hoặc liên hệ kỹ thuật.
+                                    </p>
+                                    <button
+                                        onClick={fetchSettings}
+                                        className="mt-4 px-6 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                                    >
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Checklist Main Config */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+                                            <div className="p-6 border-b border-slate-800 bg-slate-800/30">
+                                                <h3 className="font-bold text-white flex items-center gap-2">
+                                                    <Clock className="w-5 h-5 text-blue-500" />
+                                                    Khung giờ báo cáo theo ngày
+                                                </h3>
+                                            </div>
+                                            <div className="p-6 space-y-3">
+                                                {DAYS.map(({ key, label }) => {
+                                                    const daySchedule = settings.schedule[key];
+                                                    if (!daySchedule) return null;
 
-                        {DAYS.map(({ key, label }) => {
-                            const daySchedule = settings.schedule[key];
-                            if (!daySchedule) return null;
+                                                    return (
+                                                        <div key={key} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${daySchedule.enabled ? 'bg-slate-800/50 border-blue-500/30' : 'bg-slate-900 border-slate-800'
+                                                            }`}>
+                                                            <div className="flex items-center gap-4">
+                                                                <button
+                                                                    onClick={() => handleToggleDay(key)}
+                                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${daySchedule.enabled ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500'
+                                                                        }`}
+                                                                >
+                                                                    {daySchedule.enabled ? '✓' : '✗'}
+                                                                </button>
+                                                                <span className={`font-bold ${daySchedule.enabled ? 'text-white' : 'text-slate-500'}`}>
+                                                                    {label}
+                                                                </span>
+                                                            </div>
 
-                            return (
-                                <div
-                                    key={key}
-                                    className={`p-5 rounded-xl border transition-all duration-200 ${daySchedule.enabled
-                                            ? 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30'
-                                            : 'bg-gray-800/30 border-gray-700'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        {/* Toggle */}
-                                        <button
-                                            onClick={() => handleToggleDay(key)}
-                                            className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${daySchedule.enabled
-                                                    ? 'bg-green-500 hover:bg-green-600'
-                                                    : 'bg-gray-600 hover:bg-gray-500'
-                                                }`}
-                                        >
-                                            {daySchedule.enabled ? '✓' : '✗'}
-                                        </button>
+                                                            {daySchedule.enabled ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    <input
+                                                                        type="time"
+                                                                        value={daySchedule.start}
+                                                                        onChange={(e) => handleTimeChange(key, 'start', e.target.value)}
+                                                                        className="bg-slate-800 border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                    />
+                                                                    <span className="text-slate-600">→</span>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={daySchedule.end}
+                                                                        onChange={(e) => handleTimeChange(key, 'end', e.target.value)}
+                                                                        className="bg-slate-800 border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-600 italic">Nghỉ báo cáo</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        {/* Day label */}
-                                        <div className="flex-shrink-0 w-28">
-                                            <span className={`text-lg font-medium ${daySchedule.enabled ? 'text-white' : 'text-gray-500'}`}>
-                                                {label}
-                                            </span>
+                                    {/* Sidebar Config / Summary */}
+                                    <div className="space-y-6">
+                                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/20">
+                                            <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                                                <ShieldCheck className="w-5 h-5" />
+                                                Quy tắc chung
+                                            </h3>
+                                            <p className="text-blue-100 text-sm mb-6">Áp dụng cho toàn bộ nhân viên tham gia báo cáo checklist.</p>
+
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
+                                                    <span className="text-sm font-medium">Chỉ báo cáo 1 lần/ngày</span>
+                                                    <button
+                                                        onClick={() => setSettings({ ...settings, one_report_per_day: !settings.one_report_per_day })}
+                                                        className={`w-10 h-5 rounded-full p-1 transition-colors ${settings.one_report_per_day ? 'bg-green-400' : 'bg-white/20'}`}
+                                                    >
+                                                        <div className={`w-3 h-3 rounded-full bg-slate-900 transition-transform ${settings.one_report_per_day ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
+                                                    <div className="text-[10px] uppercase tracking-wider text-blue-200 mb-1 opacity-70">Múi giờ hệ thống</div>
+                                                    <div className="text-sm font-bold tracking-tight">{settings.timezone}</div>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={handleSave}
+                                                disabled={saving}
+                                                className="w-full mt-8 py-3 bg-white text-blue-700 font-bold rounded-xl shadow-lg hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Lưu tất cả cấu hình'}
+                                            </button>
+
+                                            {settings.updated_by && (
+                                                <div className="mt-4 text-[10px] text-blue-200 text-center opacity-70 italic">
+                                                    Cập nhật bởi: {settings.updated_by}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Time inputs */}
-                                        {daySchedule.enabled && (
-                                            <div className="flex items-center gap-3 flex-1">
-                                                <input
-                                                    type="time"
-                                                    value={daySchedule.start}
-                                                    onChange={(e) => handleTimeChange(key, 'start', e.target.value)}
-                                                    className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                                                />
-                                                <span className="text-gray-400">→</span>
-                                                <input
-                                                    type="time"
-                                                    value={daySchedule.end}
-                                                    onChange={(e) => handleTimeChange(key, 'end', e.target.value)}
-                                                    className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {!daySchedule.enabled && (
-                                            <span className="text-gray-500 italic">Tắt báo cáo</span>
-                                        )}
+                                        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-left">
+                                            <h4 className="text-white font-bold mb-3 text-sm">Hướng dẫn</h4>
+                                            <ul className="space-y-2 text-xs text-slate-400">
+                                                <li className="flex gap-2">
+                                                    <span className="text-blue-500 font-bold">●</span>
+                                                    <span>Nhân viên chỉ có thể submit báo cáo trong khung giờ đã bật.</span>
+                                                </li>
+                                                <li className="flex gap-2">
+                                                    <span className="text-blue-500 font-bold">●</span>
+                                                    <span>Nên để dư 5-10 phút so với giờ làm việc thực tế.</span>
+                                                </li>
+                                                <li className="flex gap-2">
+                                                    <span className="text-blue-500 font-bold">●</span>
+                                                    <span>Cấu hình này áp dụng tức thì cho màn hình Report.</span>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/10">
-                        <div className="text-sm text-gray-400">
-                            {settings.updated_by && (
-                                <p>Cập nhật lần cuối: {settings.updated_by}</p>
                             )}
                         </div>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {saving ? '🔄 Đang lưu...' : '💾 Lưu Cấu Hình'}
-                        </button>
-                    </div>
+                    )}
+
+                    {activeTab === 'accounts' && isAdmin && (
+                        <div className="animate-in fade-in duration-500">
+                            <AccountManagement />
+                        </div>
+                    )}
+
+                    {activeTab === 'permissions' && isAdmin && (
+                        <div className="animate-in fade-in duration-500">
+                            <PermissionManagement />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
