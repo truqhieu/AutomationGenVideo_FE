@@ -43,6 +43,7 @@ interface User {
     roles: UserRole[];
     is_active: boolean;
     custom_permissions: string[];
+    team: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -74,11 +75,13 @@ export default function AccountManagement() {
         roles: UserRole[];
         is_active: boolean;
         custom_permissions: string[];
+        team: string;
     }>({
         full_name: '',
         roles: [],
         is_active: true,
-        custom_permissions: []
+        custom_permissions: [],
+        team: ''
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -115,7 +118,8 @@ export default function AccountManagement() {
             full_name: user.full_name,
             roles: [...user.roles],
             is_active: user.is_active,
-            custom_permissions: user.custom_permissions || []
+            custom_permissions: user.custom_permissions || [],
+            team: user.team || ''
         });
         setIsEditModalOpen(true);
     };
@@ -242,6 +246,7 @@ export default function AccountManagement() {
                             <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Quyền hạn</th>
                             <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Trạng thái</th>
                             <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ngày tạo</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Team</th>
                             <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Thao tác</th>
                         </tr>
                     </thead>
@@ -291,6 +296,9 @@ export default function AccountManagement() {
                                 <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                                     {new Date(user.created_at).toLocaleDateString('vi-VN')}
                                 </td>
+                                <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
+                                    {user.team || '---'}
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <Button
@@ -336,6 +344,16 @@ export default function AccountManagement() {
                                     value={editForm.full_name}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
                                     className="bg-slate-800 border-slate-700 text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-400">Team</label>
+                                <Input
+                                    value={editForm.team}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, team: e.target.value }))}
+                                    className="bg-slate-800 border-slate-700 text-white"
+                                    placeholder="Ví dụ: Team Marketing"
                                 />
                             </div>
 
@@ -390,8 +408,8 @@ export default function AccountManagement() {
                                             key={item.id}
                                             onClick={() => handlePermissionToggle(item.id)}
                                             className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${isEnabled
-                                                    ? 'bg-indigo-600/10 border-indigo-500/50 text-white'
-                                                    : 'bg-slate-800/20 border-slate-800 text-slate-500 hover:border-slate-700'
+                                                ? 'bg-indigo-600/10 border-indigo-500/50 text-white'
+                                                : 'bg-slate-800/20 border-slate-800 text-slate-500 hover:border-slate-700'
                                                 }`}
                                         >
                                             <item.icon className={`w-4 h-4 ${isEnabled ? 'text-indigo-400' : 'text-slate-600'}`} />
