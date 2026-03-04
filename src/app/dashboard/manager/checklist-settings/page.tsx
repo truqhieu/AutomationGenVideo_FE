@@ -26,6 +26,8 @@ interface ReportSettings {
     };
     one_report_per_day: boolean;
     timezone: string;
+    is_random: boolean;
+    random_minutes: number;
     updated_at?: string | null;
     updated_by?: string;
 }
@@ -293,6 +295,34 @@ export default function ChecklistSettingsPage() {
                                                     </button>
                                                 </div>
 
+                                                <div className="flex items-center justify-between p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
+                                                    <span className="text-sm font-medium">Báo cáo ngẫu nhiên</span>
+                                                    <button
+                                                        onClick={() => setSettings({ ...settings, is_random: !settings.is_random })}
+                                                        className={`w-10 h-5 rounded-full p-1 transition-colors ${settings.is_random ? 'bg-amber-400' : 'bg-white/20'}`}
+                                                    >
+                                                        <div className={`w-3 h-3 rounded-full bg-slate-900 transition-transform ${settings.is_random ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                    </button>
+                                                </div>
+
+                                                {settings.is_random && (
+                                                    <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
+                                                        <div className="text-[10px] uppercase tracking-wider text-blue-200 mb-2 opacity-70">Số phút ngẫu nhiên mỗi ngày</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="range"
+                                                                min="5"
+                                                                max="120"
+                                                                step="5"
+                                                                value={settings.random_minutes}
+                                                                onChange={(e) => setSettings({ ...settings, random_minutes: parseInt(e.target.value) })}
+                                                                className="flex-1 accent-white"
+                                                            />
+                                                            <span className="text-sm font-bold w-12 text-right">{settings.random_minutes}m</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
                                                     <div className="text-[10px] uppercase tracking-wider text-blue-200 mb-1 opacity-70">Múi giờ hệ thống</div>
                                                     <div className="text-sm font-bold tracking-tight">{settings.timezone}</div>
@@ -324,6 +354,10 @@ export default function ChecklistSettingsPage() {
                                                 <li className="flex gap-2">
                                                     <span className="text-blue-500 font-bold">●</span>
                                                     <span>Nên để dư 5-10 phút so với giờ làm việc thực tế.</span>
+                                                </li>
+                                                <li className="flex gap-2">
+                                                    <span className="text-blue-500 font-bold">●</span>
+                                                    <span>Số phút ngẫu nhiên: Thời gian mở form sẽ thay đổi ngẫu nhiên từng ngày trong khung giờ đã định.</span>
                                                 </li>
                                                 <li className="flex gap-2">
                                                     <span className="text-blue-500 font-bold">●</span>

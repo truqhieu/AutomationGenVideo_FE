@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
-import { Send } from 'lucide-react';
+import { Send, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 
@@ -20,6 +20,7 @@ const ChecklistContainer = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
+    const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -47,6 +48,32 @@ const ChecklistContainer = () => {
         };
 
         fetchLarkRole();
+    }, [user?.email]);
+
+    // Fetch reporting status
+    useEffect(() => {
+        const fetchStatus = async () => {
+            if (!user?.email) return;
+
+            try {
+                const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+                const base = djangoBase.replace(/\/$/, '');
+                const url = `${base}/api/checklist/status/?email=${encodeURIComponent(user.email)}`;
+
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus(data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch reporting status:', err);
+            }
+        };
+
+        fetchStatus();
+        // Refresh status every 5 minutes
+        const interval = setInterval(fetchStatus, 5 * 60 * 1000);
+        return () => clearInterval(interval);
     }, [user?.email]);
 
     const roles = user?.roles || [];
@@ -159,6 +186,13 @@ const ChecklistContainer = () => {
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
+            {status.message && !status.is_open && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+                    <p className="text-sm font-semibold">{status.message}</p>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                 {showForm12 && (
                     <>
@@ -189,7 +223,7 @@ const ChecklistContainer = () => {
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || !status.is_open}
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     <Send className="w-4 h-4" />
