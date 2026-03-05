@@ -21,7 +21,8 @@ import {
     BookOpen,
     Settings,
     CheckSquare,
-    Square
+    Square,
+    Eye
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
@@ -50,6 +51,11 @@ interface User {
 
 const MENU_ITEMS = [
     { id: 'performance', label: 'Hiệu suất (Activity)', icon: Activity },
+    { id: 'activity_performance', label: '↳ Hiệu suất (Tab)', icon: Activity, isSub: true },
+    { id: 'activity_dashboard', label: '↳ Tổng quan (Tab)', icon: LayoutGrid, isSub: true },
+    { id: 'activity_ranking', label: '↳ BXH (Tab)', icon: Eye, isSub: true },
+    { id: 'activity_personal', label: '↳ Tiến độ (Tab)', icon: Eye, isSub: true },
+    { id: 'activity_checklist', label: '↳ Checklist ngày (Tab)', icon: CheckSquare, isSub: true },
     { id: 'dashboard', label: 'Dashboard Tổng', icon: LayoutGrid },
     { id: 'editors', label: 'Quản lý Editors', icon: Users },
     { id: 'facebook', label: 'Kênh Facebook', icon: Facebook },
@@ -407,9 +413,10 @@ export default function AccountManagement() {
                                         <button
                                             key={item.id}
                                             onClick={() => handlePermissionToggle(item.id)}
-                                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${isEnabled
-                                                ? 'bg-indigo-600/10 border-indigo-500/50 text-white'
-                                                : 'bg-slate-800/20 border-slate-800 text-slate-500 hover:border-slate-700'
+                                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${(item as any).isSub ? 'ml-6 scale-[0.95]' : ''
+                                                } ${isEnabled
+                                                    ? 'bg-indigo-600/10 border-indigo-500/50 text-white'
+                                                    : 'bg-slate-800/20 border-slate-800 text-slate-500 hover:border-slate-700'
                                                 }`}
                                         >
                                             <item.icon className={`w-4 h-4 ${isEnabled ? 'text-indigo-400' : 'text-slate-600'}`} />

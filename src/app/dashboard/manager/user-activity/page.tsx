@@ -19,7 +19,11 @@ import {
     CheckSquare,
     ClipboardList,
     LayoutDashboard,
-    Camera
+    Camera,
+    LayoutGrid,
+    ChevronDown,
+    Menu,
+    X
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -45,6 +49,7 @@ const UserActivityPage = () => {
     const tabParam = searchParams.get('tab');
 
     const [activeTab, setActiveTab] = React.useState<'dashboard' | 'performance' | 'ranking' | 'personal' | 'daily_checklist'>('performance');
+    const [allowedMenuIds, setAllowedMenuIds] = React.useState<string[]>([]);
     const [reportOutstandings, setReportOutstandings] = React.useState<any[]>([]);
     const [reports, setReports] = React.useState<any[]>([]);
     const [summary, setSummary] = React.useState<any>(null);
@@ -63,12 +68,47 @@ const UserActivityPage = () => {
         members: any[]
     }>({ history: [], teamStats: null, companyStats: null, userActivity: null, members: [] });
 
+    // Fetch dynamic permissions
+    const { token } = useAuthStore();
+    React.useEffect(() => {
+        const fetchPermissions = async () => {
+            if (!token) return;
+            try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/role-permissions/my-tabs`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setAllowedMenuIds(data);
+
+                    // If 'performance' tab is not allowed, pick the first available one
+                    const tabMap: any = {
+                        'activity_performance': 'performance',
+                        'activity_dashboard': 'dashboard',
+                        'activity_ranking': 'ranking',
+                        'activity_personal': 'personal',
+                        'activity_checklist': 'daily_checklist'
+                    };
+
+                    const allowedSubTabs = data.filter((id: string) => id.startsWith('activity_'));
+                    if (allowedSubTabs.length > 0 && !data.includes('activity_performance')) {
+                        setActiveTab(tabMap[allowedSubTabs[0]]);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch activity permissions", err);
+            }
+        };
+        fetchPermissions();
+    }, [token]);
+
     // Filter states
     const [activeTeam, setActiveTeam] = React.useState('All');
     const [selectedDate, setSelectedDate] = React.useState(new Date());
     const [searchName, setSearchName] = React.useState('');
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
     const [isPersonalDetailed, setIsPersonalDetailed] = React.useState(false);
+    const [showTabMenu, setShowTabMenu] = React.useState(false);
 
     // Time filter states
     const [timeType, setTimeType] = React.useState('month');
@@ -314,15 +354,29 @@ const UserActivityPage = () => {
         }
     };
 
-    const allTabs = [
+    const allTabs = React.useMemo(() => [
         { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'ranking', label: 'BXH', icon: Layout },
         { id: 'personal', label: 'Tiến độ', icon: User },
         { id: 'daily_checklist', label: 'Checklist ngày', icon: ClipboardList }
-    ];
+    ], []);
 
-    const visibleTabs = allTabs;
+    const visibleTabs = React.useMemo(() => {
+        // Fallback: If no dynamic permissions fetched yet or as admin/manager with no restrictions
+        if (allowedMenuIds.length === 0) return allTabs;
+
+        const tabMap: any = {
+            'performance': 'activity_performance',
+            'dashboard': 'activity_dashboard',
+            'ranking': 'activity_ranking',
+            'personal': 'activity_personal',
+            'daily_checklist': 'activity_checklist'
+        };
+
+        // Filter tabs: always show if it's explicitly allowed
+        return allTabs.filter(tab => allowedMenuIds.includes(tabMap[tab.id]));
+    }, [allowedMenuIds, allTabs]);
 
     return (
         <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
@@ -334,47 +388,126 @@ const UserActivityPage = () => {
             </div>
 
             <header className="relative z-10 space-y-4">
-                {/* Logo & User Info */}
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-5">
-                        <div className="bg-white p-3 rounded-2xl shadow-xl shadow-blue-900/20 rotate-3">
-                            <Layout className="text-blue-600 w-7 h-7" />
+                    <div
+                        className="flex items-center gap-5 cursor-pointer group"
+                        onClick={() => {
+                            setActiveTab('performance');
+                            setIsPersonalDetailed(false);
+                        }}
+                    >
+                        <div className="bg-white p-3 rounded-2xl shadow-xl shadow-blue-900/20 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                            {React.createElement(allTabs.find(t => t.id === activeTab)?.icon || Layout, {
+                                className: "text-blue-600 w-7 h-7"
+                            })}
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black text-white tracking-widest uppercase italic drop-shadow-sm">
-                                VCB <span className="text-blue-200">REPORT</span>
+                            <h1 className="text-2xl font-black text-white tracking-widest uppercase italic drop-shadow-sm group-hover:text-blue-100 transition-colors">
+                                {allTabs.find(t => t.id === activeTab)?.label} <span className="text-blue-200">SYSTEM</span>
                             </h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
-                                <p className="text-[10px] font-black text-blue-100 tracking-widest uppercase">
-                                    {userRole?.toUpperCase() || 'MEMBER'} Dashboard • {user?.full_name || 'User'}
-                                </p>
-                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Navigation - Centered & Glassmorphic */}
-                <div className="flex justify-center">
-                    <nav className="flex items-center gap-1.5 bg-white backdrop-blur-xl p-2 rounded-[1.5rem] border border-blue-100 shadow-2xl shadow-blue-900/10">
-                        {visibleTabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => {
-                                    setActiveTab(tab.id as any);
-                                    if (tab.id === 'personal') setIsPersonalDetailed(false);
-                                }}
-                                className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 -translate-y-0.5'
-                                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                                    }`}
-                            >
-                                <tab.icon className="w-4 h-4" /> {tab.label}
-                            </button>
-                        ))}
+                    {/* Navigation - Right Aligned & Glassmorphic - Only Directory remaining */}
+                    <nav className="flex items-center gap-1.5 bg-white/90 backdrop-blur-2xl p-1.5 rounded-[1.8rem] border border-blue-100 shadow-2xl shadow-blue-900/10 transition-all duration-500 hover:shadow-blue-900/20">
+                        {/* Directory Trigger Button */}
+                        <button
+                            onClick={() => setShowTabMenu(true)}
+                            className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab !== 'performance'
+                                ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/40 -translate-y-0.5'
+                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50/50'
+                                }`}
+                        >
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline-block">
+                                {activeTab !== 'performance' ? allTabs.find(t => t.id === activeTab)?.label : 'Danh mục'}
+                            </span>
+                            <ChevronDown className="w-3 h-3" />
+                        </button>
                     </nav>
                 </div>
             </header>
+
+            {/* Full Screen Navigation Overlay (Viettel Style) - Fixed position to cover everything */}
+            {showTabMenu && (
+                <div className="fixed inset-0 z-[9999] bg-white animate-in fade-in zoom-in-95 duration-300 overflow-hidden">
+                    <div className="h-full flex flex-col bg-slate-50/20">
+                        {/* Top Brand & Close Bar */}
+                        <div className="bg-white flex items-center justify-between px-6 py-5 border-b border-slate-100/80 shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-blue-600 p-2.5 rounded-2xl shadow-lg shadow-blue-600/20">
+                                    <LayoutGrid className="text-white w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 leading-none tracking-tight uppercase">
+                                        Danh mục <span className="text-blue-600">tính năng</span>
+                                    </h2>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">VCB REPORT SYSTEM</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowTabMenu(false)}
+                                className="p-3 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-600 rounded-2xl transition-all duration-300 group"
+                            >
+                                <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+                            </button>
+                        </div>
+
+                        {/* Main Menu List */}
+                        <div className="flex-1 overflow-y-auto px-6 py-8 space-y-4">
+                            {/* Current Selection Hint */}
+                            <div className="mb-6 px-4">
+                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2 px-1">Đang chọn</p>
+                                <div className="h-1 w-12 bg-blue-600 rounded-full" />
+                            </div>
+
+                            {visibleTabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => {
+                                        setActiveTab(tab.id as any);
+                                        setShowTabMenu(false);
+                                        if (tab.id === 'personal') setIsPersonalDetailed(false);
+                                    }}
+                                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] transition-all duration-500 group relative overflow-hidden ${activeTab === tab.id
+                                        ? 'bg-blue-600 text-white shadow-2xl shadow-blue-600/30 -translate-y-1'
+                                        : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1'
+                                        }`}
+                                >
+                                    {activeTab === tab.id && (
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                                    )}
+
+                                    <div className="flex items-center gap-6 relative z-10">
+                                        <div className={`p-4 rounded-2xl transition-all duration-500 ${activeTab === tab.id ? 'bg-white/20' : 'bg-slate-100 group-hover:bg-blue-100'}`}>
+                                            <tab.icon className={`w-7 h-7 ${activeTab === tab.id ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'}`} />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className={`text-base font-black uppercase tracking-tight ${activeTab === tab.id ? 'text-white' : 'text-slate-800'}`}>
+                                                {tab.label}
+                                            </h3>
+                                            <p className={`text-[11px] font-medium mt-1 ${activeTab === tab.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                {tab.id === 'performance' ? 'Trang chủ theo dõi hiệu suất' : `Hệ thống ${tab.label.toLowerCase()}`}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${activeTab === tab.id ? 'bg-white/10 text-white translate-x-1' : 'bg-slate-50 text-slate-300 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:translate-x-2'}`}>
+                                        <ChevronDown className="-rotate-90 w-6 h-6 stroke-[3]" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Footer Info */}
+                        <div className="p-8 text-center bg-white border-t border-slate-100">
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                                VCB REPORT PLATFORM • PREMIUM EDITION
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="relative z-10 space-y-4">
                 <div className="relative z-30 bg-white/80 backdrop-blur-md p-2 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
