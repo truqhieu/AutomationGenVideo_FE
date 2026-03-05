@@ -633,7 +633,7 @@ const ActivityFilters = ({
                     </div>
                 )}
 
-                {/* Clear Filters Button - Minimalist Style */}
+                {/* Clear Filters Button - Prominent Style */}
                 {(activeTeam !== 'All' || searchName !== '' || (timeType !== 'this_month' && timeType !== 'month')) && (
                     <button
                         onClick={() => {
@@ -641,10 +641,10 @@ const ActivityFilters = ({
                             setSearchName('');
                             handleSelectTimeType('this_month');
                         }}
-                        className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:text-red-500 transition-all duration-300 group"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all duration-300 hover:shadow-lg shadow-red-200/50 active:scale-95 group"
                     >
                         <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Xóa lọc</span>
+                        <span className="text-[10px] font-black uppercase tracking-tight">Tắt lọc</span>
                     </button>
                 )}
 
