@@ -53,7 +53,7 @@ const MENU_ITEMS = [
     { id: 'performance', label: 'Hiệu suất (Activity)', icon: Activity },
     { id: 'activity_performance', label: '↳ Hiệu suất (Tab)', icon: Activity, isSub: true },
     { id: 'activity_dashboard', label: '↳ Tổng quan (Tab)', icon: LayoutGrid, isSub: true },
-    { id: 'activity_ranking', label: '↳ BXH (Tab)', icon: Eye, isSub: true },
+    { id: 'activity_ranking', label: '↳ Bảng xếp hạng (Tab)', icon: Eye, isSub: true },
     { id: 'activity_personal', label: '↳ Tiến độ (Tab)', icon: Eye, isSub: true },
     { id: 'activity_checklist', label: '↳ Checklist ngày (Tab)', icon: CheckSquare, isSub: true },
     { id: 'dashboard', label: 'Dashboard Tổng', icon: LayoutGrid },

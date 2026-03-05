@@ -357,7 +357,7 @@ const UserActivityPage = () => {
     const allTabs = React.useMemo(() => [
         { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-        { id: 'ranking', label: 'BXH', icon: Layout },
+        { id: 'ranking', label: 'Bảng xếp hạng', icon: Layout },
         { id: 'personal', label: 'Tiến độ', icon: User },
         { id: 'daily_checklist', label: 'Checklist ngày', icon: ClipboardList }
     ], []);
@@ -403,7 +403,7 @@ const UserActivityPage = () => {
                         </div>
                         <div>
                             <h1 className="text-2xl font-black text-white tracking-widest uppercase italic drop-shadow-sm group-hover:text-blue-100 transition-colors">
-                                {allTabs.find(t => t.id === activeTab)?.label} <span className="text-blue-200">SYSTEM</span>
+                                {allTabs.find(t => t.id === activeTab)?.label}
                             </h1>
                         </div>
                     </div>
@@ -442,7 +442,7 @@ const UserActivityPage = () => {
                                     <h2 className="text-lg font-black text-slate-900 leading-none tracking-tight uppercase">
                                         Danh mục <span className="text-blue-600">tính năng</span>
                                     </h2>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">VCB REPORT SYSTEM</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">VCB REPORT</p>
                                 </div>
                             </div>
                             <button
