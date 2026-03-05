@@ -21,8 +21,8 @@ interface SearchResult {
     is_video: boolean;
 }
 
-const ITEMS_PER_PAGE = 5;
-const VIDEOS_PER_BATCH = 5;
+const ITEMS_PER_PAGE = 15;
+const VIDEOS_PER_BATCH = 15;
 const MIN_LIKES = 500;
 const MIN_VIEWS = 500;
 const MIN_COMMENTS = 50;
@@ -474,6 +474,7 @@ export default function InstagramSearchPage() {
                                                 <GenerateContentButton
                                                     videoId={post.id}
                                                     videoTitle={post.title || post.description || 'Instagram Post'}
+                                                    videoDescription={post.description || ''}
                                                     className="text-[11px] py-2"
                                                     compact={true}
                                                 />

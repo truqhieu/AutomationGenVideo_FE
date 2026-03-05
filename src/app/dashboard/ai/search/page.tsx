@@ -20,6 +20,7 @@ export default function TikTokSearchPage() {
     loading, setLoading,
     isFetchingMore, setIsFetchingMore,
     taskId, setTaskId,
+    searchSessionId, setSearchSessionId,
     reset,
   } = useTikTokSearchStore();
 
@@ -137,6 +138,12 @@ export default function TikTokSearchPage() {
 
       const limitToUse = overrideMaxResult || (reset ? 30 : maxPosts);
 
+      let currentSessionId = searchSessionId;
+      if (reset) {
+        currentSessionId = Math.random().toString(36).substring(2, 12);
+        setSearchSessionId(currentSessionId);
+      }
+
       let finalKeyword = searchTerm.trim();
 
       // Handle Hashtag Normalization if searchType is 'hashtag'
@@ -184,10 +191,15 @@ export default function TikTokSearchPage() {
             : finalKeyword,      // Or just raw keyword
           max_results: limitToUse,
           search_type: 'posts',
+          // Truyền search_mode để backend biết cách filter kết quả:
+          // - 'hashtag': TikTok search đúng hashtag, không cần lọc caption thêm
+          // - 'keyword': Fetch pool lớn hơn + lọc caption/description chứa keyword
+          search_mode: searchType,
           use_cache: false,
-          min_views: 0,
-          min_likes: 0,
-          async_mode: false
+          min_views: searchType === 'keyword' ? 1000 : 0,  // Keyword mode: loại video <1K views (spam)
+          min_likes: searchType === 'keyword' ? 100 : 0,   // Keyword mode: loại video <100 likes (rác)
+          async_mode: false,
+          session_id: currentSessionId
         }),
       });
 
@@ -240,6 +252,14 @@ export default function TikTokSearchPage() {
 
   const platform = 'tiktok'; // Fixed to TikTok only
 
+  // Clear kết quả khi đổi mode để tránh nhầm lẫn kết quả cũ
+  const handleSearchTypeChange = (type: 'keyword' | 'hashtag') => {
+    if (type === searchType) return;
+    setSearchType(type);
+    reset(); // clear videos, error, taskId từ Zustand store
+    setNormalizedQuery(null);
+  };
+
   return (
     <div className="min-h-screen bg-[#0B0F19] text-white p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
@@ -276,7 +296,7 @@ export default function TikTokSearchPage() {
             {/* Search Type */}
             <div className="flex bg-slate-800 p-1 rounded-xl w-fit">
               <button
-                onClick={() => setSearchType('keyword')}
+                onClick={() => handleSearchTypeChange('keyword')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'keyword'
                   ? 'bg-slate-700 text-white'
                   : 'text-slate-400 hover:text-white'
@@ -285,7 +305,7 @@ export default function TikTokSearchPage() {
                 <Search className="w-4 h-4" /> Keyword
               </button>
               <button
-                onClick={() => setSearchType('hashtag')}
+                onClick={() => handleSearchTypeChange('hashtag')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${searchType === 'hashtag'
                   ? 'bg-slate-700 text-white'
                   : 'text-slate-400 hover:text-white'
@@ -460,6 +480,8 @@ export default function TikTokSearchPage() {
                           <GenerateContentButton
                             videoId={video.id || Math.abs(video.video_id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0))}
                             videoTitle={video.title || video.description || 'TikTok Video'}
+                            videoDescription={[video.description, ...(video.hashtags || []).map((h: string) => `#${h}`)].filter(Boolean).join(' ')}
+                            videoUrl={video.video_url || video.download_url || ''}
                             className="text-xs py-2.5"
                             compact={true}
                           />

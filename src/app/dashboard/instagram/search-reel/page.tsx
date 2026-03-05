@@ -29,8 +29,8 @@ interface InstagramReel {
     raw_data: any;
 }
 
-const ITEMS_PER_PAGE = 5;
-const VIDEOS_PER_BATCH = 5;
+const ITEMS_PER_PAGE = 15;
+const VIDEOS_PER_BATCH = 15;
 const MIN_LIKES = 500;
 const MIN_VIEWS = 500;
 const MIN_COMMENTS = 50;
@@ -486,6 +486,7 @@ export default function InstagramSearchReelPage() {
                                                 <GenerateContentButton
                                                     videoId={reel.id}
                                                     videoTitle={reel.title || reel.description || 'Instagram Reel'}
+                                                    videoDescription={[reel.description, ...(reel.hashtags || []).map((h: string) => `#${h}`)].filter(Boolean).join(' ')}
                                                     className="text-[11px] py-2"
                                                     compact={true}
                                                 />

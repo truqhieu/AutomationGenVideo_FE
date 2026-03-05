@@ -5,8 +5,10 @@ import { Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface GenerateContentButtonProps {
-    videoId: number | string;   // DB integer id hoặc fallback string (video_id)
+    videoId: number | string;
     videoTitle: string;
+    videoDescription?: string;  // Caption / description / hashtags của video gốc
+    videoUrl?: string;           // URL video gốc — dùng để transcribe (speech-to-text)
     className?: string;
     compact?: boolean;
 }
@@ -14,6 +16,8 @@ interface GenerateContentButtonProps {
 export default function GenerateContentButton({
     videoId,
     videoTitle,
+    videoDescription = '',
+    videoUrl = '',
     className = '',
     compact = false
 }: GenerateContentButtonProps) {
@@ -25,15 +29,19 @@ export default function GenerateContentButton({
             return;
         }
 
-        // Navigate to product selection page with video info
+        // Truyền nội dung gốc (caption + hashtag) sang trang product-selection
+        // để generate content phân tích và dựa vào đó viết lại
         const params = new URLSearchParams({
             videoId: videoId?.toString() ?? '0',
-            videoTitle: encodeURIComponent(videoTitle)
+            videoTitle: encodeURIComponent(videoTitle),
+            videoDescription: encodeURIComponent(videoDescription.slice(0, 800)),
         });
+        if (videoUrl) {
+            params.set('videoUrl', encodeURIComponent(videoUrl));
+        }
         router.push(`/dashboard/content/product-selection?${params.toString()}`);
     };
 
-    // Chỉ disable nếu không có title (id = 0 vẫn hợp lệ)
     const isDisabled = !videoTitle;
 
     return (

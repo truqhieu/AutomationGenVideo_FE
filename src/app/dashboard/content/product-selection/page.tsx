@@ -294,7 +294,7 @@ export default function ProductSelectionPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [videoInfo, setVideoInfo] = useState({ id: '', title: '' });
+    const [videoInfo, setVideoInfo] = useState({ id: '', title: '', description: '', url: '' });
     const [catalogs, setCatalogs] = useState<ProductList[]>([]);
     const [selectedCatalog, setSelectedCatalog] = useState<ProductList | null>(null);
     const [groupedProducts, setGroupedProducts] = useState<GroupedProducts>({});
@@ -304,7 +304,9 @@ export default function ProductSelectionPage() {
     useEffect(() => {
         const id = searchParams.get('videoId') || '';
         const title = decodeURIComponent(searchParams.get('videoTitle') || '');
-        setVideoInfo({ id, title });
+        const description = decodeURIComponent(searchParams.get('videoDescription') || '');
+        const url = decodeURIComponent(searchParams.get('videoUrl') || '');
+        setVideoInfo({ id, title, description, url });
 
         fetch(`${AI_SERVICE_URL}/api/products/catalogs/`)
             .then(res => res.json())
@@ -384,6 +386,7 @@ export default function ProductSelectionPage() {
         const params = new URLSearchParams({
             videoId: videoInfo.id,
             videoTitle: encodeURIComponent(videoInfo.title),
+            videoDescription: encodeURIComponent(videoInfo.description || ''),
             productId: selectedProduct.id.toString(),
             productName: encodeURIComponent(selectedProduct.name),
             productCategory: encodeURIComponent(selectedProduct.category || ''),
@@ -391,14 +394,17 @@ export default function ProductSelectionPage() {
             productPrice: selectedProduct.price?.toString() || '',
             productSku: selectedProduct.sku || '',
         });
+        if (videoInfo.url) params.set('videoUrl', encodeURIComponent(videoInfo.url));
         router.push(`/dashboard/content/generate?${params.toString()}`);
     };
 
     const handleSkip = () => {
         const params = new URLSearchParams({
             videoId: videoInfo.id,
-            videoTitle: encodeURIComponent(videoInfo.title)
+            videoTitle: encodeURIComponent(videoInfo.title),
+            videoDescription: encodeURIComponent(videoInfo.description || ''),
         });
+        if (videoInfo.url) params.set('videoUrl', encodeURIComponent(videoInfo.url));
         router.push(`/dashboard/content/generate?${params.toString()}`);
     };
 
