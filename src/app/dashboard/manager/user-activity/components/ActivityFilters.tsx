@@ -327,7 +327,7 @@ const ActivityFilters = ({
     };
 
     return (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-4 gap-x-6 py-4 px-2">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 py-2 px-2">
             {canSeeTeamFilter && (
                 <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 mr-1">
@@ -340,8 +340,8 @@ const ActivityFilters = ({
                     {/* ALL Button */}
                     <button
                         onClick={() => handleSelectTeam('All')}
-                        className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isAllActive
-                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100 scale-105'
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isAllActive
+                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
                             : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
                             }`}
                     >
@@ -352,7 +352,7 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('global')}
-                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
+                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
                                 ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
                                 }`}
@@ -405,7 +405,7 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('vietnam')}
-                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isVNActive
+                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isVNActive
                                 ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
                                 }`}
@@ -612,14 +612,14 @@ const ActivityFilters = ({
                 {/* Name Filter - Hidden in Personal unless Admin/Leader */}
                 {(!isPersonalTab || isAdmin || isLeader) && (
                     <div className="relative group">
-                        <div className={`flex items-center gap-2 bg-white px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
+                        <div className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
                             <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
                             <input
                                 type="text"
                                 placeholder="Tìm tên..."
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                className="bg-transparent border-none focus:outline-none text-xs font-bold text-gray-700 w-32 placeholder:text-gray-300 placeholder:font-normal"
+                                className="bg-transparent border-none focus:outline-none text-xs font-bold text-gray-700 w-28 placeholder:text-gray-300 placeholder:font-normal"
                             />
                             {searchName && (
                                 <button
@@ -653,7 +653,7 @@ const ActivityFilters = ({
                     <button
                         type="button"
                         onClick={onCapture}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest
                                    bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md ml-1"
                     >
                         <Camera className="w-3.5 h-3.5" />

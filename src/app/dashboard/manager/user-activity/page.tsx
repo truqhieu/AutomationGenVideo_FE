@@ -320,15 +320,15 @@ const UserActivityPage = () => {
     const visibleTabs = allTabs;
 
     return (
-        <div id="report-view-container" className="min-h-screen bg-white p-6 space-y-10 selection:bg-blue-500/30">
+        <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
             {/* Top Header Section with Xanh Trắng Theme */}
-            <div className="absolute top-0 left-0 right-0 h-80 bg-blue-600 z-0 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-64 bg-blue-600 z-0 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500" />
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[120px] -mr-48 -mt-48" />
                 <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-white to-transparent" />
             </div>
 
-            <header className="relative z-10 space-y-8">
+            <header className="relative z-10 space-y-4">
                 {/* Logo & User Info */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-5">
@@ -356,7 +356,7 @@ const UserActivityPage = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
+                                className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 -translate-y-0.5'
                                     : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
                                     }`}
@@ -368,8 +368,8 @@ const UserActivityPage = () => {
                 </div>
             </header>
 
-            <div className="relative z-10 space-y-14">
-                <div className="relative z-30 bg-white/80 backdrop-blur-md p-4 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
+            <div className="relative z-10 space-y-4">
+                <div className="relative z-30 bg-white/80 backdrop-blur-md p-2 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
                     <ActivityFilters
                         activeTeam={activeTeam}
                         setActiveTeam={setActiveTeam}
@@ -392,7 +392,7 @@ const UserActivityPage = () => {
 
                 {/* KPI Cards section */}
                 {activeTab !== 'personal' && (
-                    <div className="relative z-10 transition-all duration-500 space-y-3">
+                    <div className="relative z-10 transition-all duration-500 space-y-2">
                         {kpiMeta && kpiMeta.kpiTotalInDb === 0 && (
                             <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                                 <strong>Chưa có dữ liệu bảng larkKPI.</strong> Số liệu thống kê và card nhân viên lấy từ bảng này. Vui lòng đồng bộ KPI từ Lark (gọi API sync KPI hoặc dùng menu cấu hình backend).
@@ -417,7 +417,7 @@ const UserActivityPage = () => {
                             />
                         </div>
                     ) : activeTab === 'performance' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
                             {reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
                                 <UserActivityCard
                                     key={report.id || idx}

@@ -75,15 +75,15 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
                 <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-3">
+                    <CardContent className="p-3">
+                        <div className="flex justify-between items-center mb-2">
                             <h3 className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
                             <div className="bg-blue-600/5 p-1.5 rounded-lg">
                                 <Target className="w-3 h-3 text-blue-600" />
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-4 mb-3">
                             {kpi.title !== 'SỐ KÊNH' && (
                                 <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
                                     <svg className="w-full h-full transform -rotate-90">
@@ -131,7 +131,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                         </div>
 
                         {/* Breakdown Global vs VN */}
-                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
                             <div className="flex flex-col">
                                 <div className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1 mb-1">
                                     <Globe className="w-2.5 h-2.5 text-amber-500" />
