@@ -258,13 +258,17 @@ const UserActivityPage = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id, status }),
+                body: JSON.stringify({
+                    id,
+                    status,
+                    approvedBy: user?.full_name
+                }),
             });
 
             if (response.ok) {
                 // Update local state to reflect change immediately
                 setReportOutstandings(prev => prev.map(r =>
-                    r.id === id ? { ...r, status } : r
+                    r.id === id ? { ...r, status, approved_by: user?.full_name } : r
                 ));
             }
         } catch (error) {
@@ -537,6 +541,9 @@ const UserActivityPage = () => {
                                                     ND Ý tưởng
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                    Người duyệt
+                                                </th>
+                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
                                                     Xử lý
                                                 </th>
                                             </tr>
@@ -583,6 +590,9 @@ const UserActivityPage = () => {
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 italic truncate max-w-[200px]">"{r.idea_content}"</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[9px] font-bold text-slate-500 italic text-center">
+                                                                    {r.approved_by || '-'}
+                                                                </td>
                                                                 <td className="px-3 py-1.5 text-center">
                                                                     <button
                                                                         onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
@@ -594,7 +604,7 @@ const UserActivityPage = () => {
                                                             </tr>
                                                         );
                                                     }) : (
-                                                <tr><td colSpan={5} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
+                                                <tr><td colSpan={6} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
                                             )}
                                         </tbody>
                                     </table>
