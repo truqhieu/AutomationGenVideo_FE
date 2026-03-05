@@ -68,6 +68,7 @@ const UserActivityPage = () => {
     const [selectedDate, setSelectedDate] = React.useState(new Date());
     const [searchName, setSearchName] = React.useState('');
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
+    const [isPersonalDetailed, setIsPersonalDetailed] = React.useState(false);
 
     // Time filter states
     const [timeType, setTimeType] = React.useState('month');
@@ -355,7 +356,10 @@ const UserActivityPage = () => {
                         {visibleTabs.map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
+                                onClick={() => {
+                                    setActiveTab(tab.id as any);
+                                    if (tab.id === 'personal') setIsPersonalDetailed(false);
+                                }}
                                 className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 -translate-y-0.5'
                                     : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
@@ -426,6 +430,12 @@ const UserActivityPage = () => {
                                         reportStatus: report.status
                                     }}
                                     timeType={timeType}
+                                    onClick={() => {
+                                        setSearchName(report.name);
+                                        setIsPersonalDetailed(true);
+                                        setActiveTab('personal');
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                 />
                             ))}
                         </div>
@@ -440,6 +450,9 @@ const UserActivityPage = () => {
                                 userActivity={personalHistory.userActivity}
                                 members={personalHistory.members}
                                 allReports={reports.filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))}
+                                setSearchName={setSearchName}
+                                isDetailedMode={isPersonalDetailed}
+                                setIsDetailedMode={setIsPersonalDetailed}
                             />
 
                             {/* Integrated Checklist Section */}
