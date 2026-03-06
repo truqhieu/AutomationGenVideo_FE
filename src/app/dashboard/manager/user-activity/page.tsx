@@ -44,6 +44,8 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
+const normalize = (str: any) => (str || '').toString().toLowerCase().trim().replace(/\s+/g, '');
+
 
 
 const UserActivityPage = () => {
@@ -161,11 +163,15 @@ const UserActivityPage = () => {
     }, [teamContributions]);
 
     const matchTeam = (teamName: string | null | undefined): boolean => {
-        const safeTeam = (teamName || 'Khác').toLowerCase();
         if (activeTeam === 'All') return true;
-        if (activeTeam === 'All Global') return globalTeams.some(t => t.toLowerCase() === safeTeam);
-        if (activeTeam === 'All VN') return vnTeams.some(t => t.toLowerCase() === safeTeam);
-        return safeTeam === activeTeam.toLowerCase();
+
+        const safeTeam = normalize(teamName || 'Khác');
+        const safeActive = normalize(activeTeam);
+
+        if (activeTeam === 'All Global') return globalTeams.some(t => normalize(t) === safeTeam);
+        if (activeTeam === 'All VN') return vnTeams.some(t => normalize(t) === safeTeam);
+
+        return safeTeam === safeActive;
     };
 
     // Role helpers
@@ -238,64 +244,94 @@ const UserActivityPage = () => {
             setUserTeam(effectiveTeam);
 
             // Map backend data to frontend interface
-            const mappedReports = reportsList.map((item: any) => ({
-                id: item.id,
-                name: item.name,
-                position: item.position,
-                team: item.team,
-                avatar: getAvatarUrl(item.avatar, item.name),
-                status: item.status, // Should be 'ĐÚNG HẠN' or 'CHƯA BÁO CÁO'
-                submittedAt: item.date,
-                time: item.date ? `${new Date(item.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/\//g, '-')}` : 'Chưa báo cáo',
-                dailyGoal: item.kpi_day || 0,
-                done: item.completed_day || 0,
-                traffic: item.traffic_month ? item.traffic_month.toLocaleString('vi-VN') : '0',
-                revenue: item.revenue_month ? item.revenue_month.toLocaleString('vi-VN') : '0',
-                monthlyProgress: item.monthlyProgress || 0,
-                checklist: {
-                    fb: item.checklist?.fb || false,
-                    ig: item.checklist?.ig || false,
-                    tiktok: item.checklist?.tiktok || false,
-                    youtube: item.checklist?.youtube || false,
-                    zalo: item.checklist?.zalo || false,
-                    lark: item.checklist?.lark || false,
-                    captionHashtag: item.checklist?.caption || false,
-                },
-                videoCount: item.answers?.['Số video edit sử dụng >50% source từ quay?'] || 0,
-                task_progress: item.task_progress || null,
-                questions: [
-                    {
-                        question: 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
-                        answer: item.answers?.['1.NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?'] ||
-                            item.answers?.['1. BẠN ĐÃ KIỂM TRA CHẤT LƯỢNG NỘI DUNG VIDEO ĐẦU RA CỦA TEAM MÌNH CHƯA?'] ||
-                            'Không có'
+            const mappedReports = reportsList.map((item: any) => {
+                const pos = (item.position || '').toLowerCase();
+                const role = (item.role || '').toLowerCase();
+                const isLeaderReport = pos.includes('leader') ||
+                    pos.includes('lead') ||
+                    pos.includes('manager') ||
+                    pos.includes('trưởng nhóm') ||
+                    role.includes('leader') ||
+                    role.includes('manager') ||
+                    !!(item.answers && (
+                        item.answers['1. Bạn đã kiểm tra chất lượng nội dung video đầu ra của team mình chưa?'] ||
+                        item.answers['2. Team bạn hôm qua có thành viên nào có video Win nhất?']
+                    ));
+
+                return {
+                    id: item.id,
+                    name: item.name,
+                    position: item.position || (isLeaderReport ? 'Leader' : 'Member'),
+                    team: item.team,
+                    avatar: getAvatarUrl(item.avatar, item.name),
+                    status: item.status,
+                    submittedAt: item.date,
+                    email: item.email,
+                    time: item.date ? `${new Date(item.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/\//g, '-')}` : 'Chưa báo cáo',
+                    dailyGoal: item.kpi_day || 0,
+                    done: item.completed_day || 0,
+                    traffic: item.traffic_month ? item.traffic_month.toLocaleString('vi-VN') : '0',
+                    revenue: item.revenue_month ? item.revenue_month.toLocaleString('vi-VN') : '0',
+                    monthlyProgress: item.monthlyProgress || 0,
+                    checklist: {
+                        fb: item.checklist?.fb || false,
+                        ig: item.checklist?.ig || false,
+                        tiktok: item.checklist?.tiktok || false,
+                        youtube: item.checklist?.youtube || false,
+                        zalo: item.checklist?.zalo || false,
+                        lark: item.checklist?.lark || false,
+                        captionHashtag: item.checklist?.caption || false,
+                        reportLink: item.answers?.['Báo cáo Lark - Bạn đã gửi link báo cáo video chưa?'] || false
                     },
-                    {
-                        question: 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?',
-                        answer: item.answers?.['2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỂ ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?'] ||
-                            item.answers?.['2. TEAM BẠN HÔM QUA CÓ THÀNH VIÊN NÀO CÓ VIDEO WIN NHẤT?'] ||
-                            'Không có'
-                    },
-                    {
-                        question: 'BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?',
-                        answer: item.answers?.['3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?'] ||
-                            item.answers?.['3. TEAM BẠN HÔM QUA CÓ GÌ ĐỔI MỚI ĐƯỢC ÁP DỤNG KHÔNG?'] ||
-                            'Không có'
-                    },
-                    {
-                        question: 'BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?',
-                        answer: item.answers?.['4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?'] ||
-                            item.answers?.['4. TEAM BẠN CÓ AI TRỄ DEADLINE HÔM QUA KHÔNG? LÝ DO VÀ PHƯƠNG ÁN?'] ||
-                            'Không có'
-                    },
-                    {
-                        question: 'BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)',
-                        answer: item.answers?.['5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)'] ||
-                            item.answers?.['5. TEAM BẠN HÔM QUA CÓ SẢN PHẨM NÀO WIN MỚI KHÔNG? ĐÃ THÔNG TIN LÊN GROUP NEW PRODUCT CHƯA?'] ||
-                            'Không có'
-                    },
-                ]
-            }));
+                    videoCount: item.answers?.['Số video edit sử dụng >50% source từ quay?'] || 0,
+                    task_progress: item.task_progress || null,
+                    questions: [
+                        {
+                            question: isLeaderReport ? 'ĐÃ KIỂM TRA CHẤT LƯỢNG VIDEO ĐẦU RA CỦA TEAM CHƯA?' : 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
+                            answer: isLeaderReport
+                                ? (item.answers?.['1. Bạn đã kiểm tra chất lượng nội dung video đầu ra của team mình chưa?'] || 'Không có')
+                                : (item.answers?.['1. Ngày hôm qua công việc bạn có cái gì khiến bạn tự hào và thích thú nhất?'] ||
+                                    item.answers?.['1.Ngày hôm qua công việc bạn có cái gì khiến bạn tự hào và thích thú nhất?'] ||
+                                    'Không có')
+                        },
+                        {
+                            question: isLeaderReport ? 'TEAM BẠN HÔM QUA CÓ THÀNH VIÊN NÀO CÓ VIDEO WIN NHẤT?' : 'HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỢC ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?',
+                            answer: isLeaderReport
+                                ? (item.answers?.['2. Team bạn hôm qua có thành viên nào có video Win nhất?'] || 'Không có')
+                                : (item.answers?.['2. Hôm qua có đổi mới sáng tạo gì được áp dụng vào công việc của bạn không?'] ||
+                                    item.answers?.['2. HÔM QUA CÓ ĐỔI MỚI SÁNG TẠO GÌ ĐƯỂ ÁP DỤNG VÀO CÔNG VIỆC CỦA BẠN KHÔNG?'] ||
+                                    'Không có')
+                        },
+                        {
+                            question: isLeaderReport ? 'TEAM BẠN HÔM QUA CÓ GÌ ĐỔI MỚI ĐƯỢC ÁP DỤNG KHÔNG?' : 'BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?',
+                            answer: isLeaderReport
+                                ? (item.answers?.['3. Team bạn hôm qua có gì đổi mới được áp dụng không?'] || 'Không có')
+                                : (item.answers?.['3. Bạn có gặp khó khăn nào cần hỗ trợ không?'] ||
+                                    item.answers?.['3. BẠN CÓ GẶP KHÓ KHĂN NÀO CẦN HỖ TRỢ KHÔNG?'] ||
+                                    'Không có')
+                        },
+                        {
+                            question: isLeaderReport ? 'TEAM BẠN CÓ AI TRỄ DEADLINE HÔM QUA KHÔNG? LÝ DO?' : 'BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?',
+                            answer: isLeaderReport
+                                ? (item.answers?.['4. Team bạn có ai trễ Deadline hôm qua không? Lý do và phương án?'] || 'Không có')
+                                : (item.answers?.['4. Bạn có đóng góp ý tưởng hay đề xuất gì không?'] ||
+                                    item.answers?.['4. BẠN CÓ ĐÓNG GÓP Ý TƯỞNG HAY ĐỀ XUẤT GÌ KHÔNG?'] ||
+                                    'Không có')
+                        },
+                        {
+                            question: isLeaderReport ? 'TEAM BẠN HÔM QUA CÓ SẢN PHẨM NÀO WIN MỚI KHÔNG?' : 'BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG?',
+                            answer: isLeaderReport
+                                ? (item.answers?.['5. Team bạn hôm qua có sản phẩm nào win mới không? Đã thông tin lên Group New Product chưa?'] || 'Không có')
+                                : (item.answers?.['5. Bạn có sản phẩm (A4 - A5) nào win mới không? (>5k view - >10 CMT hỏi giá?)'] ||
+                                    item.answers?.['5. Bạn có sản phẩm (A4 - A5) nào win mới không? (>5k view - >10 cmt hỏi giá?)'] ||
+                                    item.answers?.['5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)'] ||
+                                    'Không có')
+                        },
+                    ]
+                };
+            });
+
+
             setReports(mappedReports);
             setSummary(data.summary || null);
             setRankings(rankingsData);
@@ -590,12 +626,12 @@ const UserActivityPage = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
                             {reports
                                 .filter(r => {
-                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
-                                    const safeReportTeam = (r.team || '').trim().toLowerCase();
+                                    const safeUserTeam = normalize(userTeam);
+                                    const safeReportTeam = normalize(r.team);
                                     const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
 
-                                    const isOwnName = r.name && user?.full_name && r.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
-                                    const isOwnEmail = r.email && user?.email && r.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+                                    const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
+                                    const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
                                     const isOwnCard = isOwnName || isOwnEmail;
 
                                     // Filter by team/role
@@ -603,28 +639,33 @@ const UserActivityPage = () => {
 
                                     return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
                                 })
-                                .map((report, idx) => (
-                                    <UserActivityCard
-                                        key={report.id || idx}
-                                        data={{
-                                            ...report,
-                                            reportStatus: report.status
-                                        }}
-                                        timeType={timeType}
-                                        canClick={
-                                            isAdminUser ||
-                                            (isLeaderUser && report.team && userTeam && report.team.trim().toLowerCase() === userTeam.trim().toLowerCase()) ||
-                                            (report.name && user?.full_name && report.name.trim().toLowerCase() === user.full_name.trim().toLowerCase()) ||
-                                            (report.email && user?.email && report.email.trim().toLowerCase() === user.email.trim().toLowerCase())
-                                        }
-                                        onClick={() => {
-                                            setSearchName(report.name);
-                                            setIsPersonalDetailed(true);
-                                            setActiveTab('personal');
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                    />
-                                ))
+                                .map((report, idx) => {
+                                    const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
+                                    const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
+                                    const isOwnCard = isOwnName || isOwnEmail;
+
+                                    return (
+                                        <UserActivityCard
+                                            key={report.id || idx}
+                                            data={{
+                                                ...report,
+                                                reportStatus: report.status
+                                            }}
+                                            timeType={timeType}
+                                            canClick={
+                                                isAdminUser ||
+                                                (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                                isOwnCard
+                                            }
+                                            onClick={() => {
+                                                setSearchName(report.name);
+                                                setIsPersonalDetailed(true);
+                                                setActiveTab('personal');
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                        />
+                                    );
+                                })
                             }
                         </div>
                     ) : activeTab === 'ranking' ? (
@@ -637,21 +678,21 @@ const UserActivityPage = () => {
                                 companyStats={personalHistory.companyStats}
                                 userActivity={personalHistory.userActivity}
                                 members={personalHistory.members.filter(m => {
-                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
-                                    const safeMemberTeam = (m.team || '').trim().toLowerCase();
+                                    const safeUserTeam = normalize(userTeam);
+                                    const safeMemberTeam = normalize(m.team);
                                     const isTeamMatch = safeUserTeam && safeMemberTeam === safeUserTeam;
 
-                                    const isOwnName = m.name && user?.full_name && m.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
-                                    const isOwnEmail = m.email && user?.email && m.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+                                    const isOwnName = m.name && user?.full_name && normalize(m.name) === normalize(user.full_name);
+                                    const isOwnEmail = m.email && user?.email && normalize(m.email) === normalize(user.email);
                                     return isAdminUser || isTeamMatch || isOwnName || isOwnEmail;
                                 })}
                                 allReports={reports.filter(r => {
-                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
-                                    const safeReportTeam = (r.team || '').trim().toLowerCase();
+                                    const safeUserTeam = normalize(userTeam);
+                                    const safeReportTeam = normalize(r.team);
                                     const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
 
-                                    const isOwnName = r.name && user?.full_name && r.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
-                                    const isOwnEmail = r.email && user?.email && r.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+                                    const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
+                                    const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
 
                                     const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
                                     return (isAdminUser || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;

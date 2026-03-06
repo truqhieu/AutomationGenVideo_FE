@@ -36,6 +36,8 @@ interface PersonalChartsProps {
     currentUserEmail?: string | null;
 }
 
+const normalize = (str: any) => (str || '').toString().toLowerCase().trim().replace(/\s+/g, '');
+
 import {
     BarChart,
     Bar,
@@ -577,9 +579,9 @@ const PersonalCharts = ({
                                         canClick={
                                             userRole === 'admin' ||
                                             userRole === 'manager' ||
-                                            (userRole === 'leader' && report.team && userTeam && report.team.trim().toLowerCase() === userTeam.trim().toLowerCase()) ||
-                                            (report.name && currentUserName && report.name.trim().toLowerCase() === currentUserName.trim().toLowerCase()) ||
-                                            (report.email && currentUserEmail && report.email.trim().toLowerCase() === currentUserEmail.trim().toLowerCase())
+                                            (userRole === 'leader' && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                            (report.name && currentUserName && normalize(report.name) === normalize(currentUserName)) ||
+                                            (report.email && currentUserEmail && normalize(report.email) === normalize(currentUserEmail))
                                         }
                                         onClick={() => {
                                             if (setSearchName) setSearchName(report.name);

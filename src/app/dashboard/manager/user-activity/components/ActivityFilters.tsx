@@ -462,7 +462,7 @@ const ActivityFilters = ({
                 </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2" ref={timeFilterRef}>
+            <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto lg:ml-auto" ref={timeFilterRef}>
                 {/* Unified Time Filter */}
                 <div className="relative group/time">
                     <button
