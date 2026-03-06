@@ -761,7 +761,7 @@ const UserActivityPage = () => {
                                         <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
                                             <tr>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    ND
+                                                    Chức danh
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Nhân viên
@@ -770,13 +770,13 @@ const UserActivityPage = () => {
                                                     Team
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    ND Ý tưởng
+                                                    Ngày
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Người duyệt
+                                                    Trạng thái
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Xử lý
+                                                    Duyệt bởi
                                                 </th>
                                             </tr>
                                         </thead>
@@ -784,54 +784,24 @@ const UserActivityPage = () => {
                                             {reportOutstandings
                                                 .filter(r => matchTeam(r.team))
                                                 .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                                .filter(r => {
-                                                    if (dailyFilter === 'all') return true;
-                                                    const content = (r.content?.toUpperCase() || '').normalize('NFC');
-                                                    if (dailyFilter === 'video_win') return content.includes('VIDEO WIN');
-                                                    if (dailyFilter === 'product_win') return content.includes('SẢN PHẨM WIN');
-                                                    if (dailyFilter === 'idea') return content.toLowerCase().normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
-                                                    if (dailyFilter === 'difficulty') {
-                                                        const c = content.toLowerCase().normalize('NFC');
-                                                        return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
-                                                    }
-                                                    return true;
-                                                }).length > 0 ? reportOutstandings
+                                                .length > 0 ? reportOutstandings
                                                     .filter(r => matchTeam(r.team))
                                                     .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                                    .filter(r => {
-                                                        if (dailyFilter === 'all') return true;
-                                                        const content = (r.content?.toUpperCase() || '').normalize('NFC');
-                                                        if (dailyFilter === 'video_win') return content.includes('VIDEO WIN');
-                                                        if (dailyFilter === 'product_win') return content.includes('SẢN PHẨM WIN');
-                                                        if (dailyFilter === 'idea') return content.toLowerCase().normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
-                                                        if (dailyFilter === 'difficulty') {
-                                                            const c = content.toLowerCase().normalize('NFC');
-                                                            return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
-                                                        }
-                                                        return true;
-                                                    }).map((r, idx) => {
-                                                        const isWin = (r.content?.toLowerCase() || '').normalize('NFC').includes('win');
-                                                        const isIdea = (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/);
+                                                    .map((r, idx) => {
+                                                        const isON = (r.status || '').toUpperCase() === 'ON';
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
-                                                                <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${isWin ? 'bg-green-50 text-green-600 border-green-100' : isIdea ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-                                                                        {r.content?.toUpperCase().replace('VIDEO SẢN PHẨM WIN', 'SẢN PHẨM WIN').replace('Ý KIẾN ĐÓNG GÓP CẢI TIẾN MỚI', 'Ý TƯỞNG').replace('KHÓ KHĂN CẦN HỖ TRỢ', 'KHÓ KHĂN')}
-                                                                    </span>
-                                                                </td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-[9px] uppercase">{r.role || 'Member'}</td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 italic truncate max-w-[200px]">"{r.idea_content}"</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[9px] font-bold text-slate-500 italic text-center">
-                                                                    {r.approved_by || '-'}
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600">{r.date}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-center">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isON ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                                                        {r.status || 'OFF'}
+                                                                    </span>
                                                                 </td>
-                                                                <td className="px-3 py-1.5 text-center">
-                                                                    <button
-                                                                        onClick={() => !r.status && handleUpdateStatus(r.id, isWin || isIdea ? 'đã duyệt' : 'đã hỗ trợ')}
-                                                                        disabled={!!r.status}
-                                                                        className={`px-3 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm ${r.status ? 'bg-slate-100 text-slate-400 cursor-default' : isWin ? 'bg-green-600 text-white hover:bg-green-700' : isIdea ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
-                                                                        {r.status ? `✓ ${r.status.split(' ')[1]}` : (isWin || isIdea ? 'Duyệt' : 'Hỗ trợ')}
-                                                                    </button>
+                                                                <td className="px-3 py-1.5 text-center text-[9px] font-bold text-slate-500 italic">
+                                                                    {r.approved_by || '-'}
                                                                 </td>
                                                             </tr>
                                                         );
