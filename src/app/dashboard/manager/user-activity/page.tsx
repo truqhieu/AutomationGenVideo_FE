@@ -184,7 +184,7 @@ const UserActivityPage = () => {
     }, [dateRange, activeTeam, user?.email]); // Fetch data whenever date range, filters or user changes
 
     React.useEffect(() => {
-        if (activeTab === 'personal') {
+        if (activeTab === 'personal' || activeTab === 'performance') {
             fetchHistory();
         }
     }, [activeTab, user?.email, searchName]);
@@ -910,36 +910,40 @@ const UserActivityPage = () => {
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                                                 {/* Member Report Option */}
-                                                <button
-                                                    onClick={() => setReportMode('member')}
-                                                    className="group relative bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-blue-900/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
-                                                >
-                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-100 transition-colors" />
-                                                    <div className="bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-inner">
-                                                        <User className="w-8 h-8" />
-                                                    </div>
-                                                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Member</h3>
-                                                    <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Editor & Content báo cáo tiến độ checklist và khó khăn hàng ngày.</p>
-                                                    <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
-                                                        Bắt đầu báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
-                                                    </div>
-                                                </button>
+                                                {(isAdminUser || !isLeaderUser) && (
+                                                    <button
+                                                        onClick={() => setReportMode('member')}
+                                                        className="group relative bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-blue-900/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                    >
+                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-100 transition-colors" />
+                                                        <div className="bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-inner">
+                                                            <User className="w-8 h-8" />
+                                                        </div>
+                                                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Member</h3>
+                                                        <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Editor & Content báo cáo tiến độ checklist và khó khăn hàng ngày.</p>
+                                                        <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                                            Bắt đầu báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                        </div>
+                                                    </button>
+                                                )}
 
                                                 {/* Leader Report Option */}
-                                                <button
-                                                    onClick={() => setReportMode('leader')}
-                                                    className="group relative bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-blue-900/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
-                                                >
-                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-indigo-100 transition-colors" />
-                                                    <div className="bg-indigo-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner">
-                                                        <ShieldCheck className="w-8 h-8" />
-                                                    </div>
-                                                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Leader</h3>
-                                                    <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Team Leader đánh giá chất lượng và quản lý nhân sự hàng ngày.</p>
-                                                    <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
-                                                        Bắt đầu đánh giá <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
-                                                    </div>
-                                                </button>
+                                                {(isAdminUser || isLeaderUser) && (
+                                                    <button
+                                                        onClick={() => setReportMode('leader')}
+                                                        className="group relative bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-blue-900/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                    >
+                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-indigo-100 transition-colors" />
+                                                        <div className="bg-indigo-50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner">
+                                                            <ShieldCheck className="w-8 h-8" />
+                                                        </div>
+                                                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Leader</h3>
+                                                        <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Team Leader đánh giá chất lượng và quản lý nhân sự hàng ngày.</p>
+                                                        <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                                            Bắt đầu đánh giá <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                        </div>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ) : (

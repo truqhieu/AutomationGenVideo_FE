@@ -70,13 +70,13 @@ const ActivityFilters = ({
     const isPerformanceTab = activeTab === 'performance';
 
     // Team filter: 
-    // - Show in Ranking and Performance for everyone
-    // - Otherwise only for Admin
-    const canSeeTeamFilter = (isAdmin || isRankingTab || isPerformanceTab);
+    // - Show in Ranking and Performance for everyone to allow competition visibility
+    // - Otherwise only for Admin/Manager
+    const canSeeTeamFilter = isAdmin || isRankingTab || isPerformanceTab;
 
-    // Team label (for Leader):
+    // Team label:
     // - Show only if main filter is hidden
-    const showTeamLabel = !canSeeTeamFilter && isLeader && userTeam;
+    const showTeamLabel = !canSeeTeamFilter && userTeam;
 
 
 
