@@ -12,7 +12,7 @@ const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
 const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
 
-const ChecklistContainer = () => {
+const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
     const { user } = useAuthStore();
     const [checks, setChecks] = useState<boolean[]>(initialChecks);
     const [details, setDetails] = useState<string[]>(initialDetails);
@@ -81,8 +81,8 @@ const ChecklistContainer = () => {
     const isLeader = roles.includes(UserRole.LEADER) || larkRole?.toLowerCase() === 'leader';
     const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT);
 
-    const showForm12 = isAdmin || isStaff;
-    const showForm3 = isAdmin || isLeader;
+    const showForm12 = mode ? mode === 'member' : (isAdmin || isStaff);
+    const showForm3 = mode ? mode === 'leader' : (isAdmin || isLeader);
 
     const handleCheckChange = useCallback((index: number, checked: boolean) => {
         setChecks((prev) => {
