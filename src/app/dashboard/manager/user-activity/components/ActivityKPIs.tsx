@@ -74,7 +74,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
+                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-3xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
@@ -123,7 +123,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 </div>
                                 <div className={`text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    {kpi.title === 'SỐ KÊNH' ? 'Đang chạy' : (
+                                    {kpi.title === 'SỐ KÊNH' ? 'Đang hoạt động' : (
                                         <>MT: <span className="text-blue-700">{kpi.total}</span></>
                                     )}
                                 </div>

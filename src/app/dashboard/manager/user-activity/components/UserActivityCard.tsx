@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, AlertCircle, FileText, Target, CheckCircle2 } from 'lucide-react';
 
 interface UserActivity {
@@ -89,14 +88,14 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
     const goalLabel = isRange ? 'TỔNG MỤC TIÊU' : 'MỤC TIÊU NGÀY';
 
     return (
-        <Card
+        <div
             onClick={canClick ? onClick : undefined}
-            className={`relative rounded-[2rem] overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
+            className={`relative rounded-[2.5rem] overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
                 ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
                 : `${style.glow}`
                 }`}>
 
-            <CardContent className="p-4 flex flex-col items-center relative z-10">
+            <div className="p-4 flex flex-col items-center relative z-10">
                 {/* Warning/Status Icon */}
                 <div className="absolute top-2 right-2">
                     {statusType === 'exceeded' ? (
@@ -205,8 +204,8 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                         <div className="text-[11px] font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };
 

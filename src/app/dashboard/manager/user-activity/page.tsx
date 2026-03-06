@@ -532,7 +532,7 @@ const UserActivityPage = () => {
                                         setShowTabMenu(false);
                                         if (tab.id === 'personal') setIsPersonalDetailed(false);
                                     }}
-                                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] transition-all duration-500 group relative overflow-hidden ${activeTab === tab.id
+                                    className={`w-full flex items-center justify-between p-6 rounded-[2.5rem] transition-all duration-500 group relative overflow-hidden ${activeTab === tab.id
                                         ? 'bg-blue-600 text-white shadow-2xl shadow-blue-600/30 -translate-y-1'
                                         : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1'
                                         }`}
@@ -623,7 +623,7 @@ const UserActivityPage = () => {
                             />
                         </div>
                     ) : activeTab === 'performance' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                             {reports
                                 .filter(r => {
                                     const safeUserTeam = normalize(userTeam);
@@ -763,20 +763,20 @@ const UserActivityPage = () => {
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Chức danh
                                                 </th>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                <th className="px-3 py-2 text-[10px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Nhân viên
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Team
+                                                    Phân loại
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Ngày
+                                                    Nội dung
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Trạng thái
+                                                    Duyệt
                                                 </th>
                                                 <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Duyệt bởi
+                                                    Người duyệt
                                                 </th>
                                             </tr>
                                         </thead>
@@ -788,16 +788,21 @@ const UserActivityPage = () => {
                                                     .filter(r => matchTeam(r.team))
                                                     .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                                     .map((r, idx) => {
-                                                        const isON = (r.status || '').toUpperCase() === 'ON';
+                                                        const isApproved = (r.approval_status || '').toLowerCase().includes('duyệt');
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-[9px] uppercase">{r.role || 'Member'}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-700 text-[10px]">{r.name}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-blue-600 text-[9px] italic">{r.team}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600">{r.date}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50">
+                                                                    <div className="font-bold text-slate-700 text-[10px]">{r.name}</div>
+                                                                    <div className="text-[8px] text-blue-500 font-black italic">{r.team} - {r.date}</div>
+                                                                </td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-amber-600 text-[9px] uppercase">{r.category || '-'}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 max-w-[250px] whitespace-normal line-clamp-2">
+                                                                    {r.content || 'Không có nội dung'}
+                                                                </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isON ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                                                                        {r.status || 'OFF'}
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
+                                                                        {r.approval_status || 'Chưa duyệt'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-3 py-1.5 text-center text-[9px] font-bold text-slate-500 italic">

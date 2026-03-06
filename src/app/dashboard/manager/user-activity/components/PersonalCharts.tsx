@@ -392,7 +392,7 @@ const PersonalCharts = ({
                         <motion.div
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="overflow-hidden rounded-[2rem] border border-white/40 shadow-2xl shadow-blue-900/10 bg-white/70 backdrop-blur-2xl relative"
+                            className="overflow-hidden rounded-[2.5rem] border border-white/40 shadow-2xl shadow-blue-900/10 bg-white/70 backdrop-blur-2xl relative"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-indigo-50/30 -z-10" />
                             <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
