@@ -30,6 +30,10 @@ interface PersonalChartsProps {
     setSearchName?: (name: string) => void;
     isDetailedMode: boolean;
     setIsDetailedMode: (val: boolean) => void;
+    userRole?: string | null;
+    userTeam?: string | null;
+    currentUserName?: string | null;
+    currentUserEmail?: string | null;
 }
 
 import {
@@ -52,7 +56,21 @@ import {
     Legend
 } from 'recharts';
 
-const PersonalCharts = ({ history, teamStats, companyStats, userActivity, members = [], allReports = [], setSearchName, isDetailedMode, setIsDetailedMode }: PersonalChartsProps) => {
+const PersonalCharts = ({
+    history,
+    teamStats,
+    companyStats,
+    userActivity,
+    members = [],
+    allReports = [],
+    setSearchName,
+    isDetailedMode,
+    setIsDetailedMode,
+    userRole,
+    userTeam,
+    currentUserName,
+    currentUserEmail
+}: PersonalChartsProps) => {
 
     const [sortConfig, setSortConfig] = React.useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'video', direction: 'desc' });
 
@@ -556,6 +574,13 @@ const PersonalCharts = ({ history, teamStats, companyStats, userActivity, member
                                             reportStatus: report.status
                                         }}
                                         isActive={userActivity?.name === report.name}
+                                        canClick={
+                                            userRole === 'admin' ||
+                                            userRole === 'manager' ||
+                                            (userRole === 'leader' && report.team && userTeam && report.team.trim().toLowerCase() === userTeam.trim().toLowerCase()) ||
+                                            (report.name && currentUserName && report.name.trim().toLowerCase() === currentUserName.trim().toLowerCase()) ||
+                                            (report.email && currentUserEmail && report.email.trim().toLowerCase() === currentUserEmail.trim().toLowerCase())
+                                        }
                                         onClick={() => {
                                             if (setSearchName) setSearchName(report.name);
                                             setIsDetailedMode(true);

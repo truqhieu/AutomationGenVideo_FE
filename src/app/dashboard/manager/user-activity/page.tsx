@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
+import { UserRole } from '@/types/auth';
 
 const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
@@ -88,6 +89,7 @@ const UserActivityPage = () => {
                     // If 'performance' tab is not allowed, pick the first available one
                     const tabMap: any = {
                         'activity_performance': 'performance',
+                        'performance': 'performance',
                         'activity_dashboard': 'dashboard',
                         'activity_ranking': 'ranking',
                         'activity_personal': 'personal',
@@ -95,9 +97,14 @@ const UserActivityPage = () => {
                         'activity_report': 'daily_report'
                     };
 
-                    const allowedSubTabs = data.filter((id: string) => id.startsWith('activity_'));
-                    if (allowedSubTabs.length > 0 && !data.includes('activity_performance')) {
-                        setActiveTab(tabMap[allowedSubTabs[0]]);
+                    const isPerformanceAllowed = data.includes('activity_performance') || data.includes('performance');
+                    const allowedSubTabs = data.filter((id: string) => id.startsWith('activity_') || id === 'performance');
+
+                    if (!isAdminUser && allowedSubTabs.length > 0 && !isPerformanceAllowed) {
+                        const firstAllowed = allowedSubTabs[0];
+                        if (tabMap[firstAllowed]) {
+                            setActiveTab(tabMap[firstAllowed]);
+                        }
                     }
                 }
             } catch (err) {
@@ -153,7 +160,6 @@ const UserActivityPage = () => {
         };
     }, [teamContributions]);
 
-    // Helper to match team against active filter (supports 'All', 'All Global', 'All VN', individual team)
     const matchTeam = (teamName: string | null | undefined): boolean => {
         const safeTeam = (teamName || 'Khác').toLowerCase();
         if (activeTeam === 'All') return true;
@@ -161,6 +167,11 @@ const UserActivityPage = () => {
         if (activeTeam === 'All VN') return vnTeams.some(t => t.toLowerCase() === safeTeam);
         return safeTeam === activeTeam.toLowerCase();
     };
+
+    // Role helpers
+    const sysRoles = user?.roles || [];
+    const isAdminUser = sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager';
+    const isLeaderUser = sysRoles.includes(UserRole.LEADER) || userRole === 'leader';
 
     React.useEffect(() => {
         fetchReports();
@@ -221,7 +232,10 @@ const UserActivityPage = () => {
             const rankingsData = data.rankings || null;
 
             if (data.userRole) setUserRole(data.userRole.toLowerCase());
-            if (data.userTeam) setUserTeam(data.userTeam);
+
+            // Use team from BE, fallback to user profile team
+            const effectiveTeam = data.userTeam || (user as any)?.team || null;
+            setUserTeam(effectiveTeam);
 
             // Map backend data to frontend interface
             const mappedReports = reportsList.map((item: any) => ({
@@ -369,7 +383,10 @@ const UserActivityPage = () => {
     ], []);
 
     const visibleTabs = React.useMemo(() => {
-        // Fallback: If no dynamic permissions fetched yet or as admin/manager with no restrictions
+        // Super users always see everything
+        if (isAdminUser) return allTabs;
+
+        // Fallback: If no dynamic permissions fetched yet
         if (allowedMenuIds.length === 0) return allTabs;
 
         const tabMap: any = {
@@ -381,9 +398,12 @@ const UserActivityPage = () => {
             'daily_report': 'activity_report'
         };
 
-        // Filter tabs: always show if it's explicitly allowed
-        return allTabs.filter(tab => allowedMenuIds.includes(tabMap[tab.id]));
-    }, [allowedMenuIds, allTabs]);
+        // Filter tabs: show if explicitly allowed (either sub-tab ID or parent ID)
+        return allTabs.filter(tab => {
+            const subId = tabMap[tab.id];
+            return allowedMenuIds.includes(subId) || allowedMenuIds.includes(tab.id);
+        });
+    }, [allowedMenuIds, allTabs, isAdminUser]);
 
     return (
         <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
@@ -568,22 +588,44 @@ const UserActivityPage = () => {
                         </div>
                     ) : activeTab === 'performance' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
-                            {reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map((report, idx) => (
-                                <UserActivityCard
-                                    key={report.id || idx}
-                                    data={{
-                                        ...report,
-                                        reportStatus: report.status
-                                    }}
-                                    timeType={timeType}
-                                    onClick={() => {
-                                        setSearchName(report.name);
-                                        setIsPersonalDetailed(true);
-                                        setActiveTab('personal');
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }}
-                                />
-                            ))}
+                            {reports
+                                .filter(r => {
+                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
+                                    const safeReportTeam = (r.team || '').trim().toLowerCase();
+                                    const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
+
+                                    const isOwnName = r.name && user?.full_name && r.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
+                                    const isOwnEmail = r.email && user?.email && r.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+                                    const isOwnCard = isOwnName || isOwnEmail;
+
+                                    // Filter by team/role
+                                    const isVisible = isAdminUser || isTeamMatch || isOwnCard;
+
+                                    return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
+                                })
+                                .map((report, idx) => (
+                                    <UserActivityCard
+                                        key={report.id || idx}
+                                        data={{
+                                            ...report,
+                                            reportStatus: report.status
+                                        }}
+                                        timeType={timeType}
+                                        canClick={
+                                            isAdminUser ||
+                                            (isLeaderUser && report.team && userTeam && report.team.trim().toLowerCase() === userTeam.trim().toLowerCase()) ||
+                                            (report.name && user?.full_name && report.name.trim().toLowerCase() === user.full_name.trim().toLowerCase()) ||
+                                            (report.email && user?.email && report.email.trim().toLowerCase() === user.email.trim().toLowerCase())
+                                        }
+                                        onClick={() => {
+                                            setSearchName(report.name);
+                                            setIsPersonalDetailed(true);
+                                            setActiveTab('personal');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                    />
+                                ))
+                            }
                         </div>
                     ) : activeTab === 'ranking' ? (
                         <RankingView rankings={rankings} />
@@ -594,11 +636,33 @@ const UserActivityPage = () => {
                                 teamStats={personalHistory.teamStats}
                                 companyStats={personalHistory.companyStats}
                                 userActivity={personalHistory.userActivity}
-                                members={personalHistory.members}
-                                allReports={reports.filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))}
+                                members={personalHistory.members.filter(m => {
+                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
+                                    const safeMemberTeam = (m.team || '').trim().toLowerCase();
+                                    const isTeamMatch = safeUserTeam && safeMemberTeam === safeUserTeam;
+
+                                    const isOwnName = m.name && user?.full_name && m.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
+                                    const isOwnEmail = m.email && user?.email && m.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+                                    return isAdminUser || isTeamMatch || isOwnName || isOwnEmail;
+                                })}
+                                allReports={reports.filter(r => {
+                                    const safeUserTeam = (userTeam || '').trim().toLowerCase();
+                                    const safeReportTeam = (r.team || '').trim().toLowerCase();
+                                    const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
+
+                                    const isOwnName = r.name && user?.full_name && r.name.trim().toLowerCase() === user.full_name.trim().toLowerCase();
+                                    const isOwnEmail = r.email && user?.email && r.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+
+                                    const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
+                                    return (isAdminUser || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;
+                                })}
                                 setSearchName={setSearchName}
                                 isDetailedMode={isPersonalDetailed}
                                 setIsDetailedMode={setIsPersonalDetailed}
+                                userRole={userRole || (isAdminUser ? 'admin' : isLeaderUser ? 'leader' : 'member')}
+                                userTeam={userTeam}
+                                currentUserName={user?.full_name}
+                                currentUserEmail={user?.email}
                             />
 
                         </div>
@@ -880,8 +944,8 @@ const UserActivityPage = () => {
                         </div>
                     ) : null}
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

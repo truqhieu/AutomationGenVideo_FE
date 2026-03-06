@@ -26,6 +26,7 @@ interface UserActivity {
 interface UserActivityCardProps {
     data: UserActivity;
     onClick?: () => void;
+    canClick?: boolean;
     isActive?: boolean;
     timeType?: string;
 }
@@ -43,7 +44,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data, onClick, isActive, timeType }: UserActivityCardProps) => {
+const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
     const dailyGoal = data.dailyGoal || 0;
     const done = data.done || 0;
 
@@ -54,30 +55,30 @@ const UserActivityCard = ({ data, onClick, isActive, timeType }: UserActivityCar
 
     const statusStyles = {
         warning: {
-            card: 'border-red-400 border-2 bg-red-100/60 hover:bg-red-100/80 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]',
+            card: `border-red-400 border-2 bg-red-100/60 ${canClick ? 'hover:bg-red-100/80 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]' : ''}`,
             avatar: 'border-red-500 ring-4 ring-red-100',
             icon: 'text-red-500',
             badge: 'bg-red-600 text-white',
             text: 'text-red-600',
-            glow: 'hover:shadow-red-300/40',
+            glow: canClick ? 'hover:shadow-red-300/40' : '',
             accent: 'bg-red-100'
         },
         completed: {
-            card: 'border-emerald-400 border-2 bg-emerald-100/60 hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]',
+            card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
             avatar: 'border-emerald-500 ring-4 ring-emerald-100',
             icon: 'text-emerald-500',
             badge: 'bg-emerald-600 text-white',
             text: 'text-emerald-600',
-            glow: 'hover:shadow-emerald-300/40',
+            glow: canClick ? 'hover:shadow-emerald-300/40' : '',
             accent: 'bg-emerald-100'
         },
         exceeded: {
-            card: 'border-purple-400 border-2 bg-purple-100/60 hover:bg-purple-100/80 transition-all shadow-[0_8px_30px_rgba(168,85,247,0.1)]',
+            card: `border-purple-400 border-2 bg-purple-100/60 ${canClick ? 'hover:bg-purple-100/80 transition-all shadow-[0_8px_30px_rgba(168,85,247,0.1)]' : ''}`,
             avatar: 'border-purple-500 ring-4 ring-purple-100',
             icon: 'text-purple-600',
             badge: 'bg-purple-600 text-white',
             text: 'text-purple-700',
-            glow: 'hover:shadow-purple-300/40',
+            glow: canClick ? 'hover:shadow-purple-300/40' : '',
             accent: 'bg-purple-100'
         }
     };
@@ -89,10 +90,10 @@ const UserActivityCard = ({ data, onClick, isActive, timeType }: UserActivityCar
 
     return (
         <Card
-            onClick={onClick}
-            className={`relative rounded-[2rem] overflow-hidden border transition-all duration-300 cursor-pointer ${style.card} ${isActive
+            onClick={canClick ? onClick : undefined}
+            className={`relative rounded-[2rem] overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
                 ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
-                : `hover:scale-[1.01] ${style.glow}`
+                : `${style.glow}`
                 }`}>
 
             <CardContent className="p-4 flex flex-col items-center relative z-10">
