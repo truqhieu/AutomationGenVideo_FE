@@ -330,11 +330,12 @@ interface VirtualMixSectionProps {
     productSku?: string;
     numOutputs: number;
     useA4Formula: boolean;
+    disabled?: boolean;
 }
 
 export function VirtualMixSection({
-    audioFile, productId, productSku, numOutputs, useA4Formula,
-}: VirtualMixSectionProps) {
+    audioFile, productId, productSku, numOutputs, useA4Formula, disabled = false,
+}: VirtualMixSectionProps) {    
     const [manifests, setManifests] = useState<Manifest[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -457,7 +458,7 @@ export function VirtualMixSection({
 
             {/* Generate button */}
             {manifests.length === 0 && !needPregen && (
-                <button onClick={generateVirtualMix} disabled={!audioFile || loading}
+                <button onClick={generateVirtualMix} disabled={!audioFile || loading || disabled}
                     className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold hover:from-cyan-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30">
                     {loading ? (
                         <><Loader2 className="w-5 h-5 animate-spin" />Đang tạo preview (~7 clips, 1-2 phút lần đầu)...</>
@@ -481,8 +482,8 @@ export function VirtualMixSection({
                         </p>
 
                         {!pregenRunning ? (
-                            <button onClick={startPregen}
-                                className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl text-white font-semibold hover:from-yellow-700 hover:to-orange-700 transition-all flex items-center justify-center gap-2">
+                            <button onClick={startPregen} disabled={disabled}
+                                className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl text-white font-semibold hover:from-yellow-700 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                                 <Loader2 className="w-5 h-5" />
                                 🚀 BẮT ĐẦU PRE-GENERATION (chạy nền)
                             </button>

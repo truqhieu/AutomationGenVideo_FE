@@ -694,6 +694,16 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const isReady = cacheStats && cacheStats.indexed_videos > 0;
     const needsIndexing = !cacheStats || cacheStats.indexed_videos === 0;
 
+    if (!cacheStats && loadingStats) {
+        return (
+            <div className="bg-[#141414] rounded-2xl border border-gray-800 p-12 flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+                <p className="text-gray-400 font-medium">Đang tải thông tin index...</p>
+                <p className="text-xs text-gray-600">Đang đồng bộ với AI Service</p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-5">
             {/* Indexing Status Overlay */}
@@ -1170,6 +1180,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     productSku={productSku}
                     numOutputs={numOutputs}
                     useA4Formula={useA4Formula}
+                    disabled={isIndexing || isAutoReindexing}
                 />
             )}
 
@@ -1190,7 +1201,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     )}
 
                     {!mixLoading && !mixResult && (
-                        <button onClick={handleMix} disabled={!audioFile || needsIndexing}
+                        <button onClick={handleMix} disabled={!audioFile || needsIndexing || isIndexing || isAutoReindexing}
                             className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-bold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-green-900/30 text-base">
                             <Zap className="w-5 h-5" />
                             {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ SMART MIX (5–13s)'}

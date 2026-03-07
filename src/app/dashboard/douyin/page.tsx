@@ -27,7 +27,7 @@ interface DouyinVideo {
 }
 
 const ITEMS_PER_PAGE = 9;   // 3 cột × 3 hàng
-const BATCH_SIZE = 15;       // fetch 15 mỗi lần từ Apify
+const BATCH_SIZE = 30;       // fetch 30 mỗi lần để tiết kiệm credits (đã tối ưu variety ở BE)
 
 export default function DouyinScraperPage() {
   const [searchTerm, setSearchTerm] = useState('');

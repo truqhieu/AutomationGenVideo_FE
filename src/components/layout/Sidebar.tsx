@@ -58,21 +58,19 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     // Platform Folder Routes
     if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management')) {
       return 'user-management';
-    } else if (pathname.startsWith('/dashboard/ai/lipsync')) {
-      return 'ai-studio';
-    } else if (pathname.startsWith('/dashboard/ai')) {
-      return 'tiktok';
-    } else if (pathname.startsWith('/dashboard/instagram')) {
-      return 'instagram';
-    } else if (pathname.startsWith('/dashboard/douyin')) {
-      return 'douyin';
-    } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
-      return 'xiaohongshu';
-    } else if (pathname.startsWith('/dashboard/facebook') || pathname === '/dashboard') {
-      return 'facebook';
+    } else if (
+      pathname.startsWith('/dashboard/facebook') ||
+      pathname.startsWith('/dashboard/instagram') ||
+      pathname.startsWith('/dashboard/tiktok') ||
+      pathname.startsWith('/dashboard/douyin') ||
+      pathname.startsWith('/dashboard/xiaohongshu') ||
+      pathname.startsWith('/dashboard/ai') ||
+      pathname === '/dashboard'
+    ) {
+      return 'social-discovery';
     }
 
-    return 'facebook';
+    return 'social-discovery';
   }, [pathname]);
 
   // Memoize platforms configuration to prevent re-creation on every render
@@ -98,75 +96,26 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       ]
     },
 
-    // 2. Apps Section (Visible to EVERYONE, including Admins)
+    // 2. Video & Social Intelligence (Consolidated)
     {
-      id: 'facebook',
-      icon: Facebook,
-      label: 'Facebook',
+      id: 'social-discovery',
+      icon: Search,
+      label: 'Khám phá Video',
       menus: [
         {
-          section: 'ANALYTICS',
+          section: 'PHÂN TÍCH',
           items: [
-            { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
-            { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: Search },
-            { label: 'Search Reel', href: '/dashboard/facebook/search-reel', icon: Film },
+            { label: 'Facebook Channels', href: '/dashboard/facebook/channels', icon: Facebook },
+            { label: 'Instagram Channels', href: '/dashboard/instagram/channels', icon: Instagram },
+            { label: 'TikTok Channels', href: '/dashboard/ai/channels', icon: Music2 },
+            { label: 'Douyin Channels', href: '/dashboard/douyin/channels', icon: Music },
+            { label: 'Xiaohongshu Channels', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
           ]
-        }
-      ]
-    },
-    {
-      id: 'instagram',
-      icon: Instagram,
-      label: 'Instagram',
-      menus: [
+        },
         {
-          section: 'ANALYTICS',
+          section: 'KHÁM PHÁ',
           items: [
-            { label: 'Channel Overview', href: '/dashboard/instagram/channels', icon: LayoutGrid },
-            { label: 'Search Post', href: '/dashboard/instagram/search', icon: FileText },
-            { label: 'Search Reels', href: '/dashboard/instagram/search-reel', icon: Film },
-          ]
-        }
-      ]
-    },
-    {
-      id: 'tiktok',
-      icon: Music2, // TikTok
-      label: 'TikTok',
-      menus: [
-        {
-          section: 'ANALYTICS',
-          items: [
-            { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
-            { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
-          ]
-        }
-      ]
-    },
-    {
-      id: 'douyin',
-      icon: Music,
-      label: 'Douyin',
-      menus: [
-        {
-          section: 'ANALYTICS',
-          items: [
-            { label: 'Channel Overview', href: '/dashboard/douyin/channels', icon: LayoutGrid },
-            { label: 'Search Video', href: '/dashboard/douyin', icon: Search },
-          ]
-        }
-      ]
-    },
-    {
-      id: 'xiaohongshu',
-      icon: BookOpen,
-      label: 'Xiaohongshu',
-      menus: [
-        {
-          section: 'ANALYTICS',
-          items: [
-            { label: 'Channel Overview', href: '/dashboard/xiaohongshu/channels', icon: LayoutGrid },
-            { label: 'Search Video', href: '/dashboard/xiaohongshu', icon: Search },
+            { label: 'Tìm kiếm Video (Hub)', href: '/dashboard/search-video', icon: Search },
           ]
         }
       ]
@@ -275,12 +224,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
 
           {/* Bottom Actions */}
           <div className="flex flex-col gap-4 w-full px-4 mt-auto">
-            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-              <CreditCard className="w-5 h-5" />
-            </button>
-
             {/* Settings - Link to checklist settings for Manager/Admin */}
-            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') ? (
+            {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
               <Link
                 href="/dashboard/manager/checklist-settings"
                 className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
@@ -288,15 +233,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
               >
                 <Settings className="w-5 h-5" />
               </Link>
-            ) : (
-              <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-                <Settings className="w-5 h-5" />
-              </button>
             )}
 
-            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-              <HelpCircle className="w-5 h-5" />
-            </button>
             <button
               onClick={onLogout}
               className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-900/20 hover:text-red-500 mt-2 transition-all duration-200 ease-out hover:scale-105"
