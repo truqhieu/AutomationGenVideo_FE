@@ -348,7 +348,7 @@ const UserActivityPage = () => {
 
     const handleUpdateStatus = async (id: string, status: string) => {
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/lark/update-outstanding-status`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/update-outstanding-status`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -363,7 +363,7 @@ const UserActivityPage = () => {
             if (response.ok) {
                 // Update local state to reflect change immediately
                 setReportOutstandings(prev => prev.map(r =>
-                    r.id === id ? { ...r, status, approved_by: user?.full_name } : r
+                    r.id === id ? { ...r, status, approval_status: status, approved_by: user?.full_name } : r
                 ));
             }
         } catch (error) {
@@ -788,7 +788,8 @@ const UserActivityPage = () => {
                                                     .filter(r => matchTeam(r.team))
                                                     .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                                     .map((r, idx) => {
-                                                        const isApproved = (r.approval_status || '').toLowerCase().includes('duyệt');
+                                                        const statusText = (r.approval_status || '').toLowerCase();
+                                                        const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa'));
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-[9px] uppercase">{r.role || 'Member'}</td>
@@ -801,9 +802,19 @@ const UserActivityPage = () => {
                                                                     {r.content || 'Không có nội dung'}
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
-                                                                        {r.approval_status || 'Chưa duyệt'}
-                                                                    </span>
+                                                                    {(isAdminUser || isLeaderUser) ? (
+                                                                        <button
+                                                                            onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa Duyệt' : 'Đã Duyệt')}
+                                                                            title="Nhấn để thay đổi trạng thái"
+                                                                            className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${isApproved ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200'}`}
+                                                                        >
+                                                                            {r.approval_status || 'Chưa duyệt'}
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
+                                                                            {r.approval_status || 'Chưa duyệt'}
+                                                                        </span>
+                                                                    )}
                                                                 </td>
                                                                 <td className="px-3 py-1.5 text-center text-[9px] font-bold text-slate-500 italic">
                                                                     {r.approved_by || '-'}
