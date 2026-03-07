@@ -195,9 +195,15 @@ export default function GlobalSearchPage() {
         handleSearch(true, nextIdx, seenIds);
     };
 
-    // Reset page when platform changes
+    // Reset page and clear data when platform changes
     useEffect(() => {
+        setSearchTerm('');
+        setResults([]);
+        setError(null);
         setCurrentPage(1);
+        setBatchIndex(0);
+        setSeenIds(new Set());
+        setHasMore(false);
     }, [platform]);
 
     const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
