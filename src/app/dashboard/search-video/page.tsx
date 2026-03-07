@@ -30,6 +30,7 @@ export default function GlobalSearchPage() {
     const [platform, setPlatform] = useState<Platform>('TIKTOK');
     const [searchType, setSearchType] = useState<SearchType>('keyword');
     const [searchTerm, setSearchTerm] = useState('');
+    const [instagramPostType, setInstagramPostType] = useState<'posts' | 'reels'>('posts');
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [results, setResults] = useState<UnifiedVideo[]>([]);
@@ -99,6 +100,7 @@ export default function GlobalSearchPage() {
                     max_results: 30,
                     search_type: 'posts',
                     search_mode: searchType,
+                    page: appendMode ? nextBatchIndex + 1 : 1,
                 };
             } else {
                 // Facebook / Instagram
@@ -107,7 +109,7 @@ export default function GlobalSearchPage() {
                     platform: platform.toLowerCase(),
                     keyword: searchTerm,
                     max_results: 30,
-                    search_type: 'posts',
+                    search_type: platform === 'INSTAGRAM' ? instagramPostType : 'posts',
                     search_mode: searchType,
                     // Next Batch: gửi page để backend trả về kết quả mới
                     page: appendMode ? nextBatchIndex + 1 : 1,
@@ -204,6 +206,8 @@ export default function GlobalSearchPage() {
         setBatchIndex(0);
         setSeenIds(new Set());
         setHasMore(false);
+        setInstagramPostType('posts');
+        setSearchType('keyword');
     }, [platform]);
 
     const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
@@ -357,13 +361,44 @@ export default function GlobalSearchPage() {
                             {/* Input & Action Row */}
                             <div className="flex flex-col md:flex-row gap-4">
                                 <div className="flex-1 relative group/input">
-                                    <SearchAutocomplete
-                                        platform={platform}
-                                        value={searchTerm}
-                                        onChange={setSearchTerm}
-                                        onSearch={() => handleSearch()}
-                                        placeholder={`Gõ ${searchType === 'keyword' ? 'từ khóa' : 'hashtag'} cần quét...`}
-                                    />
+                                    <div className="flex flex-col gap-4">
+                                        {/* Optional Instagram Posts vs Reels Toggle */}
+                                        <AnimatePresence>
+                                            {platform === 'INSTAGRAM' && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto', marginTop: -8 }}
+                                                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                    className="flex bg-black/40 p-1 rounded-xl w-fit border border-white/5 mb-1"
+                                                >
+                                                    {[
+                                                        { id: 'posts', label: 'Bài viết (Posts)', icon: BookOpen },
+                                                        { id: 'reels', label: 'Video (Reels)', icon: Play }
+                                                    ].map((mode) => (
+                                                        <button
+                                                            key={mode.id}
+                                                            onClick={() => setInstagramPostType(mode.id as 'posts' | 'reels')}
+                                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-300 flex items-center gap-1.5 ${instagramPostType === mode.id
+                                                                ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-pink-400 shadow-lg ring-1 ring-pink-500/30'
+                                                                : 'text-slate-500 hover:text-slate-300'
+                                                                }`}
+                                                        >
+                                                            <mode.icon className={`w-3 h-3 ${instagramPostType === mode.id ? 'text-pink-400' : ''}`} />
+                                                            <span className="uppercase tracking-widest">{mode.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+
+                                        <SearchAutocomplete
+                                            platform={platform}
+                                            value={searchTerm}
+                                            onChange={setSearchTerm}
+                                            onSearch={() => handleSearch()}
+                                            placeholder={`Gõ ${searchType === 'keyword' ? 'từ khóa' : 'hashtag'} cần quét...`}
+                                        />
+                                    </div>
                                 </div>
 
                                 <button
@@ -622,7 +657,7 @@ export default function GlobalSearchPage() {
                     </AnimatePresence>
 
                     {/* ===== SCAN NEXT BATCH Button (Douyin + Instagram) ===== */}
-                    {(platform === 'DOUYIN' || platform === 'INSTAGRAM') && results.length > 0 && (
+                    {(platform === 'DOUYIN' || platform === 'INSTAGRAM' || platform === 'TIKTOK') && results.length > 0 && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
