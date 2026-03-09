@@ -39,7 +39,7 @@ export default function RegisterPage() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: UserRole.CONTENT,
+      role: UserRole.MEMBER,
     },
   });
 
@@ -158,9 +158,9 @@ export default function RegisterPage() {
                     {...register('role')}
                     className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
                   >
-                    <option value={UserRole.CONTENT} className="bg-slate-900 text-slate-200">Content Creator</option>
-                    <option value={UserRole.EDITOR} className="bg-slate-900 text-slate-200">Video Editor</option>
-                    {/* ADMIN and MANAGER roles removed as requested */}
+                    <option value={UserRole.MEMBER} className="bg-slate-900 text-slate-200">Thành viên (Member)</option>
+                    <option value={UserRole.MANAGER} className="bg-slate-900 text-slate-200">Quản lý (Manager)</option>
+                    <option value={UserRole.ADMIN} className="bg-slate-900 text-slate-200">Quản trị (Admin)</option>
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

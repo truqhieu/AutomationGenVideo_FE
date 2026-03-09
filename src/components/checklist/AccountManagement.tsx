@@ -59,7 +59,7 @@ const MENU_ITEMS = [
     { id: 'activity_report', label: '↳ Báo cáo (Tab)', icon: FileText, isSub: true },
     { id: 'activity_checklist', label: '↳ Checklist (Tab)', icon: CheckSquare, isSub: true },
     { id: 'dashboard', label: 'Dashboard Tổng', icon: LayoutGrid },
-    { id: 'editors', label: 'Quản lý Editors', icon: Users },
+    { id: 'editors', label: 'Quản lý Thành viên', icon: Users },
     { id: 'facebook', label: 'Kênh Facebook', icon: Facebook },
     { id: 'instagram', label: 'Kênh Instagram', icon: Instagram },
     { id: 'tiktok', label: 'Kênh TikTok', icon: Music2 },
@@ -210,9 +210,7 @@ export default function AccountManagement() {
         switch (role) {
             case UserRole.ADMIN: return 'bg-red-500/10 text-red-500 border-red-500/20';
             case UserRole.MANAGER: return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            case UserRole.LEADER: return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
-            case UserRole.EDITOR: return 'bg-green-500/10 text-green-500 border-green-500/20';
-            case UserRole.CONTENT: return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+            case UserRole.MEMBER: return 'bg-green-500/10 text-green-500 border-green-500/20';
             default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
         }
     };

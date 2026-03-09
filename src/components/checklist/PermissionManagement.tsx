@@ -38,7 +38,7 @@ const MENU_ITEMS = [
     { id: 'activity_report', label: '↳ Báo cáo (Tab)', icon: FileText, isSub: true },
     { id: 'activity_checklist', label: '↳ Checklist (Tab)', icon: CheckSquare, isSub: true },
     { id: 'dashboard', label: 'Dashboard Tổng', icon: LayoutGrid },
-    { id: 'editors', label: 'Quản lý Editors', icon: Users },
+    { id: 'editors', label: 'Quản lý Thành viên', icon: Users },
     { id: 'facebook', label: 'Kênh Facebook', icon: Facebook },
     { id: 'instagram', label: 'Kênh Instagram', icon: Instagram },
     { id: 'tiktok', label: 'Kênh TikTok', icon: Music2 },
