@@ -60,6 +60,8 @@ interface SmartMixProps {
 
 export default function SmartMixVideo({ generatedScript, contentType, productId, productSku, productCategory }: SmartMixProps) {
     const [audioFile, setAudioFile] = useState<File | null>(null);
+    const [bgMusicFile, setBgMusicFile] = useState<File | null>(null);
+    const [bgMusicVolume, setBgMusicVolume] = useState(10); // 10% volume
     const [numOutputs, setNumOutputs] = useState(5);
     const [useGpu, setUseGpu] = useState<'auto' | 'true' | 'false'>('auto');
     const [useA4Formula, setUseA4Formula] = useState(false);
@@ -561,8 +563,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     };
 
     const handleMix = async () => {
-        if (!audioFile) {
-            toast.error('❌ Vui lòng upload file nhạc');
+        // Cần có voice audio (generated hoặc upload)
+        if (!generatedAudioUrl && !audioFile) {
+            toast.error('❌ Vui lòng generate audio giọng đọc trước!');
             return;
         }
 
@@ -580,7 +583,18 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
         try {
             const formData = new FormData();
-            formData.append('audio', audioFile);
+            // Ưu tiên dùng audio_path (tránh upload lại)
+            if (generatedAudioUrl) {
+                // generatedAudioUrl là URL như /media/tts_cache/xxx.mp3
+                formData.append('audio_path', generatedAudioUrl);
+            } else if (audioFile) {
+                formData.append('audio', audioFile);
+            }
+            // Nhạc nền optional (volume thấp)
+            if (bgMusicFile) {
+                formData.append('background_music', bgMusicFile);
+                formData.append('bg_music_volume', (bgMusicVolume / 100).toString());
+            }
             formData.append('num_outputs', numOutputs.toString());
             formData.append('width', '540');
             formData.append('height', '960');
@@ -607,7 +621,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             console.log('🎯 Smart Mix Config:', {
                 num_outputs: numOutputs,
                 use_a4_formula: useA4Formula,
-                audio: audioFile.name,
+                audio: generatedAudioUrl || audioFile?.name || 'none',
+                bg_music: bgMusicFile?.name || 'none',
+                bg_volume: bgMusicVolume + '%',
                 product_category: actualProductCategory,
                 product_id: productId,
                 product_sku: productSku
@@ -1139,36 +1155,57 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         </div>
                     )}
 
-                    {/* Upload Audio */}
+                    {/* Background Music Upload (optional) */}
                     <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
                         onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) { setAudioFile(file); toast.success(`✅ Đã chọn: ${file.name}`); }
+                            if (file) { setBgMusicFile(file); toast.success(`✅ Nhạc nền: ${file.name}`); }
                         }} />
 
-                    {!audioFile ? (
-                        <button onClick={() => audioInputRef.current?.click()}
-                            className="w-full py-5 border-2 border-dashed border-gray-800 hover:border-pink-500/50 hover:bg-pink-500/3 rounded-xl transition-all flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-pink-400 group">
-                            <Upload className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-medium">Upload file nhạc</span>
-                            <span className="text-[10px]">mp3, wav, m4a, aac, ogg</span>
-                        </button>
-                    ) : (
-                        <div className="bg-pink-500/8 rounded-xl p-4 border border-pink-500/20 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-pink-500/15 rounded-lg">
-                                    <Music className="w-5 h-5 text-pink-400" />
-                                </div>
-                                <div>
-                                    <p className="text-white text-sm font-medium">{audioFile.name}</p>
-                                    <p className="text-xs text-gray-500">{(audioFile.size / 1024).toFixed(1)} KB</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setAudioFile(null)} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                                <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
+                    {/* Background music optional section */}
+                    <div className="border border-gray-800/50 rounded-xl overflow-hidden">
+                        <div className="px-4 py-2.5 bg-gray-900/40 flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                                <Music className="w-3.5 h-3.5" />
+                                Nhạc nền <span className="text-gray-600 font-normal">(optional)</span>
+                            </span>
+                            {bgMusicFile && (
+                                <button onClick={() => setBgMusicFile(null)} className="text-xs text-red-400 hover:text-red-300">
+                                    ✕ Xóa
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {!bgMusicFile ? (
+                            <button onClick={() => audioInputRef.current?.click()}
+                                className="w-full py-4 flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-pink-400 hover:bg-pink-500/3 transition-all group">
+                                <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                <span className="text-xs">Upload nhạc nền (mp3, wav, m4a)</span>
+                                <span className="text-[10px] text-gray-700">★ Nếu không upload, video chỉ có giọng HuyK</span>
+                            </button>
+                        ) : (
+                            <div className="p-3 flex flex-col gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-pink-500/15 rounded-lg">
+                                        <Music className="w-4 h-4 text-pink-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-xs font-medium truncate">{bgMusicFile.name}</p>
+                                        <p className="text-[10px] text-gray-500">{(bgMusicFile.size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                </div>
+                                {/* Volume slider */}
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-gray-500 w-20">Volume nhạc nền</span>
+                                    <input type="range" min={2} max={30} value={bgMusicVolume}
+                                        onChange={(e) => setBgMusicVolume(parseInt(e.target.value))}
+                                        className="flex-1 h-1.5 accent-pink-500" />
+                                    <span className="text-xs text-pink-400 w-8 text-right">{bgMusicVolume}%</span>
+                                </div>
+                                <p className="text-[10px] text-gray-600">⚠ Giọng HuyK luôn to hơn. Nhạc chỉ là nền.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1201,15 +1238,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     )}
 
                     {!mixLoading && !mixResult && (
-                        <button onClick={handleMix} disabled={!audioFile || needsIndexing || isIndexing || isAutoReindexing}
+                        <button onClick={handleMix} disabled={(!generatedAudioUrl && !audioFile) || needsIndexing || isIndexing || isAutoReindexing}
                             className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-bold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-green-900/30 text-base">
                             <Zap className="w-5 h-5" />
                             {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ SMART MIX (5–13s)'}
                         </button>
                     )}
-
-                    {!audioFile && (
-                        <p className="text-xs text-center text-gray-600">⚠ Cần upload file audio trước</p>
+                    {(!generatedAudioUrl && !audioFile) && (
+                        <p className="text-xs text-center text-gray-600">⚠ Cần generate audio giọng đọc trước</p>
                     )}
                     {needsIndexing && (
                         <p className="text-xs text-center text-amber-600">⚠ Cần index videos trước (bước 1)</p>
