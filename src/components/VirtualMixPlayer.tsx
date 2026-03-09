@@ -96,11 +96,43 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
         }
     };
 
+    // When video pauses (e.g. buffering)
+    const onPause = () => {
+        // If we are technically "playing" but the video paused to buffer,
+        // we should pause the audio too so they don't get out of sync.
+        if (isPlaying && audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+        }
+    };
+
+    // When video resumes playing
+    const onPlay = () => {
+        if (isPlaying && audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => { });
+        }
+    };
+
     // When video errors
     const onError = () => {
         setIsLoading(false);
-        setError(`Không thể tải clip slot ${currentClip?.slot} (${currentClip?.slot_name})`);
-        console.error('Video load error for:', clipUrl(currentClip));
+        // Thay vì báo lỗi và dừng, chúng ta sẽ tự động bỏ qua clip lỗi này và chuyển sang slot tiếp theo
+        // Đặc biệt hữu ích khi clip chưa kịp tạo trên server.
+        const msg = `Lỗi tải slot ${currentClip?.slot} (${currentClip?.slot_name}). Bỏ qua...`;
+        setError(msg);
+        console.warn('Video load error for:', clipUrl(currentClip), '-> Skipping to next slot');
+
+        // Timeout 2s rồi tự nhảy clip luôn
+        setTimeout(() => {
+            if (isPlaying) {
+                setError('');
+                if (currentClipIndex < manifest.clips.length - 1) {
+                    loadClip(currentClipIndex + 1);
+                } else {
+                    setIsPlaying(false);
+                    audioRef.current?.pause();
+                }
+            }
+        }, 2000);
     };
 
     // When the current clip's video naturally ends
@@ -119,14 +151,17 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
             const video = videoRef.current;
             if (!video || !isPlaying) return;
 
+            // Only advance elapsed time if video is actively playing (not stalled state)
             const elapsed = video.currentTime;
             setClipElapsed(elapsed);
 
+            // Compute global time but ensure we don't go backwards
             const gt = getTimeOffset(currentClipIndex) + elapsed;
-            setGlobalTime(gt);
+            setGlobalTime(prevGt => Math.max(prevGt, gt));
 
-            // Sync audio
-            if (audioRef.current) {
+            // Sync audio smoothly - only jump if difference is large 
+            // Avoid syncing if video is effectively paused/stalled
+            if (audioRef.current && !isLoading && !video.paused) {
                 const diff = Math.abs(audioRef.current.currentTime - gt);
                 if (diff > 0.5) {
                     audioRef.current.currentTime = gt;
@@ -153,7 +188,7 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
-    }, [isPlaying, currentClipIndex, currentClip, getTimeOffset, loadClip, manifest.clips.length]);
+    }, [isPlaying, currentClipIndex, currentClip, getTimeOffset, loadClip, manifest.clips.length, isLoading]);
 
     // Load first clip
     useEffect(() => {
@@ -205,6 +240,10 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
                     ref={videoRef}
                     className="w-full h-full object-contain"
                     onCanPlay={onCanPlay}
+                    onPlay={onPlay}
+                    onPause={onPause}
+                    onWaiting={onPause} // Wait explicitly for buffering
+                    onPlaying={onPlay}  // Resume explicitly after buffering
                     onError={onError}
                     onEnded={onVideoEnded}
                     muted
@@ -335,7 +374,7 @@ interface VirtualMixSectionProps {
 
 export function VirtualMixSection({
     audioFile, productId, productSku, numOutputs, useA4Formula, disabled = false,
-}: VirtualMixSectionProps) {    
+}: VirtualMixSectionProps) {
     const [manifests, setManifests] = useState<Manifest[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
