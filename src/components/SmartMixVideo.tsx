@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package, Eye } from 'lucide-react';
-import { VirtualMixSection } from './VirtualMixPlayer';
 import { toast } from 'react-hot-toast';
 
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -1209,19 +1208,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 </div>
             </div>
 
-            {/* Virtual Preview - Temporarily disabled by user request */}
-            {/* 
-            {audioFile && !needsIndexing && (
-                <VirtualMixSection
-                    audioFile={audioFile}
-                    productId={productId}
-                    productSku={productSku}
-                    numOutputs={numOutputs}
-                    useA4Formula={useA4Formula}
-                    disabled={isIndexing || isAutoReindexing}
-                />
-            )}
-            */}
+            {/* Virtual Preview - Xem trước ngay: đã bị loại bỏ hoàn toàn theo yêu cầu */}
 
             {/* ──── STEP 4: Mix ──── */}
             <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
