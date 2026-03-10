@@ -497,7 +497,7 @@ export function VirtualMixSection({
 
     return (
         <div className="bg-[#1a1a1a] p-6 rounded-xl border border-cyan-500/20">
-            <div className="flex items-center gap-3 mb-4">
+            {/* <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
                     <Eye className="w-5 h-5 text-cyan-400" />
                 </div>
@@ -507,27 +507,23 @@ export function VirtualMixSection({
                         <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded-full border border-cyan-500/30">
                             INSTANT
                         </span>
-                    </h3>
+                    </h3>z``
                     <p className="text-xs text-gray-400">
                         Xem trước video ngay — clips được cache sẵn, không cần chờ encode!
                     </p>
                 </div>
-            </div>
+            </div> */}
 
-            {/* Generate button */}
-            {/* {manifests.length === 0 && !needPregen && (
-                <button onClick={generateVirtualMix} disabled={!audioFile || loading || disabled}
-                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold hover:from-cyan-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30">
-                    {loading ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" />Đang tạo preview (~7 clips, 1-2 phút lần đầu)...</>
-                    ) : (
-                        <><Eye className="w-5 h-5" />⚡ XEM TRƯỚC NGAY (instant!)</>
-                    )}
+            {/* Generate button (Disabled per user request) */}
+            {manifests.length === 0 && !needPregen && (
+                <button disabled={true}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30 opacity-50 cursor-not-allowed">
+                    <Eye className="w-5 h-5" />⚡ XEM TRƯỚC NGAY (disabled)
                 </button>
-            )} */}
+            )}
 
             {/* Need Pre-generation notice */}
-            {needPregen && (
+            {/* {needPregen && (
                 <div className="space-y-3">
                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
                         <p className="text-sm text-yellow-400 font-semibold mb-2">
@@ -565,7 +561,7 @@ export function VirtualMixSection({
                         </button>
                     )}
                 </div>
-            )}
+            )} */}
 
             {/* Pre-gen progress (when running but previews already showing) */}
             {pregenRunning && manifests.length > 0 && (
