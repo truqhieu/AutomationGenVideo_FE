@@ -18,11 +18,11 @@ const FOLDER_TYPES = [
 ];
 
 const DEFAULT_PATHS: { [key: string]: string } = {
-    'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
-    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Source HUYK\\Source chế tác sản phẩm',
-    'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Chế tác sản phẩm',
-    'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
-    'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\OUTRO HUYK',
+    'Sản phẩm': '/volume1/MEDIA VCB folder/Generate Video/Video Sản Phẩm',
+    'HuyK': '/volume1/MEDIA VCB folder/Generate Video/Source HUYK/Source chế tác sản phẩm',
+    'Chế tác': '/volume1/MEDIA VCB folder/Generate Video/Chế tác sản phẩm',
+    'Sản phẩm HT': '/volume1/MEDIA VCB folder/Generate Video/Video Sản Phẩm',
+    'Outtrol': '/volume1/MEDIA VCB folder/SOURCE HUYK/OUTRO HUYK',
 };
 
 

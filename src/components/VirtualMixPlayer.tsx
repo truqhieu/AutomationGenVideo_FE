@@ -115,24 +115,40 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
     // When video errors
     const onError = () => {
         setIsLoading(false);
-        // Thay vì báo lỗi và dừng, chúng ta sẽ tự động bỏ qua clip lỗi này và chuyển sang slot tiếp theo
-        // Đặc biệt hữu ích khi clip chưa kịp tạo trên server.
-        const msg = `Lỗi tải slot ${currentClip?.slot} (${currentClip?.slot_name}). Bỏ qua...`;
-        setError(msg);
-        console.warn('Video load error for:', clipUrl(currentClip), '-> Skipping to next slot');
+        const clip = manifest.clips[currentClipIndex];
+        const url = clip ? clipUrl(clip) : '';
+        console.warn('Video load error for slot:', clip?.slot_name, '\nURL:', url);
 
-        // Timeout 2s rồi tự nhảy clip luôn
+        // Retry 1 lần sau 1.5s (on-the-fly generation cần thêm thời gian)
+        setError(`⏳ Đang tải clip ${clip?.slot}: ${clip?.slot_name}...`);
+
         setTimeout(() => {
-            if (isPlaying) {
-                setError('');
-                if (currentClipIndex < manifest.clips.length - 1) {
-                    loadClip(currentClipIndex + 1);
-                } else {
-                    setIsPlaying(false);
-                    audioRef.current?.pause();
+            const video = videoRef.current;
+            if (!video) return;
+
+            // Retry: reload cùng src
+            const currentSrc = video.src;
+            video.src = '';
+            video.src = currentSrc;
+            video.load();
+
+            // Nếu 5s sau vẫn loading → bỏ qua sang slot tiếp theo
+            setTimeout(() => {
+                if (video.readyState < 2) {
+                    // Vẫn chưa load được → skip
+                    setError(`❌ Slot ${clip?.slot} (${clip?.slot_name}): clip chưa sẵn sàng, bỏ qua...`);
+                    setTimeout(() => {
+                        setError('');
+                        if (currentClipIndex < manifest.clips.length - 1) {
+                            loadClip(currentClipIndex + 1);
+                        } else {
+                            setIsPlaying(false);
+                            audioRef.current?.pause();
+                        }
+                    }, 1500);
                 }
-            }
-        }, 2000);
+            }, 5000);
+        }, 1500);
     };
 
     // When the current clip's video naturally ends
