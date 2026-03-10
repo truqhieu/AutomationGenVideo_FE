@@ -75,18 +75,26 @@ export default function PermissionManagement() {
     };
 
     const togglePermission = (role: UserRole, menuId: string) => {
-        setPermissions(prev => prev.map(p => {
-            if (p.role === role) {
-                const isEnabled = p.menu_ids.includes(menuId);
-                return {
-                    ...p,
-                    menu_ids: isEnabled
-                        ? p.menu_ids.filter(id => id !== menuId)
-                        : [...p.menu_ids, menuId]
-                };
+        setPermissions(prev => {
+            const hasRole = prev.find(p => p.role === role);
+            if (!hasRole) {
+                // If role not found in state, add it with the initial menuId
+                return [...prev, { role, menu_ids: [menuId] }];
             }
-            return p;
-        }));
+
+            return prev.map(p => {
+                if (p.role === role) {
+                    const isEnabled = p.menu_ids.includes(menuId);
+                    return {
+                        ...p,
+                        menu_ids: isEnabled
+                            ? p.menu_ids.filter(id => id !== menuId)
+                            : [...p.menu_ids, menuId]
+                    };
+                }
+                return p;
+            });
+        });
     };
 
     const handleSave = async (role: UserRole) => {
