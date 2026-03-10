@@ -1209,7 +1209,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 </div>
             </div>
 
-            {/* Virtual Preview */}
+            {/* Virtual Preview - Temporarily disabled by user request */}
+            {/* 
             {audioFile && !needsIndexing && (
                 <VirtualMixSection
                     audioFile={audioFile}
@@ -1220,6 +1221,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     disabled={isIndexing || isAutoReindexing}
                 />
             )}
+            */}
 
             {/* ──── STEP 4: Mix ──── */}
             <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
