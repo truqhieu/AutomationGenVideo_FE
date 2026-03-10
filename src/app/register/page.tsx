@@ -150,23 +150,7 @@ export default function RegisterPage() {
                 {errors.password && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300 ml-1">Vai trò</label>
-                <div className="relative group">
-                  <Briefcase className="absolute left-4 top-3.5 w-5 h-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                  <select
-                    {...register('role')}
-                    className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
-                  >
-                    <option value={UserRole.MEMBER} className="bg-slate-900 text-slate-200">Thành viên (Member)</option>
-                    <option value={UserRole.MANAGER} className="bg-slate-900 text-slate-200">Quản lý (Manager)</option>
-                    <option value={UserRole.ADMIN} className="bg-slate-900 text-slate-200">Quản trị (Admin)</option>
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </div>
-                </div>
-              </div>
+
 
               <button
                 type="submit"
