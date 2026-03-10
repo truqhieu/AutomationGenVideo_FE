@@ -942,11 +942,6 @@ const UserActivityPage = () => {
                                                     <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                                     Quay lại chọn Đối tượng
                                                 </button>
-                                                <div className="bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
-                                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                                                        Chế độ: {reportMode === 'member' ? 'Báo cáo Member' : 'Báo cáo Leader'}
-                                                    </p>
-                                                </div>
                                             </div>
                                             <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
                                                 <ChecklistContainer mode={reportMode} />
