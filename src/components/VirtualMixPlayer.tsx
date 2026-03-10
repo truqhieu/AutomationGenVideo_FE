@@ -515,7 +515,7 @@ export function VirtualMixSection({
             </div>
 
             {/* Generate button */}
-            {manifests.length === 0 && !needPregen && (
+            {/* {manifests.length === 0 && !needPregen && (
                 <button onClick={generateVirtualMix} disabled={!audioFile || loading || disabled}
                     className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold hover:from-cyan-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30">
                     {loading ? (
@@ -524,7 +524,7 @@ export function VirtualMixSection({
                         <><Eye className="w-5 h-5" />⚡ XEM TRƯỚC NGAY (instant!)</>
                     )}
                 </button>
-            )}
+            )} */}
 
             {/* Need Pre-generation notice */}
             {needPregen && (
