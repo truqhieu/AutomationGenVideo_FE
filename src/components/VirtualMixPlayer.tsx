@@ -423,11 +423,14 @@ export function VirtualMixSection({
             const data = await response.json();
 
             if (!response.ok) {
-                if (data.need_pregen) {
+                if (data.error === 'preview_not_ready') {
+                    setNeedPregen(true);
+                    setError(data.message || 'Thiếu các video đã cache. Vui lòng chạy Pre-generate.');
+                } else if (data.need_pregen) {
                     setNeedPregen(true);
                     setError(data.error || 'Cần chạy Pre-generation trước');
                 } else {
-                    throw new Error(data.error || 'Virtual mix failed');
+                    throw new Error(data.error || data.message || 'Virtual mix failed');
                 }
                 return;
             }
