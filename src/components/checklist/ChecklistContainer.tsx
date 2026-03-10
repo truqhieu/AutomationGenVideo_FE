@@ -194,24 +194,27 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                {/* Always show Checklist Section for both Member and Leader */}
+                {(showForm12 || showForm3) && (
+                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
+                        <ChecklistSection values={checks} onChange={handleCheckChange} />
+                    </div>
+                )}
+
+                {/* Show Detail Section for Member/Staff */}
                 {showForm12 && (
-                    <>
-                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
-                            <ChecklistSection values={checks} onChange={handleCheckChange} />
-                        </div>
-                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
-                            <DetailSection values={details} onChange={handleDetailChange} />
-                        </div>
-                    </>
+                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
+                        <DetailSection values={details} onChange={handleDetailChange} />
+                    </div>
+                )}
+
+                {/* Leader Section - Show for Leader mode */}
+                {showForm3 && (
+                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
+                        <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
+                    </div>
                 )}
             </div>
-
-            {/* Leader Section - Show if user has Leader/Admin role */}
-            {showForm3 && (
-                <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
-                    <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
-                </div>
-            )}
 
             {message && (
                 <p className={`text-center text-sm font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
