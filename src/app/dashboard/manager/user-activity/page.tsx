@@ -795,8 +795,10 @@ const UserActivityPage = () => {
                                                                     <div className="text-[8px] text-blue-500 font-black italic">{r.team} - {r.date}</div>
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-black text-amber-600 text-[9px] uppercase">{r.category || '-'}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-[10px] text-slate-600 max-w-[250px] whitespace-normal line-clamp-2">
-                                                                    {r.content || 'Không có nội dung'}
+                                                                <td className="px-3 py-1 border-r border-slate-50 cursor-pointer group hover:bg-slate-50/50 transition-colors">
+                                                                    <div className="text-[11px] text-slate-700 font-medium leading-relaxed max-w-[350px] whitespace-normal line-clamp-2 group-hover:line-clamp-none py-1.5 px-2 rounded-lg group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-100 transition-all duration-300">
+                                                                        {r.content || 'Không có nội dung'}
+                                                                    </div>
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
                                                                     {(isAdminUser || isLeaderUser) ? (
