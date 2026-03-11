@@ -214,7 +214,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
 
           <div className="flex flex-col gap-4 w-full px-4 mt-auto">
             {/* Settings Link - Controlled by 'settings' permission */}
-            {(allowedMenuIds.includes('settings') || user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r))) && (
+            {(allowedMenuIds.includes('settings') || user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r))) ? (
               <Link
                 href="/dashboard/manager/checklist-settings"
                 className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
