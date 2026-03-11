@@ -283,7 +283,7 @@ const UserActivityPage = () => {
                         captionHashtag: item.checklist?.caption || false,
                         reportLink: item.answers?.['Báo cáo Lark - Bạn đã gửi link báo cáo video chưa?'] || false
                     },
-                    videoCount: item.answers?.['Số video edit sử dụng >50% source từ quay?'] || 0,
+                    videoCount: item.answers ? Number(item.answers[Object.keys(item.answers).find(k => k.toLowerCase().includes('50%')) || ''] || 0) : 0,
                     task_progress: item.task_progress || null,
                     questions: [
                         {
