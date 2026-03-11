@@ -95,6 +95,11 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const [pregenDone, setPregenDone] = useState(0);
     const pregenPollRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Preview state
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewClips, setPreviewClips] = useState<Array<{ stream_url: string; slot_count?: number; total_duration?: number }>>([]);
+    const [previewError, setPreviewError] = useState('');
+
     // Fallback: Get product category from localStorage if not provided via props
     const [actualProductCategory, setActualProductCategory] = useState<string | undefined>(productCategory);
 
@@ -1393,6 +1398,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                         <Eye className="w-4 h-4 text-cyan-400" />
                         Xem trước ngay
+                        {previewClips.length > 0 && (
+                            <span className="text-xs text-cyan-400 font-normal">({previewClips.length} video)</span>
+                        )}
                     </h3>
                     {isCacheReady && (
                         <span className="ml-auto px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full border border-green-500/20">✓ Sẵn sàng</span>
@@ -1422,25 +1430,27 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            <p className="text-xs text-gray-400">Xem trước video trước khi mix chính thức. Preview dùng cached clips nên hiển thị tức thì.</p>
+                        <div className="space-y-4">
+                            <p className="text-xs text-gray-400">
+                                Xem trước <strong className="text-cyan-400">{numOutputs} video</strong> trước khi mix chính thức. Preview dùng cached clips nên hiển thị tức thì.
+                            </p>
+
+                            {/* Nút bấm */}
                             <button
+                                id="btn-preview-now"
                                 onClick={async () => {
-                                    if (!generatedAudioUrl && !audioFile) {
+                                    if (!audioFile) {
                                         toast.error('⚠ Cần generate audio trước (bước 3)');
                                         return;
                                     }
-                                    // Gọi virtual-mix API
+                                    setPreviewLoading(true);
+                                    setPreviewClips([]);
+                                    setPreviewError('');
                                     try {
+                                        // Gọi virtual-mix với đúng số lượng numOutputs
                                         const formData = new FormData();
-                                        if (audioFile) formData.append('audio', audioFile);
-                                        else if (generatedAudioUrl) {
-                                            // Fetch audio URL và gắn vào formData
-                                            const audioResp = await fetch(generatedAudioUrl);
-                                            const audioBlob = await audioResp.blob();
-                                            formData.append('audio', audioBlob, 'audio.mp3');
-                                        }
-                                        formData.append('num_outputs', '1');
+                                        formData.append('audio', audioFile);
+                                        formData.append('num_outputs', numOutputs.toString());
                                         formData.append('use_a4_formula', useA4Formula ? 'true' : 'false');
                                         if (productSku) formData.append('product_sku', productSku);
 
@@ -1450,29 +1460,88 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                         });
                                         const data = await resp.json();
                                         if (!resp.ok || data.error) {
+                                            setPreviewError(data.message || data.error || 'Preview thất bại');
                                             toast.error(data.message || data.error || 'Preview thất bại');
                                             return;
                                         }
-                                        // Mở tab mới với stream URL của clip đầu tiên
-                                        const firstClip = data.manifests?.[0]?.clips?.[0];
-                                        if (firstClip?.stream_url) {
-                                            window.open(`${AI_SERVICE_URL}${firstClip.stream_url}`, '_blank');
-                                            toast.success(`✅ Preview: ${data.manifests[0].slot_count} clips, ${data.manifests[0].total_duration?.toFixed(1)}s`);
+                                        // Thu thập tất cả manifests (mỗi manifest = 1 video preview)
+                                        const manifests: Array<{ stream_url: string; slot_count?: number; total_duration?: number }> = [];
+                                        for (const manifest of (data.manifests || [])) {
+                                            // Lấy clip đầu tiên của mỗi manifest làm đại diện
+                                            const firstClip = manifest.clips?.[0];
+                                            if (firstClip?.stream_url) {
+                                                manifests.push({
+                                                    stream_url: `${AI_SERVICE_URL}${firstClip.stream_url}`,
+                                                    slot_count: manifest.slot_count,
+                                                    total_duration: manifest.total_duration,
+                                                });
+                                            }
+                                        }
+                                        if (manifests.length === 0) {
+                                            setPreviewError('Không có clip để preview. Kiểm tra lại cache.');
                                         } else {
-                                            toast.error('Không có clip để preview');
+                                            setPreviewClips(manifests);
+                                            toast.success(`✅ Preview ${manifests.length}/${numOutputs} video sẵn sàng!`);
                                         }
                                     } catch (err: any) {
+                                        setPreviewError(`Lỗi preview: ${err.message}`);
                                         toast.error(`Lỗi preview: ${err.message}`);
+                                    } finally {
+                                        setPreviewLoading(false);
                                     }
                                 }}
-                                disabled={!generatedAudioUrl && !audioFile}
+                                disabled={!audioFile || previewLoading}
                                 className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-xl text-white font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20"
                             >
-                                <Eye className="w-4 h-4" />
-                                Xem trước ngay
+                                {previewLoading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" />Đang tạo {numOutputs} preview...</>
+                                ) : (
+                                    <><Eye className="w-4 h-4" />Xem trước ngay ({numOutputs} video)</>
+                                )}
                             </button>
-                            {(!generatedAudioUrl && !audioFile) && (
-                                <p className="text-xs text-center text-gray-600">⚠ Cần generate audio trước (bước 3)</p>
+
+                            {/* Hint audio */}
+                            {!audioFile && (
+                                <p className="text-xs text-center text-amber-500">⚠ Cần generate audio trước (bước 3)</p>
+                            )}
+
+                            {/* Lỗi preview */}
+                            {previewError && (
+                                <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-xs">{previewError}</div>
+                            )}
+
+                            {/* Kết quả preview - grid video */}
+                            {previewClips.length > 0 && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Preview — {previewClips.length} video</p>
+                                    <div className={`grid gap-3 ${
+                                        previewClips.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
+                                        previewClips.length <= 2 ? 'grid-cols-2' :
+                                        previewClips.length <= 4 ? 'grid-cols-2 md:grid-cols-2' :
+                                        'grid-cols-2 md:grid-cols-3'
+                                    }`}>
+                                        {previewClips.map((clip, idx) => (
+                                            <div key={idx} className="bg-[#0a0a0a] rounded-xl border border-gray-800/60 overflow-hidden">
+                                                <div className="relative" style={{ paddingBottom: '177.7%' /* 9:16 ratio */ }}>
+                                                    <video
+                                                        src={clip.stream_url}
+                                                        controls
+                                                        muted
+                                                        playsInline
+                                                        preload="metadata"
+                                                        className="absolute inset-0 w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                                <div className="px-3 py-2 flex items-center justify-between">
+                                                    <span className="text-xs text-gray-400 font-semibold">Video {idx + 1}</span>
+                                                    {clip.total_duration && (
+                                                        <span className="text-[10px] text-gray-600">{clip.total_duration.toFixed(1)}s</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     )}
