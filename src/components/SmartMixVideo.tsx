@@ -466,6 +466,16 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             const data = await response.json();
             if (data.success) {
                 toast.success(`🗑️ ${data.message}`, { duration: 4000 });
+                // Reset pregen state
+                setPregenStatus('idle');
+                setPregenProgress(0);
+                setPregenMessage('');
+                setPregenDone(0);
+                setPregenTotal(0);
+                // Chặn auto-scan: nếu không set thì sau khi load stats thấy 0 → auto-scan trigger lại
+                hasAutoIndexedRef.current = true;
+                // Delay nhỏ để DB commit xong
+                await new Promise(r => setTimeout(r, 500));
                 setCacheStats(null);
                 await loadCacheStats();
                 setShowIndexPanel(true); // Mở panel index để re-index ngay
@@ -779,9 +789,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     const isReady = cacheStats && cacheStats.indexed_videos > 0;
     const needsIndexing = !cacheStats || cacheStats.indexed_videos === 0;
-    // Cache ready: pregen completed OR (cached_clips >= indexed_videos và > 0)
-    const isCacheReady = pregenStatus === 'completed' ||
-        (cacheStats != null && cacheStats.indexed_videos > 0 && cacheStats.cached_clips >= cacheStats.indexed_videos);
+    // Cache ready: dùng số liệu DB thực tế (không tin pregenStatus vì nó có thể sai)
+    // Chỉ ready khi cached_clips >= 90% indexed_videos (cho phép tối đa 10% fail)
+    const cacheRatio = cacheStats && cacheStats.indexed_videos > 0
+        ? cacheStats.cached_clips / cacheStats.indexed_videos
+        : 0;
+    const isCacheReady = cacheStats != null &&
+        cacheStats.indexed_videos > 0 &&
+        cacheRatio >= 0.9;
 
 
     if (!cacheStats && loadingStats) {
