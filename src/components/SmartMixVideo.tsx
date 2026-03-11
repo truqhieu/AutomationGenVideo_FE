@@ -300,6 +300,52 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     }, [cacheStats?.by_folder, isAutoReindexing]);
 
+    // AUTO CACHE KHI THIẾU CLIP
+    const hasAutoCachedRef = useRef<{ missing: number; isTriggered: boolean }>({ missing: 0, isTriggered: false });
+    
+    useEffect(() => {
+        if (!cacheStats || isIndexing) return;
+        
+        const missing = cacheStats.indexed_videos - cacheStats.cached_clips;
+        
+        // Reset nếu đã cache đủ
+        if (missing <= 0) {
+            hasAutoCachedRef.current = { missing: 0, isTriggered: false };
+            return;
+        }
+
+        // Nếu mới có thêm video được index (số lượng thiếu tăng lên đáng kể) -> Cho phép trigger lại
+        if (hasAutoCachedRef.current.isTriggered && missing > hasAutoCachedRef.current.missing + 5) {
+            hasAutoCachedRef.current = { missing, isTriggered: false };
+        }
+
+        // Tự động trigger nếu chưa chạy và đang thiếu
+        if (missing > 0 && pregenStatus === 'idle' && !hasAutoCachedRef.current.isTriggered) {
+            hasAutoCachedRef.current = { missing, isTriggered: true };
+            console.log(`Auto cache trigger: Missing ${missing} clips. Current status: ${pregenStatus}`);
+            
+            const startCache = async () => {
+                try {
+                    const res = await fetch(`${AI_SERVICE_URL}/api/videos/pregen/start/`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ clip_duration: 12.0 }) 
+                    });
+                    if (res.ok) {
+                        toast.success(`⚡ Tự động cache ${missing} video mới...`);
+                        setPregenStatus('running');
+                        startPregenPolling();
+                    }
+                } catch (e) { 
+                    console.error('Không thể auto cache', e); 
+                }
+            };
+            
+            // Đợi 1s rồi mới trigger để tránh spam
+            setTimeout(startCache, 1000);
+        }
+    }, [cacheStats, pregenStatus, isIndexing]);
+
     // Show reminder to enable A4 when content type is A4
     useEffect(() => {
         if (contentType === 'A4' && !useA4Formula) {
@@ -1044,32 +1090,18 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         </div>
                     )}
 
-                    {/* Nút Cache ngay - hiển thị khi có index nhưng pregen chưa chạy */}
-                    {!needsIndexing && pregenStatus === 'idle' && cacheStats && cacheStats.indexed_videos > 0 && (
+                    {/* Tiến trình Auto-Cache */}
+                    {!needsIndexing && pregenStatus === 'idle' && cacheStats && cacheStats.indexed_videos > 0 && cacheStats.cached_clips < cacheStats.indexed_videos && (
                         <div className="p-3.5 bg-blue-500/8 border border-blue-500/20 rounded-xl flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-400 text-xs font-semibold mb-0.5">💾 Cache chưa chạy</p>
-                                <p className="text-gray-500 text-[10px]">
-                                    {cacheStats.cached_clips < cacheStats.indexed_videos
-                                        ? `${cacheStats.indexed_videos - cacheStats.cached_clips} videos chưa được cache`
-                                        : 'Có thể cache lại để đảm bảo preview hoạt động'}
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                                <div>
+                                    <p className="text-blue-400 text-xs font-semibold mb-0.5">Đang kích hoạt Auto-Cache...</p>
+                                    <p className="text-gray-500 text-[10px]">
+                                        Hệ thống phát hiện {cacheStats.indexed_videos - cacheStats.cached_clips} video mới và đang tự động xử lý.
+                                    </p>
+                                </div>
                             </div>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const res = await fetch(`${AI_SERVICE_URL}/api/videos/pregen/start/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clip_duration: 12.0 }) });
-                                        if (res.ok) {
-                                            toast.success('⚡ Bắt đầu cache background!');
-                                            setPregenStatus('running');
-                                            startPregenPolling();
-                                        }
-                                    } catch (e) { toast.error('Không thể bắt đầu cache!'); }
-                                }}
-                                className="px-4 py-2 bg-blue-500/15 hover:bg-blue-500/25 rounded-lg text-blue-400 text-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5">
-                                <Zap className="w-3.5 h-3.5" />
-                                Cache ngay
-                            </button>
                         </div>
                     )}
 
