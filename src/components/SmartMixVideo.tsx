@@ -957,29 +957,55 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             )}
 
                             {/* Pregen (background caching) progress bar */}
-                            {(pregenStatus === 'running' || pregenStatus === 'completed') && (
-                                <div className={`rounded-xl p-4 border ${pregenStatus === 'completed'
-                                    ? 'bg-green-500/8 border-green-500/25'
-                                    : 'bg-blue-500/8 border-blue-500/20'}`}>
+                            {(pregenStatus === 'running' || pregenStatus === 'completed' || pregenStatus === 'error' || (pregenStatus as string) === 'partial') && (
+                                <div className={`rounded-xl p-4 border ${
+                                    pregenStatus === 'completed'
+                                        ? 'bg-green-500/8 border-green-500/25'
+                                        : (pregenStatus as string) === 'partial'
+                                        ? 'bg-amber-500/8 border-amber-500/25'
+                                        : pregenStatus === 'error'
+                                        ? 'bg-red-500/8 border-red-500/25'
+                                        : 'bg-blue-500/8 border-blue-500/20'}` }>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             {pregenStatus === 'running'
                                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
-                                                : <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                                                : pregenStatus === 'completed'
+                                                ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                                                : (pregenStatus as string) === 'partial'
+                                                ? <span className="text-amber-400 text-xs">⚠️</span>
+                                                : <span className="text-red-400 text-xs">❌</span>
                                             }
-                                            <span className={`text-xs font-semibold ${pregenStatus === 'completed' ? 'text-green-400' : 'text-blue-400'}`}>
-                                                {pregenStatus === 'completed' ? '✅ Cache hoàn tất — Preview đã mở khoá!' : '⚡ Đang cache videos...'}
+                                            <span className={`text-xs font-semibold ${
+                                                pregenStatus === 'completed' ? 'text-green-400'
+                                                : (pregenStatus as string) === 'partial' ? 'text-amber-400'
+                                                : pregenStatus === 'error' ? 'text-red-400'
+                                                : 'text-blue-400'}`}>
+                                                {pregenStatus === 'completed'
+                                                    ? '✅ Cache hoàn tất — Preview đã mở khoá!'
+                                                    : (pregenStatus as string) === 'partial'
+                                                    ? `⚠️ Cache chưa đủ — ${(cacheStats?.indexed_videos ?? 0) - (cacheStats?.cached_clips ?? 0)} video không cache được`
+                                                    : pregenStatus === 'error'
+                                                    ? '❌ Cache bị lỗi'
+                                                    : '⚡ Đang cache videos...'}
                                             </span>
                                         </div>
-                                        <span className={`text-xs font-bold ${pregenStatus === 'completed' ? 'text-green-400' : 'text-blue-400'}`}>
+                                        <span className={`text-xs font-bold ${
+                                            pregenStatus === 'completed' ? 'text-green-400'
+                                            : (pregenStatus as string) === 'partial' ? 'text-amber-400'
+                                            : pregenStatus === 'error' ? 'text-red-400'
+                                            : 'text-blue-400'}`}>
                                             {pregenDone}/{pregenTotal} ({pregenProgress}%)
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                                         <div
-                                            className={`h-full rounded-full transition-all duration-500 ${pregenStatus === 'completed'
-                                                ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                                                : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
+                                            className={`h-full rounded-full transition-all duration-500 ${
+                                                pregenStatus === 'completed'
+                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+                                                    : (pregenStatus as string) === 'partial'
+                                                    ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                                                    : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
                                             style={{ width: `${pregenProgress}%` }}
                                         />
                                     </div>
