@@ -18,11 +18,11 @@ const FOLDER_TYPES = [
 ];
 
 const DEFAULT_PATHS: { [key: string]: string } = {
-    'Sản phẩm': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
-    'HuyK': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Source HUYK\\Source chế tác sản phẩm',
-    'Chế tác': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Chế tác sản phẩm',
-    'Sản phẩm HT': '\\\\VCB_MEDIA\\MEDIA VCB folder\\Generate Video\\Video Sản Phẩm',
-    'Outtrol': '\\\\VCB_MEDIA\\MEDIA VCB folder\\SOURCE HUYK\\OUTRO HUYK',
+    'Sản phẩm': '/volume1/MEDIA VCB folder/Generate Video/Video Sản Phẩm',
+    'HuyK': '/volume1/MEDIA VCB folder/Generate Video/Source HUYK/Source chế tác sản phẩm',
+    'Chế tác': '/volume1/MEDIA VCB folder/Generate Video/Chế tác sản phẩm',
+    'Sản phẩm HT': '/volume1/MEDIA VCB folder/Generate Video/Video Sản Phẩm',
+    'Outtrol': '/volume1/MEDIA VCB folder/SOURCE HUYK/OUTRO HUYK',
 };
 
 
@@ -60,6 +60,8 @@ interface SmartMixProps {
 
 export default function SmartMixVideo({ generatedScript, contentType, productId, productSku, productCategory }: SmartMixProps) {
     const [audioFile, setAudioFile] = useState<File | null>(null);
+    const [bgMusicFile, setBgMusicFile] = useState<File | null>(null);
+    const [bgMusicVolume, setBgMusicVolume] = useState(10); // 10% volume
     const [numOutputs, setNumOutputs] = useState(5);
     const [useGpu, setUseGpu] = useState<'auto' | 'true' | 'false'>('auto');
     const [useA4Formula, setUseA4Formula] = useState(false);
@@ -81,6 +83,10 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
     const [loadingStats, setLoadingStats] = useState(false);
+    const [isAutoReindexing, setIsAutoReindexing] = useState(false);
+    const [autoReindexMsg, setAutoReindexMsg] = useState('');
+    const hasAutoReindexedRef = useRef(false);
+    const autoReindexPollRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fallback: Get product category from localStorage if not provided via props
     const [actualProductCategory, setActualProductCategory] = useState<string | undefined>(productCategory);
@@ -124,6 +130,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
 
     const audioInputRef = useRef<HTMLInputElement>(null);
+    const hasAutoIndexedRef = useRef(false);
 
     // Load cache stats and voices on mount
     useEffect(() => {
@@ -133,8 +140,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     // AUTO-SCAN IF EMPTY INDEX
     useEffect(() => {
-        if (cacheStats && cacheStats.indexed_videos === 0 && !isIndexing) {
-            console.log('Index trống! Tự động chạy Auto-Scan Default Folders...');
+        if (cacheStats && cacheStats.indexed_videos === 0 && !isIndexing && !hasAutoIndexedRef.current) {
+            hasAutoIndexedRef.current = true;
+            console.log('Index trống! Tự động chạy Auto-Scan Default Folders (1 lần)...');
             const folders: { [key: string]: string } = {};
 
             // Chỉ index HuyK (chung). Sản phẩm/Sản phẩm HT/Chế tác → index theo SKU qua index-manufacturing-folder
@@ -185,6 +193,100 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             runAutoIndex();
         }
     }, [cacheStats]);
+
+    // AUTO RE-INDEX khi có folder slot bị 0
+    useEffect(() => {
+        if (!cacheStats || isAutoReindexing || hasAutoReindexedRef.current) return;
+        if (!productSku && !actualProductCategory) return;
+
+        const byFolder = cacheStats.by_folder || {};
+        const zeroSlots = Object.entries(byFolder)
+            .filter(([, count]) => (count as number) === 0)
+            .map(([name]) => name);
+
+        if (zeroSlots.length === 0) return;
+
+        // Có slot bị 0 → trigger re-index
+        hasAutoReindexedRef.current = true;
+        console.log('⚠️ Phát hiện slot bị 0:', zeroSlots, '→ Tự động re-index...');
+
+        const runReindex = async () => {
+            setIsAutoReindexing(true);
+            setAutoReindexMsg(`⏳ Đang re-index ${zeroSlots.join(', ')}...`);
+
+            try {
+                // Trigger index lại manufacturing folder cho SKU hiện tại
+                if (productSku) {
+                    await fetch(`${AI_SERVICE_URL}/api/videos/index-manufacturing-folder/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            category: actualProductCategory || '',
+                            sku: productSku,
+                            force: true
+                        })
+                    });
+                }
+
+                // Trigger index Outro nếu bị 0
+                if (zeroSlots.includes('Outtrol') || zeroSlots.includes('Outro')) {
+                    await fetch(`${AI_SERVICE_URL}/api/videos/index-outro/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // Trigger index HuyK nếu bị 0
+                if (zeroSlots.includes('HuyK')) {
+                    const folders: { [k: string]: string } = {};
+                    if (DEFAULT_PATHS['HuyK']) folders['HuyK'] = DEFAULT_PATHS['HuyK'];
+                    await fetch(`${AI_SERVICE_URL}/api/videos/index-folders/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folders, videos_per_folder: 50 })
+                    });
+                }
+
+                // Poll cache stats mỗi 3s cho đến khi slot không còn 0
+                let attempts = 0;
+                const poll = () => {
+                    attempts++;
+                    setAutoReindexMsg(`⏳ Đang index... (${attempts * 3}s)`);
+                    loadCacheStats();
+                    if (attempts < 10) {
+                        autoReindexPollRef.current = setTimeout(poll, 3000);
+                    } else {
+                        setIsAutoReindexing(false);
+                        setAutoReindexMsg('');
+                    }
+                };
+                autoReindexPollRef.current = setTimeout(poll, 3000);
+
+            } catch (e) {
+                console.error('Auto re-index failed:', e);
+                setIsAutoReindexing(false);
+                setAutoReindexMsg('');
+            }
+        };
+
+        runReindex();
+
+        return () => {
+            if (autoReindexPollRef.current) clearTimeout(autoReindexPollRef.current);
+        };
+    }, [cacheStats?.by_folder]);
+
+    // Dừng polling khi tất cả slot đã có video
+    useEffect(() => {
+        if (!isAutoReindexing || !cacheStats?.by_folder) return;
+        const stillZero = Object.values(cacheStats.by_folder).some(c => (c as number) === 0);
+        if (!stillZero) {
+            if (autoReindexPollRef.current) clearTimeout(autoReindexPollRef.current);
+            setIsAutoReindexing(false);
+            setAutoReindexMsg('');
+            toast.success('✅ Tất cả slot đã có video!', { duration: 3000 });
+        }
+    }, [cacheStats?.by_folder, isAutoReindexing]);
 
     // Show reminder to enable A4 when content type is A4
     useEffect(() => {
@@ -461,8 +563,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     };
 
     const handleMix = async () => {
-        if (!audioFile) {
-            toast.error('❌ Vui lòng upload file nhạc');
+        // Cần có voice audio (generated hoặc upload)
+        if (!generatedAudioUrl && !audioFile) {
+            toast.error('❌ Vui lòng generate audio giọng đọc trước!');
             return;
         }
 
@@ -480,7 +583,18 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
         try {
             const formData = new FormData();
-            formData.append('audio', audioFile);
+            // Ưu tiên dùng audio_path (tránh upload lại)
+            if (generatedAudioUrl) {
+                // generatedAudioUrl là URL như /media/tts_cache/xxx.mp3
+                formData.append('audio_path', generatedAudioUrl);
+            } else if (audioFile) {
+                formData.append('audio', audioFile);
+            }
+            // Nhạc nền optional (volume thấp)
+            if (bgMusicFile) {
+                formData.append('background_music', bgMusicFile);
+                formData.append('bg_music_volume', (bgMusicVolume / 100).toString());
+            }
             formData.append('num_outputs', numOutputs.toString());
             formData.append('width', '540');
             formData.append('height', '960');
@@ -507,7 +621,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             console.log('🎯 Smart Mix Config:', {
                 num_outputs: numOutputs,
                 use_a4_formula: useA4Formula,
-                audio: audioFile.name,
+                audio: generatedAudioUrl || audioFile?.name || 'none',
+                bg_music: bgMusicFile?.name || 'none',
+                bg_volume: bgMusicVolume + '%',
                 product_category: actualProductCategory,
                 product_id: productId,
                 product_sku: productSku
@@ -594,691 +710,507 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const isReady = cacheStats && cacheStats.indexed_videos > 0;
     const needsIndexing = !cacheStats || cacheStats.indexed_videos === 0;
 
+    if (!cacheStats && loadingStats) {
+        return (
+            <div className="bg-[#141414] rounded-2xl border border-gray-800 p-12 flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+                <p className="text-gray-400 font-medium">Đang tải thông tin index...</p>
+                <p className="text-xs text-gray-600">Đang đồng bộ với AI Service</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* Indexing Status Overlay */}
             {isIndexing && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-sm">
-                    <Loader2 className="w-16 h-16 text-green-500 animate-spin mb-4" />
-                    <h3 className="text-2xl font-bold text-white mb-2">Đang thiết lập hệ thống...</h3>
-                    <p className="text-gray-300 text-lg mb-4">{indexingProgress}</p>
-                    <div className="w-full max-w-md bg-gray-700 h-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 animate-pulse w-full"></div>
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-sm">
+                    <div className="bg-[#141414] border border-green-500/30 rounded-3xl p-10 max-w-md w-full text-center shadow-2xl shadow-green-900/30">
+                        <div className="relative w-20 h-20 mx-auto mb-6">
+                            <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
+                            <div className="relative w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
+                            </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Đang thiết lập hệ thống...</h3>
+                        <p className="text-green-400 text-sm">{indexingProgress}</p>
+                        <div className="mt-6 w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full animate-pulse w-full" />
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Header with Performance Badge */}
-            <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 p-6 rounded-2xl border border-green-500/20">
-                <div className="flex items-start gap-4">
-                    <div className="p-3 bg-green-500/20 rounded-xl">
-                        <Zap className="w-6 h-6 text-green-400" />
+            {/* ──── HEADER ──── */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#0d1f17] to-[#0a1a2e] rounded-2xl border border-green-500/20 p-6">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full -translate-y-32 translate-x-32 pointer-events-none" />
+                <div className="relative flex items-center gap-4">
+                    <div className="p-3 bg-green-500/15 rounded-xl border border-green-500/20">
+                        <Zap className="w-7 h-7 text-green-400" />
                     </div>
                     <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <h2 className="text-2xl font-bold text-white">⚡ Smart Mix Video</h2>
-                            <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/30">
-                                20-30x FASTER
-                            </span>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h2 className="text-xl font-bold text-white">Smart Mix Video</h2>
+                            <span className="px-2.5 py-0.5 bg-green-500/15 text-green-400 text-xs font-bold rounded-full border border-green-500/25 tracking-wider">20-30× FASTER</span>
                         </div>
-                        <p className="text-gray-400">
-                            Mix trong <strong className="text-green-400">5-13 giây</strong> (thay vì 2-3 phút) với pre-processing + lazy loading + GPU acceleration
-                        </p>
+                        <p className="text-gray-400 text-sm">Mix trong <strong className="text-green-400">5–13 giây</strong> với pre-processing + lazy loading + GPU acceleration</p>
                     </div>
                 </div>
             </div>
 
-            {/* Forced Product Video Banner */}
+            {/* Product Banner */}
             {forcedProductVideoId && (
-                <div className="bg-purple-900/20 p-4 rounded-xl border border-purple-500/30 mb-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/20 rounded-lg">
-                            <Package className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-bold text-white flex items-center gap-2">
-                                Đã chọn sản phẩm theo SKU
-                                <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">{productSku}</span>
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                                Video từ sản phẩm này sẽ được ưu tiên sử dụng trong slot "Sản phẩm".
-                            </p>
-                            {forcedProductVideoPath && (
-                                <p className="text-[10px] text-gray-500 mt-1 truncate font-mono opacity-50">
-                                    {forcedProductVideoPath}
-                                </p>
-                            )}
-                        </div>
-                        <CheckCircle className="w-5 h-5 text-purple-400" />
+                <div className="bg-purple-900/20 px-5 py-4 rounded-xl border border-purple-500/25 flex items-center gap-4">
+                    <div className="p-2 bg-purple-500/15 rounded-lg border border-purple-500/20">
+                        <Package className="w-5 h-5 text-purple-400" />
                     </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-white flex items-center gap-2">
+                            Video sản phẩm đã khớp
+                            <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full font-mono">{productSku}</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">Slot "Sản phẩm" sẽ ưu tiên dùng video này.</p>
+                        {forcedProductVideoPath && (
+                            <p className="text-[10px] text-gray-600 mt-1 font-mono truncate">{forcedProductVideoPath}</p>
+                        )}
+                    </div>
+                    <CheckCircle className="w-5 h-5 text-purple-400 flex-shrink-0" />
                 </div>
             )}
 
-            {/* Cache Stats */}
-            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Database className="w-5 h-5 text-blue-400" />
-                        Cache Status
-                    </h3>
-                    <button
-                        onClick={loadCacheStats}
-                        disabled={loadingStats}
-                        className="p-2 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-4 h-4 text-gray-400 ${loadingStats ? 'animate-spin' : ''}`} />
+            {/* ──── STEP 1: Cache Status ──── */}
+            <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-bold">1</div>
+                        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                            <Database className="w-4 h-4 text-blue-400" />
+                            Video Index & Cache
+                        </h3>
+                        {isReady && !isAutoReindexing && (
+                            <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full border border-green-500/20 uppercase tracking-wider">Ready</span>
+                        )}
+                        {isReady && isAutoReindexing && (
+                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20 flex items-center gap-1">
+                                <Loader2 className="w-2.5 h-2.5 animate-spin" />Đang sync
+                            </span>
+                        )}
+                        {needsIndexing && (
+                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20 uppercase tracking-wider">Cần setup</span>
+                        )}
+                    </div>
+                    <button onClick={loadCacheStats} disabled={loadingStats}
+                        className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-40">
+                        <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingStats ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
 
-                {loadingStats && (
-                    <div className="flex items-center gap-2 text-gray-400">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Loading stats...
-                    </div>
-                )}
-
-                {!loadingStats && cacheStats && (
-                    <>
-                        <div className="flex items-start gap-4">
-                            <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                    <p className="text-xs text-gray-500 mb-1">Indexed Videos</p>
-                                    <p className="text-2xl font-bold text-white">{cacheStats.indexed_videos}</p>
-                                </div>
-                                <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                    <p className="text-xs text-gray-500 mb-1">Cached Clips</p>
-                                    <p className="text-2xl font-bold text-green-400">{cacheStats.cached_clips}</p>
-                                </div>
-                                <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                    <p className="text-xs text-gray-500 mb-1">Cache Size</p>
-                                    <p className="text-2xl font-bold text-purple-400">{cacheStats.cache_size_gb.toFixed(2)} GB</p>
-                                </div>
-                                <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                    <p className="text-xs text-gray-500 mb-1">GPU</p>
-                                    <p className="text-2xl font-bold">{cacheStats.gpu_available ? '✅' : '⚠️'}</p>
-                                </div>
-                            </div>
-
-                            {/* Buttons: Manage + Clear */}
-                            <div className="flex-shrink-0 flex flex-col gap-2 h-full">
-                                <button
-                                    onClick={() => setShowIndexPanel(!showIndexPanel)}
-                                    className="px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg text-white font-semibold transition-all flex items-center gap-2 shadow-lg"
-                                >
-                                    <Database className="w-5 h-5" />
-                                    <div className="text-left">
-                                        <p className="text-xs opacity-80">Quản lý</p>
-                                        <p className="text-sm">Folders</p>
-                                    </div>
-                                </button>
-                                <button
-                                    onClick={handleClearIndex}
-                                    disabled={isClearingIndex}
-                                    className="px-4 py-3 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 rounded-lg text-red-400 font-semibold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Xoá toàn bộ index để re-index lại từ đầu"
-                                >
-                                    {isClearingIndex
-                                        ? <Loader2 className="w-5 h-5 animate-spin" />
-                                        : <Trash2 className="w-5 h-5" />
-                                    }
-                                    <div className="text-left">
-                                        <p className="text-xs opacity-80">Xoá & Reset</p>
-                                        <p className="text-sm">Clear Index</p>
-                                    </div>
-                                </button>
-                            </div>
+                <div className="p-5">
+                    {loadingStats && (
+                        <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />Đang tải...
                         </div>
+                    )}
 
-                        {/* Breakdown by folder */}
-                        {cacheStats.by_folder && Object.keys(cacheStats.by_folder).length > 0 && (
-                            <div className="mt-4 bg-[#0a0a0a] p-4 rounded-lg">
-                                <p className="text-xs text-gray-500 mb-3 font-semibold">📂 Videos theo loại folder:</p>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                    {Object.entries(cacheStats.by_folder).map(([type, count]) => (
-                                        <div key={type} className="bg-[#141414] px-3 py-2 rounded border border-gray-800">
-                                            <p className="text-xs text-gray-500 truncate">{type}</p>
-                                            <p className="text-lg font-bold text-white">{count}</p>
+                    {!loadingStats && cacheStats && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {[
+                                    { label: 'Indexed Videos', value: cacheStats.indexed_videos, color: 'text-white' },
+                                    { label: 'Cached Clips', value: cacheStats.cached_clips, color: 'text-green-400' },
+                                    { label: 'Cache Size', value: `${cacheStats.cache_size_gb.toFixed(2)} GB`, color: 'text-purple-400' },
+                                    { label: 'GPU', value: cacheStats.gpu_available ? 'Available' : 'No GPU', color: cacheStats.gpu_available ? 'text-green-400' : 'text-amber-400' },
+                                ].map((stat) => (
+                                    <div key={stat.label} className="bg-[#0a0a0a] rounded-xl p-3.5 border border-gray-800/50">
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{stat.label}</p>
+                                        <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {cacheStats.by_folder && Object.keys(cacheStats.by_folder).length > 0 && (
+                                <div className="bg-[#0a0a0a] rounded-xl p-4 border border-gray-800/50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Phân bổ theo folder</p>
+                                        {isAutoReindexing && (
+                                            <span className="text-[10px] text-amber-400 flex items-center gap-1">
+                                                <Loader2 className="w-2.5 h-2.5 animate-spin" />{autoReindexMsg}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(cacheStats.by_folder).map(([type, count]) => {
+                                            const isZero = (count as number) === 0;
+                                            return (
+                                                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isZero
+                                                    ? 'bg-amber-500/8 border-amber-500/25'
+                                                    : 'bg-[#141414] border-gray-800'
+                                                    }`}>
+                                                    <span className={`text-xs ${isZero ? 'text-amber-400' : 'text-gray-400'}`}>{type}</span>
+                                                    {isZero && isAutoReindexing ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                                                    ) : (
+                                                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${isZero
+                                                            ? 'text-amber-400 bg-amber-500/15'
+                                                            : 'text-white bg-gray-700'
+                                                            }`}>{count as number}</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {isAutoReindexing && (
+                                        <div className="mt-3 h-0.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse w-full" />
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
-                            </div>
-                        )}
-                    </>
-                )}
+                            )}
 
-                {needsIndexing && (
-                    <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between">
-                        <div>
-                            <p className="text-yellow-400 text-sm font-semibold mb-1">⚠️ Chưa có videos được index!</p>
-                            <p className="text-yellow-300/70 text-xs">Cần index videos trước khi có thể mix.</p>
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowIndexPanel(!showIndexPanel)}
+                                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-600 hover:to-purple-600 rounded-xl text-white text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                                    <Database className="w-4 h-4" />
+                                    {showIndexPanel ? 'Đóng' : 'Quản lý Folders'}
+                                </button>
+                                <button onClick={handleClearIndex} disabled={isClearingIndex}
+                                    className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 rounded-xl text-red-400 text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50">
+                                    {isClearingIndex ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Clear
+                                </button>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setShowIndexPanel(!showIndexPanel)}
-                            className="px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-lg text-yellow-400 text-sm font-semibold transition-colors whitespace-nowrap"
-                        >
-                            {showIndexPanel ? '✕ Đóng' : '▶ Bắt đầu Index'}
-                        </button>
-                    </div>
-                )}
+                    )}
 
-                {showIndexPanel && (
-                    <div className="mt-4 p-6 bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-xl space-y-4">
-                        <div className="flex items-center justify-between">
+                    {needsIndexing && !loadingStats && (
+                        <div className="p-4 bg-amber-500/8 border border-amber-500/20 rounded-xl flex items-center justify-between mt-2">
                             <div>
-                                <h4 className="text-lg font-bold text-blue-400 flex items-center gap-2">
-                                    <Database className="w-5 h-5" />
-                                    {needsIndexing ? 'Index Videos (Setup lần đầu)' : 'Quản lý & Re-index Folders'}
-                                </h4>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    {needsIndexing
-                                        ? 'Thiết lập folders và index videos. Chỉ cần làm 1 lần!'
-                                        : 'Thêm/sửa folders và re-index để cập nhật videos mới'}
-                                </p>
+                                <p className="text-amber-400 text-sm font-semibold mb-0.5">⚠️ Chưa có videos index!</p>
+                                <p className="text-amber-300/60 text-xs">Cần index videos trước khi mix.</p>
                             </div>
-                            <button
-                                onClick={() => setShowIndexPanel(false)}
-                                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5 text-gray-400" />
+                            <button onClick={() => setShowIndexPanel(!showIndexPanel)}
+                                className="px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 rounded-lg text-amber-400 text-sm font-semibold transition-colors whitespace-nowrap">
+                                {showIndexPanel ? 'Đóng' : 'Bắt đầu Index'}
                             </button>
                         </div>
+                    )}
 
-                        {!needsIndexing && (
-                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                                <p className="text-sm text-green-400">
-                                    ✅ <strong>Đã có {cacheStats?.indexed_videos || 0} videos indexed!</strong> Chỉ cần re-index nếu bạn thêm videos mới hoặc thay đổi folders.
-                                </p>
+                    {/* Index Panel */}
+                    {showIndexPanel && (
+                        <div className="mt-4 space-y-4 bg-gradient-to-br from-blue-900/10 to-purple-900/10 border border-blue-500/15 rounded-xl p-5">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-blue-400 flex items-center gap-2">
+                                    <Database className="w-4 h-4" />
+                                    {needsIndexing ? 'Thiết lập Index (lần đầu)' : 'Quản lý & Re-index'}
+                                </h4>
+                                <button onClick={() => setShowIndexPanel(false)} className="p-1.5 hover:bg-gray-800 rounded-lg">
+                                    <X className="w-4 h-4 text-gray-500" />
+                                </button>
                             </div>
-                        )}
 
-                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <p className="text-sm text-blue-400">
-                                📋 <strong>5 loại folder mặc định</strong> + Thêm folders tùy chỉnh. Tối thiểu <strong>5 folders</strong> để mix.
-                            </p>
-                        </div>
+                            {!needsIndexing && (
+                                <div className="p-3 bg-green-500/8 border border-green-500/15 rounded-lg text-xs text-green-400">
+                                    ✅ Đã có <strong>{cacheStats?.indexed_videos}</strong> videos. Re-index khi có videos mới.
+                                </div>
+                            )}
 
-                        {/* Default Folder Inputs */}
-                        <div>
-                            <h5 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
-                                <FolderOpen className="w-4 h-4" />
-                                Folders mặc định (5)
-                            </h5>
-                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                {folderInputs.map((folder, idx) => (
-                                    <div key={folder.id} className="bg-[#0a0a0a] p-3 rounded-lg border border-gray-800 flex items-center gap-3">
-                                        {/* Folder Number */}
-                                        <div className="flex-shrink-0 w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-                                            <span className="text-xs font-bold text-purple-400">{idx + 1}</span>
-                                        </div>
-
-                                        {/* Folder Type (readonly) */}
-                                        <div className="flex-shrink-0 w-40">
-                                            <div className="px-3 py-2 bg-[#141414] border border-gray-800 rounded-lg">
-                                                <p className="text-sm text-white font-medium truncate">{folder.folder_type}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Path Input */}
-                                        <div className="flex-1">
-                                            <input
-                                                type="text"
-                                                placeholder={`Đường dẫn cho "${folder.folder_type}" (bỏ trống nếu không có)`}
+                            {/* Default Folders */}
+                            <div>
+                                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <FolderOpen className="w-3.5 h-3.5" />Folders mặc định
+                                </p>
+                                <div className="space-y-2">
+                                    {folderInputs.map((folder, idx) => (
+                                        <div key={folder.id} className="flex items-center gap-2 bg-[#0a0a0a] rounded-lg px-3 py-2.5 border border-gray-800/60">
+                                            <span className="w-5 h-5 flex-shrink-0 text-[10px] font-bold text-purple-400 bg-purple-500/10 rounded-md flex items-center justify-center border border-purple-500/20">{idx + 1}</span>
+                                            <span className="text-xs text-gray-300 w-28 flex-shrink-0 font-medium truncate">{folder.folder_type}</span>
+                                            <input type="text"
+                                                placeholder={`Đường dẫn folder "${folder.folder_type}"`}
                                                 value={folder.path}
                                                 onChange={(e) => updateFolderPath(folder.id, e.target.value)}
                                                 disabled={isIndexing}
-                                                className="w-full px-3 py-2 bg-[#141414] border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50 font-mono"
+                                                className="flex-1 px-3 py-1.5 bg-[#141414] border border-gray-700/60 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500/60 disabled:opacity-50 font-mono"
                                             />
-                                        </div>
-
-                                        {/* Status */}
-                                        {folder.path.trim() ? (
-                                            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                        ) : (
-                                            <div className="w-5 h-5 flex-shrink-0" />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Custom Folders Section */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <h5 className="text-sm font-bold text-gray-400 flex items-center gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    Folders tùy chỉnh ({customFolders.length})
-                                </h5>
-                                <button
-                                    onClick={addCustomFolder}
-                                    disabled={isIndexing}
-                                    className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg text-purple-400 text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Thêm folder
-                                </button>
-                            </div>
-
-                            {customFolders.length === 0 ? (
-                                <div className="border-2 border-dashed border-gray-800 rounded-lg p-4 text-center">
-                                    <p className="text-sm text-gray-500">Chưa có folder tùy chỉnh. Click "Thêm folder" để thêm.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                                    {customFolders.map((folder, idx) => (
-                                        <div key={folder.id} className="bg-[#0a0a0a] p-3 rounded-lg border border-purple-500/20 flex items-center gap-3">
-                                            {/* Custom Badge */}
-                                            <div className="flex-shrink-0 w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center border border-purple-500/40">
-                                                <span className="text-xs font-bold text-purple-400">+{idx + 1}</span>
-                                            </div>
-
-                                            {/* Folder Type Input */}
-                                            <div className="flex-shrink-0 w-40">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Tên loại"
-                                                    value={folder.folder_type}
-                                                    onChange={(e) => updateCustomFolder(folder.id, 'folder_type', e.target.value)}
-                                                    disabled={isIndexing}
-                                                    className="w-full px-3 py-2 bg-[#141414] border border-purple-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50"
-                                                />
-                                            </div>
-
-                                            {/* Path Input */}
-                                            <div className="flex-1">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Đường dẫn folder"
-                                                    value={folder.path}
-                                                    onChange={(e) => updateCustomFolder(folder.id, 'path', e.target.value)}
-                                                    disabled={isIndexing}
-                                                    className="w-full px-3 py-2 bg-[#141414] border border-purple-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50 font-mono"
-                                                />
-                                            </div>
-
-                                            {/* Status & Delete */}
-                                            <div className="flex items-center gap-2">
-                                                {folder.folder_type.trim() && folder.path.trim() ? (
-                                                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                                ) : (
-                                                    <div className="w-5 h-5 flex-shrink-0" />
-                                                )}
-                                                <button
-                                                    onClick={() => removeCustomFolder(folder.id)}
-                                                    disabled={isIndexing}
-                                                    className="p-1.5 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
-                                                >
-                                                    <Trash2 className="w-4 h-4 text-red-400" />
-                                                </button>
-                                            </div>
+                                            {folder.path.trim() ? <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" /> : <div className="w-4 h-4 flex-shrink-0" />}
                                         </div>
                                     ))}
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Total Stats */}
-                        <div className="bg-[#0a0a0a] p-3 rounded-lg border border-gray-800">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-gray-400">Tổng folders đã điền:</span>
-                                <span className={`text-lg font-bold ${(folderInputs.filter(f => f.path.trim()).length + customFolders.filter(f => f.folder_type.trim() && f.path.trim()).length) >= 5
-                                    ? 'text-green-400'
-                                    : 'text-yellow-400'
-                                    }`}>
-                                    {folderInputs.filter(f => f.path.trim()).length + customFolders.filter(f => f.folder_type.trim() && f.path.trim()).length}
-                                    {(folderInputs.filter(f => f.path.trim()).length + customFolders.filter(f => f.folder_type.trim() && f.path.trim()).length) < 5 && ' (cần tối thiểu 5)'}
-                                </span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="flex items-center justify-between p-2 bg-[#141414] rounded">
-                                    <span className="text-gray-500">Mặc định:</span>
-                                    <span className="text-blue-400 font-bold">{folderInputs.filter(f => f.path.trim()).length}</span>
+
+                            {/* Custom Folders */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                                        <Plus className="w-3.5 h-3.5" />Folders tùy chỉnh ({customFolders.length})
+                                    </p>
+                                    <button onClick={addCustomFolder} disabled={isIndexing}
+                                        className="px-3 py-1 bg-purple-500/15 hover:bg-purple-500/25 rounded-lg text-purple-400 text-xs font-semibold transition-colors flex items-center gap-1">
+                                        <Plus className="w-3 h-3" />Thêm
+                                    </button>
                                 </div>
-                                <div className="flex items-center justify-between p-2 bg-[#141414] rounded">
-                                    <span className="text-gray-500">Tùy chỉnh:</span>
-                                    <span className="text-purple-400 font-bold">{customFolders.filter(f => f.folder_type.trim() && f.path.trim()).length}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Videos per folder limit */}
-                        <div className="bg-[#0a0a0a] p-4 rounded-lg border border-gray-800">
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Số videos tối đa mỗi folder
-                            </label>
-                            <input
-                                type="number"
-                                min={10}
-                                max={5000}
-                                value={videosPerFolder}
-                                onChange={(e) => setVideosPerFolder(parseInt(e.target.value) || 50)}
-                                disabled={isIndexing}
-                                className="w-full px-3 py-2 bg-[#141414] border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Khuyến nghị: 50-100 videos/folder</p>
-                        </div>
-
-                        {/* Progress */}
-                        {indexingProgress && (
-                            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
-                                {indexingProgress}
-                            </div>
-                        )}
-
-                        {/* Start Button */}
-                        <button
-                            onClick={handleStartIndexing}
-                            disabled={isIndexing}
-                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-bold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
-                        >
-                            {isIndexing ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Đang index... (30-60 phút)
-                                </>
-                            ) : (
-                                <>
-                                    <Database className="w-5 h-5" />
-                                    {needsIndexing ? 'BẮT ĐẦU INDEXING' : 'RE-INDEX FOLDERS (Cập nhật)'}
-                                </>
-                            )}
-                        </button>
-
-                        <div className={`p-3 rounded-lg border ${needsIndexing ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                            <p className={`text-xs text-center ${needsIndexing ? 'text-yellow-400' : 'text-blue-400'}`}>
-                                {needsIndexing ? (
-                                    <>💡 <strong>Lưu ý:</strong> Index 1 lần duy nhất (~30-60 phút). Sau đó mix chỉ mất 5-13 giây!</>
+                                {customFolders.length === 0 ? (
+                                    <div className="border border-dashed border-gray-800 rounded-lg py-3 text-center">
+                                        <p className="text-xs text-gray-600">Chưa có folder tùy chỉnh.</p>
+                                    </div>
                                 ) : (
-                                    <>🔄 <strong>Re-indexing:</strong> Chỉ cần chạy lại khi thêm videos mới vào folders hoặc thay đổi folder paths.</>
+                                    <div className="space-y-2">
+                                        {customFolders.map((folder, idx) => (
+                                            <div key={folder.id} className="flex items-center gap-2 bg-[#0a0a0a] rounded-lg px-3 py-2.5 border border-purple-500/15">
+                                                <span className="w-5 h-5 flex-shrink-0 text-[10px] font-bold text-purple-400 bg-purple-500/15 rounded-md flex items-center justify-center">+{idx + 1}</span>
+                                                <input type="text" placeholder="Tên loại"
+                                                    value={folder.folder_type}
+                                                    onChange={(e) => updateCustomFolder(folder.id, 'folder_type', e.target.value)}
+                                                    disabled={isIndexing}
+                                                    className="w-24 px-2.5 py-1.5 bg-[#141414] border border-purple-700/40 rounded-lg text-white text-xs focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                                                />
+                                                <input type="text" placeholder="Đường dẫn folder"
+                                                    value={folder.path}
+                                                    onChange={(e) => updateCustomFolder(folder.id, 'path', e.target.value)}
+                                                    disabled={isIndexing}
+                                                    className="flex-1 px-2.5 py-1.5 bg-[#141414] border border-purple-700/40 rounded-lg text-white text-xs focus:outline-none focus:border-purple-500 disabled:opacity-50 font-mono"
+                                                />
+                                                <button onClick={() => removeCustomFolder(folder.id)} disabled={isIndexing}
+                                                    className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50">
+                                                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </div>
+                            </div>
 
-            {/* Config */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="bg-[#1a1a1a] p-4 rounded-xl border border-gray-800">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">
-                        Số lượng video output
-                    </label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={numOutputs}
-                        onChange={(e) => setNumOutputs(parseInt(e.target.value) || 5)}
-                        className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Số video sẽ được tạo ra</p>
-                </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-[#0a0a0a] p-3 rounded-lg border border-gray-800/50">
+                                    <label className="text-xs text-gray-500 font-medium block mb-1.5">Max videos/folder</label>
+                                    <input type="number" min={10} max={5000} value={videosPerFolder}
+                                        onChange={(e) => setVideosPerFolder(parseInt(e.target.value) || 50)}
+                                        disabled={isIndexing}
+                                        className="w-full px-3 py-2 bg-[#141414] border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                                    />
+                                </div>
+                                <div className="bg-[#0a0a0a] p-3 rounded-lg border border-gray-800/50 flex items-end">
+                                    <div className="text-xs text-gray-500">
+                                        <p>Mặc định: <span className="text-blue-400 font-bold">{folderInputs.filter(f => f.path.trim()).length}</span></p>
+                                        <p>Tùy chỉnh: <span className="text-purple-400 font-bold">{customFolders.filter(f => f.folder_type.trim() && f.path.trim()).length}</span></p>
+                                    </div>
+                                </div>
+                            </div>
 
-                <div className="bg-[#1a1a1a] p-4 rounded-xl border border-gray-800">
-                    <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                        GPU Acceleration
-                        <Info className="w-4 h-4 text-blue-400" />
-                    </label>
-                    <select
-                        value={useGpu}
-                        onChange={(e) => setUseGpu(e.target.value as any)}
-                        className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-green-500"
-                    >
-                        <option value="auto">Auto (khuyến nghị)</option>
-                        <option value="true">Force GPU (nhanh nhất)</option>
-                        <option value="false">Force CPU</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                        {cacheStats?.gpu_available ? '✅ GPU available' : '⚠️ No GPU detected'}
-                    </p>
-                </div>
+                            {indexingProgress && (
+                                <div className="p-3 bg-blue-500/8 border border-blue-500/15 rounded-lg text-blue-400 text-xs">{indexingProgress}</div>
+                            )}
 
-                <div className={`p-6 rounded-xl border-2 transition-all ${useA4Formula
-                    ? 'bg-orange-500/10 border-orange-500 shadow-lg shadow-orange-900/20'
-                    : 'bg-[#1a1a1a] border-gray-700'
-                    }`}>
-                    <label className="block text-base font-bold mb-4 flex items-center gap-2">
-                        <span className={useA4Formula ? 'text-orange-400' : 'text-gray-400'}>
-                            🎯 Công thức A4 V3 (7 Slots)
-                        </span>
-                        {contentType === 'A4' && (
-                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">
-                                Được khuyên dùng cho content A4
-                            </span>
-                        )}
-                    </label>
-                    <button
-                        onClick={() => {
-                            setUseA4Formula(!useA4Formula);
-                            if (!useA4Formula) {
-                                toast.success('✅ ĐÃ BẬT CÔNG THỨC A4 V3! Video sẽ mix theo 7 slots, không có split layout', { duration: 4000 });
-                            } else {
-                                toast('○ Đã tắt A4 - sẽ dùng Random mode', { duration: 3000 });
-                            }
-                        }}
-                        className={`w-full px-6 py-4 rounded-xl font-bold transition-all text-base ${useA4Formula
-                            ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg shadow-orange-900/40 animate-pulse'
-                            : 'bg-[#0a0a0a] border-2 border-gray-700 text-gray-400 hover:border-orange-500/50 hover:text-orange-400 hover:scale-105'
-                            }`}
-                    >
-                        {useA4Formula ? '✅ A4 V3 ENABLED (7 slots, flexible duration)' : '○ CLICK ĐỂ BẬT CÔNG THỨC A4 V3'}
-                    </button>
-                    <p className="text-sm mt-3 text-center font-medium">
-                        {useA4Formula ? (
-                            <span className="text-orange-300">
-                                ✓ Mix theo 7 slots với flexible duration (không có split layout)
-                            </span>
-                        ) : (
-                            <span className="text-gray-500">
-                                Random mode: 7 slots ngẫu nhiên (không theo cấu trúc A4)
-                            </span>
-                        )}
-                    </p>
-                </div>
-            </div>
-
-            {/* Voice Selection & Audio Generation */}
-            {generatedScript && (
-                <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Music className="w-5 h-5 text-purple-400" />
-                        Generate Audio từ Script
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Chọn giọng đọc
-                            </label>
-                            <select
-                                value={selectedVoiceId}
-                                onChange={(e) => setSelectedVoiceId(e.target.value)}
-                                disabled={loadingVoices || generatingAudio}
-                                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-purple-500 disabled:opacity-50"
-                            >
-                                {voices.map(voice => (
-                                    <option key={voice.voice_id} value={voice.voice_id}>
-                                        {voice.name}
-                                        {(voice.gender || voice.language) && ` (${voice.gender || '?'}, ${voice.language || '?'})`}
-                                        {voice.is_cloned && ' • Clone'}
-                                        {voice.provider === 'minimax' && ' • Minimax'}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {loadingVoices ? 'Loading voices...' : `${voices.length} voices available`}
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <button
-                                onClick={handleGenerateAudio}
-                                disabled={!generatedScript || !selectedVoiceId || generatingAudio}
-                                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {generatingAudio ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        <span>Đang tạo audio... {audioElapsed}s</span>
-                                    </>
+                            <button onClick={handleStartIndexing} disabled={isIndexing}
+                                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl text-white text-sm font-bold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">
+                                {isIndexing ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" />Đang index...</>
                                 ) : (
-                                    <>
-                                        <Zap className="w-5 h-5" />
-                                        Generate Audio
-                                    </>
+                                    <><Database className="w-4 h-4" />{needsIndexing ? 'BẮT ĐẦU INDEXING' : 'RE-INDEX (Cập nhật)'}</>
                                 )}
                             </button>
-                            {generatingAudio && (
-                                <div className="space-y-1">
-                                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000"
-                                            style={{
-                                                width: `${Math.min(
-                                                    (audioElapsed / (generatedScript && generatedScript.length > 1000 ? 15 : generatedScript && generatedScript.length > 500 ? 10 : 6)) * 100,
-                                                    95
-                                                )}%`
-                                            }}
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 text-center">
-                                        {generatedScript && generatedScript.length > 500
-                                            ? `⚡ Script dài → chia ${Math.ceil(generatedScript.length / 500)} chunks song song`
-                                            : '📡 Đang gọi HeyGen API...'
-                                        }
-                                        {' • '}
-                                        Ước tính ~{generatedScript && generatedScript.length > 1000 ? '10-15' : generatedScript && generatedScript.length > 500 ? '6-10' : '4-6'}s
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {generatedAudioUrl && (
-                        <div className="bg-green-500/10 p-3 rounded-lg border border-green-500/20">
-                            <p className="text-green-400 text-sm flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                Audio đã được tạo thành công! Sử dụng audio này cho mix.
-                            </p>
                         </div>
                     )}
                 </div>
-            )}
+            </div>
 
-            {/* Audio Upload */}
-            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Music className="w-5 h-5 text-pink-400" />
-                    Upload File Nhạc
-                </h3>
+            {/* ──── STEP 2: Config ──── */}
+            <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 text-xs font-bold">2</div>
+                    <h3 className="text-sm font-semibold text-white">Cấu hình Mix</h3>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-[#0a0a0a] rounded-xl p-4 border border-gray-800/50">
+                        <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-2">Số video output</label>
+                        <input type="number" min={1} max={20} value={numOutputs}
+                            onChange={(e) => setNumOutputs(parseInt(e.target.value) || 5)}
+                            className="w-full px-3 py-2.5 bg-[#141414] border border-gray-700/60 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                        />
+                        <p className="text-[10px] text-gray-600 mt-1.5">Số video sẽ tạo ra</p>
+                    </div>
 
-                <input
-                    ref={audioInputRef}
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                            setAudioFile(file);
-                            toast.success(`✅ Đã chọn: ${file.name}`);
-                        }
-                    }}
-                    className="hidden"
-                />
+                    <div className="bg-[#0a0a0a] rounded-xl p-4 border border-gray-800/50">
+                        <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                            GPU Acceleration <Info className="w-3.5 h-3.5 text-blue-400" />
+                        </label>
+                        <select value={useGpu} onChange={(e) => setUseGpu(e.target.value as any)}
+                            className="w-full px-3 py-2.5 bg-[#141414] border border-gray-700/60 rounded-lg text-white text-sm focus:outline-none focus:border-green-500">
+                            <option value="auto">Auto (khuyến nghị)</option>
+                            <option value="true">Force GPU</option>
+                            <option value="false">Force CPU</option>
+                        </select>
+                        <p className={`text-[10px] mt-1.5 ${cacheStats?.gpu_available ? 'text-green-500' : 'text-amber-500'}`}>
+                            {cacheStats?.gpu_available ? '✓ GPU khả dụng' : '⚠ Không có GPU'}
+                        </p>
+                    </div>
 
-                {!audioFile ? (
-                    <button
-                        onClick={() => audioInputRef.current?.click()}
-                        className="w-full py-4 border-2 border-dashed border-gray-700 rounded-xl hover:border-pink-500 hover:bg-pink-500/5 transition-all flex items-center justify-center gap-2 text-gray-400 hover:text-pink-400"
-                    >
-                        <Upload className="w-5 h-5" />
-                        <span>Click để upload nhạc</span>
-                    </button>
-                ) : (
-                    <div className="bg-pink-500/10 p-4 rounded-xl flex items-center justify-between border border-pink-500/20">
-                        <div className="flex items-center gap-3">
-                            <Music className="w-5 h-5 text-pink-400" />
-                            <div>
-                                <p className="text-white font-medium">{audioFile.name}</p>
-                                <p className="text-xs text-gray-400">{(audioFile.size / 1024).toFixed(2)} KB</p>
+                    {/* A4 Formula Toggle */}
+                    <div className={`rounded-xl p-4 border-2 transition-all cursor-pointer ${useA4Formula ? 'bg-orange-500/8 border-orange-500/50 shadow-lg shadow-orange-900/10' : 'bg-[#0a0a0a] border-gray-800/50 hover:border-orange-500/30'}`}
+                        onClick={() => {
+                            setUseA4Formula(!useA4Formula);
+                            if (!useA4Formula) {
+                                toast.success('✅ BẬT công thức A4 V3 - 7 slots, flexible duration', { duration: 3000 });
+                            } else {
+                                toast('○ Tắt A4 - dùng Random mode', { duration: 2000 });
+                            }
+                        }}>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className={`text-xs font-semibold uppercase tracking-wider ${useA4Formula ? 'text-orange-400' : 'text-gray-500'}`}>
+                                Công thức A4 V3
+                            </label>
+                            {contentType === 'A4' && (
+                                <span className="text-[9px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/25">Khuyên dùng</span>
+                            )}
+                        </div>
+                        <div className={`w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${useA4Formula ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white' : 'bg-[#141414] text-gray-500 border border-gray-700'}`}>
+                            {useA4Formula ? '✅ A4 ACTIVE (7 slots)' : '○ Bật A4 Formula'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* A4 Slots Info */}
+                {useA4Formula && (
+                    <div className="px-5 pb-5">
+                        <div className="bg-[#0a0a0a] rounded-xl p-4 border border-orange-500/15">
+                            <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider mb-3">Timeline A4 V3 (7 slots)</p>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { slot: 1, name: 'Sản phẩm', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' },
+                                    { slot: 2, name: 'HuyK', color: 'bg-green-500/20 border-green-500/30 text-green-300' },
+                                    { slot: 3, name: 'Chế tác', color: 'bg-orange-500/20 border-orange-500/30 text-orange-300' },
+                                    { slot: 4, name: 'HuyK', color: 'bg-green-500/20 border-green-500/30 text-green-300' },
+                                    { slot: 5, name: 'Chế tác', color: 'bg-orange-500/20 border-orange-500/30 text-orange-300' },
+                                    { slot: 6, name: 'SP HT', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' },
+                                    { slot: 7, name: 'Outro', color: 'bg-pink-500/20 border-pink-500/30 text-pink-300' },
+                                ].map(item => (
+                                    <div key={item.slot} className={`flex-1 min-w-0 rounded-lg border px-2 py-2 text-center ${item.color}`}>
+                                        <p className="text-[8px] opacity-60 mb-0.5">#{item.slot}</p>
+                                        <p className="text-[10px] font-bold truncate">{item.name}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <button
-                            onClick={() => setAudioFile(null)}
-                            className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* A4 Formula Status Banner */}
-            {useA4Formula && (
-                <div className="bg-gradient-to-r from-orange-600 to-red-600 p-4 rounded-xl shadow-lg shadow-orange-900/40">
-                    <div className="flex items-center justify-between text-white">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle className="w-6 h-6" />
-                            <div>
-                                <p className="font-bold text-lg">🎯 Công thức A4 V3 đã được kích hoạt</p>
-                                <p className="text-sm text-orange-100">Mix theo 7 slots với flexible duration (không split layout)</p>
+            {/* ──── STEP 3: Audio ──── */}
+            <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-400 text-xs font-bold">3</div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Music className="w-4 h-4 text-pink-400" />
+                        Audio
+                    </h3>
+                    {audioFile && (
+                        <span className="ml-auto px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full border border-green-500/20">✓ Đã có file</span>
+                    )}
+                </div>
+
+                <div className="p-5 space-y-4">
+                    {/* Generate from Script */}
+                    {generatedScript && (
+                        <div className="bg-[#0a0a0a] rounded-xl p-4 border border-purple-500/15">
+                            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">Generate Audio từ Script AI</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <select value={selectedVoiceId} onChange={(e) => setSelectedVoiceId(e.target.value)}
+                                    disabled={loadingVoices || generatingAudio}
+                                    className="w-full px-3 py-2.5 bg-[#141414] border border-gray-700/60 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50">
+                                    {voices.map(voice => (
+                                        <option key={voice.voice_id} value={voice.voice_id}>
+                                            {voice.name}{(voice.gender || voice.language) && ` (${voice.gender || '?'}, ${voice.language || '?'})`}
+                                            {voice.is_cloned && ' • Clone'}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <button onClick={handleGenerateAudio}
+                                    disabled={!generatedScript || !selectedVoiceId || generatingAudio}
+                                    className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {generatingAudio ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin" />Đang tạo... {audioElapsed}s</>
+                                    ) : (
+                                        <><Zap className="w-4 h-4" />Generate Audio</>
+                                    )}
+                                </button>
                             </div>
+
+                            {generatingAudio && (
+                                <div className="mt-3 space-y-1.5">
+                                    <div className="w-full bg-gray-800 rounded-full h-1 overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 animate-pulse"
+                                            style={{ width: `${Math.min((audioElapsed / (generatedScript && generatedScript.length > 1000 ? 15 : 8)) * 100, 90)}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 text-center">
+                                        {generatedScript && generatedScript.length > 500 ? `⚡ Chia ${Math.ceil(generatedScript.length / 500)} chunks song song` : '📡 Gọi HeyGen API...'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {generatedAudioUrl && (
+                                <div className="mt-3 p-2.5 bg-green-500/8 border border-green-500/15 rounded-lg">
+                                    <p className="text-green-400 text-xs flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" />Audio đã tạo thành công!</p>
+                                </div>
+                            )}
                         </div>
-                        {contentType === 'A4' && (
-                            <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold">
-                                Auto-enabled
+                    )}
+
+                    {/* Background Music Upload (optional) */}
+                    <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) { setBgMusicFile(file); toast.success(`✅ Nhạc nền: ${file.name}`); }
+                        }} />
+
+                    {/* Background music optional section */}
+                    <div className="border border-gray-800/50 rounded-xl overflow-hidden">
+                        <div className="px-4 py-2.5 bg-gray-900/40 flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                                <Music className="w-3.5 h-3.5" />
+                                Nhạc nền <span className="text-gray-600 font-normal">(optional)</span>
+                            </span>
+                            {bgMusicFile && (
+                                <button onClick={() => setBgMusicFile(null)} className="text-xs text-red-400 hover:text-red-300">
+                                    ✕ Xóa
+                                </button>
+                            )}
+                        </div>
+
+                        {!bgMusicFile ? (
+                            <button onClick={() => audioInputRef.current?.click()}
+                                className="w-full py-4 flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-pink-400 hover:bg-pink-500/3 transition-all group">
+                                <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                <span className="text-xs">Upload nhạc nền (mp3, wav, m4a)</span>
+                                <span className="text-[10px] text-gray-700">★ Nếu không upload, video chỉ có giọng HuyK</span>
+                            </button>
+                        ) : (
+                            <div className="p-3 flex flex-col gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-pink-500/15 rounded-lg">
+                                        <Music className="w-4 h-4 text-pink-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-xs font-medium truncate">{bgMusicFile.name}</p>
+                                        <p className="text-[10px] text-gray-500">{(bgMusicFile.size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                </div>
+                                {/* Volume slider */}
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] text-gray-500 w-20">Volume nhạc nền</span>
+                                    <input type="range" min={2} max={30} value={bgMusicVolume}
+                                        onChange={(e) => setBgMusicVolume(parseInt(e.target.value))}
+                                        className="flex-1 h-1.5 accent-pink-500" />
+                                    <span className="text-xs text-pink-400 w-8 text-right">{bgMusicVolume}%</span>
+                                </div>
+                                <p className="text-[10px] text-gray-600">⚠ Giọng HuyK luôn to hơn. Nhạc chỉ là nền.</p>
                             </div>
                         )}
                     </div>
                 </div>
-            )}
+            </div>
 
-            {/* A4 Formula Info */}
-            {useA4Formula && (
-                <div className="bg-gradient-to-r from-orange-900/20 to-red-900/20 p-6 rounded-xl border border-orange-500/20">
-                    <h3 className="text-lg font-semibold text-orange-400 mb-4 flex items-center gap-2">
-                        <Film className="w-5 h-5" />
-                        Công thức A4 V3 (7 Slots, Flexible Duration)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {[
-                            { slot: 1, name: 'Sản phẩm', duration: 'Flexible', color: 'bg-blue-500/20 border-blue-500/30', desc: 'Intro' },
-                            { slot: 2, name: 'HuyK', duration: 'Flexible', color: 'bg-green-500/20 border-green-500/30', desc: 'KOC' },
-                            { slot: 3, name: 'Chế tác', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'Fullscreen' },
-                            { slot: 4, name: 'HuyK', duration: 'Flexible', color: 'bg-green-500/20 border-green-500/30', desc: 'KOC (lặp lại)' },
-                            { slot: 5, name: 'Chế tác', duration: 'Flexible', color: 'bg-orange-500/20 border-orange-500/30', desc: 'Fullscreen (lặp lại)' },
-                            { slot: 6, name: 'Sản phẩm HT', duration: 'Flexible', color: 'bg-blue-500/20 border-blue-500/30', desc: 'Hoàn thiện' },
-                            { slot: 7, name: 'Outro', duration: 'Original', color: 'bg-pink-500/20 border-pink-500/30', desc: 'Audio gốc ✨' },
-                        ].map(item => (
-                            <div key={item.slot} className={`p-3 rounded-lg border ${item.color}`}>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-gray-400">Slot {item.slot}</span>
-                                    <span className="text-xs font-bold text-orange-400">{item.duration}</span>
-                                </div>
-                                <p className="text-sm text-white font-medium mt-1">{item.name}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
-                            </div>
-                        ))}
-                    </div>
-
-
-                    <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                        <p className="text-xs text-orange-300 font-semibold mb-2">
-                            ℹ️ Cấu trúc A4 V3 — Fullscreen, không split
-                        </p>
-                        <p className="text-xs text-gray-400">
-                            • Slot 1–6: Duration = audio_duration / 6 (flexible)<br />
-                            • Slot 2 &amp; 4 dùng chung folder HuyK (chọn video khác nhau)<br />
-                            • Slot 3 &amp; 5 dùng chung folder Chế tác (chọn video khác nhau)<br />
-                            • Slot 7: Duration = video outro gốc (giữ nguyên audio)<br />
-                            • Tất cả slots đều là video đơn giản, fullscreen (không split layout)
-                        </p>
-                    </div>
-
-                    {/* (Removed) Manual product category selector when enabling A4 V2 */}
-                </div>
-            )}
-
-            {/* ⚡ Virtual Preview (INSTANT - no FFmpeg!) */}
+            {/* Virtual Preview - Temporarily disabled by user request */}
+            {/* 
             {audioFile && !needsIndexing && (
                 <VirtualMixSection
                     audioFile={audioFile}
@@ -1286,94 +1218,105 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     productSku={productSku}
                     numOutputs={numOutputs}
                     useA4Formula={useA4Formula}
+                    disabled={isIndexing || isAutoReindexing}
                 />
             )}
+            */}
 
-            {/* Mix Button (Full FFmpeg Render) */}
-            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-gray-800">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Scissors className="w-5 h-5 text-green-400" />
-                    Tiến hành Mix {useA4Formula && <span className="text-orange-400 text-sm">(A4 Formula)</span>}
-                </h3>
+            {/* ──── STEP 4: Mix ──── */}
+            <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-bold">4</div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Scissors className="w-4 h-4 text-green-400" />
+                        Tiến hành Mix
+                        {useA4Formula && <span className="text-orange-400 text-xs font-normal">(A4 Formula)</span>}
+                    </h3>
+                </div>
 
-                {mixError && (
-                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-                        {mixError}
-                    </div>
-                )}
+                <div className="p-5 space-y-4">
+                    {mixError && (
+                        <div className="p-3 bg-red-500/8 border border-red-500/15 rounded-xl text-red-400 text-sm">{mixError}</div>
+                    )}
 
-                {!mixLoading && !mixResult && (
-                    <button
-                        onClick={handleMix}
-                        disabled={!audioFile || needsIndexing}
-                        className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-900/40"
-                    >
-                        <Zap className="w-5 h-5" />
-                        {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ BẮT ĐẦU SMART MIX (5-13s)'}
-                    </button>
-                )}
+                    {!mixLoading && !mixResult && (
+                        <button onClick={handleMix} disabled={(!generatedAudioUrl && !audioFile) || needsIndexing || isIndexing || isAutoReindexing}
+                            className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-bold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-green-900/30 text-base">
+                            <Zap className="w-5 h-5" />
+                            {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ SMART MIX (5–13s)'}
+                        </button>
+                    )}
+                    {(!generatedAudioUrl && !audioFile) && (
+                        <p className="text-xs text-center text-gray-600">⚠ Cần generate audio giọng đọc trước</p>
+                    )}
+                    {needsIndexing && (
+                        <p className="text-xs text-center text-amber-600">⚠ Cần index videos trước (bước 1)</p>
+                    )}
 
-                {mixLoading && (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-400">{mixMessage || 'Processing...'}</span>
-                            <span className="text-green-400 font-semibold">{mixProgress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-green-600 to-emerald-600 transition-all duration-300"
-                                style={{ width: `${mixProgress}%` }}
-                            />
-                        </div>
-                        <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2">
-                            <Zap className="w-3 h-3 text-green-400" />
-                            Smart preprocessing đang hoạt động...
-                        </p>
-                    </div>
-                )}
-
-                {mixResult && (
-                    <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
-                        <div className="flex items-center gap-2 text-green-400 mb-3">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="font-semibold">
-                                {useA4Formula ? '🎯 Mix A4 thành công!' : '⚡ Smart Mix thành công!'}
-                                {mixMessage && ` (${mixMessage})`}
-                            </span>
-                        </div>
-
-                        {mixResult.output_urls && mixResult.output_urls.length > 0 && (
-                            <div className="space-y-2">
-                                {mixResult.output_urls.map((url: string, idx: number) => (
-                                    <a
-                                        key={idx}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-between p-3 bg-[#0a0a0a] rounded-lg hover:bg-[#1a1a1a] transition-colors"
-                                    >
-                                        <span className="text-sm text-gray-300">Video {idx + 1}</span>
-                                        <Download className="w-4 h-4 text-green-400" />
-                                    </a>
-                                ))}
+                    {/* Progress */}
+                    {mixLoading && (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-400 text-xs">{mixMessage || 'Đang xử lý...'}</span>
+                                <span className="text-green-400 font-bold">{mixProgress}%</span>
                             </div>
-                        )}
-                    </div>
-                )}
+                            <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500 relative overflow-hidden"
+                                    style={{ width: `${mixProgress}%` }}>
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-gray-600 text-center flex items-center justify-center gap-1.5">
+                                <Zap className="w-3 h-3 text-green-400" />Smart preprocessing đang hoạt động...
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Results */}
+                    {mixResult && (
+                        <div className="bg-green-500/8 rounded-xl border border-green-500/20 overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-green-500/15 bg-green-500/5">
+                                <CheckCircle className="w-4 h-4 text-green-400" />
+                                <span className="text-sm font-semibold text-green-400">
+                                    {useA4Formula ? '🎯 Mix A4 thành công!' : '⚡ Smart Mix hoàn tất!'}
+                                    {mixMessage && ` — ${mixMessage}`}
+                                </span>
+                            </div>
+                            {mixResult.output_urls && mixResult.output_urls.length > 0 && (
+                                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {mixResult.output_urls.map((url: string, idx: number) => (
+                                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-3 px-3 py-2.5 bg-[#0a0a0a] hover:bg-[#141414] rounded-lg transition-colors border border-gray-800/60 group">
+                                            <Film className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
+                                            <span className="text-sm text-gray-300 flex-1">Video {idx + 1}</span>
+                                            <Download className="w-4 h-4 text-green-400" />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Performance Info */}
-            <div className="bg-gradient-to-r from-blue-900/20 to-cyan-900/20 p-4 rounded-xl border border-blue-500/20">
-                <p className="text-sm text-blue-300 flex items-center gap-2">
-                    <Info className="w-4 h-4" />
-                    <strong>Smart Mix hoạt động thế nào?</strong>
+            {/* Info Footer */}
+            <div className="bg-[#0d1520] rounded-xl border border-blue-500/10 p-4">
+                <p className="text-xs text-blue-400 font-semibold flex items-center gap-2 mb-2">
+                    <Info className="w-4 h-4" />Smart Mix hoạt động thế nào?
                 </p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-400 ml-6 list-disc">
-                    <li>Lần đầu: Generate clips (10s) → Mix (3s) = <strong className="text-green-400">13s</strong></li>
-                    <li>Lần sau: Dùng cached clips → Mix (3s) = <strong className="text-green-400">5s</strong></li>
-                    <li>Có GPU: Nhanh gấp 3x so với CPU</li>
-                    <li>Cache tự động clean up khi đầy (LRU)</li>
-                </ul>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                    {[
+                        ['Lần đầu', 'Generate clips (10s) + Mix (3s) ≈ 13s'],
+                        ['Lần sau', 'Cached clips + Mix (3s) ≈ 5s'],
+                        ['Có GPU', 'Nhanh gấp 3× so với CPU'],
+                        ['Cache', 'Tự động LRU cleanup khi đầy'],
+                    ].map(([k, v]) => (
+                        <div key={k} className="flex items-start gap-1.5">
+                            <span className="text-green-400 text-[10px] mt-0.5">•</span>
+                            <p className="text-[10px] text-gray-500"><strong className="text-gray-400">{k}:</strong> {v}</p>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

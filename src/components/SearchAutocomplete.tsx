@@ -78,7 +78,7 @@ export default function SearchAutocomplete({
         return () => clearTimeout(timer);
     }, [value, platform, onChange]);
 
-    // Handle click outside
+    // Handle click outside and blur
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (
@@ -94,9 +94,19 @@ export default function SearchAutocomplete({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const handleBlur = () => {
+        // Small delay to allow click events on suggestions to fire before hiding
+        setTimeout(() => {
+            if (document.activeElement !== inputRef.current) {
+                setIsFocused(false);
+            }
+        }, 150);
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onChange(e.target.value);
         setSelectedIndex(-1);
+        setIsFocused(true);
     };
 
     // Douyin/Xiaohongshu: chỉ cho search khi đã dịch sang tiếng Trung
@@ -140,6 +150,7 @@ export default function SearchAutocomplete({
                 } else if (value) {
                     safeOnSearch(value);
                 }
+                setIsFocused(false);
                 break;
             case 'Escape':
                 setIsFocused(false);
@@ -218,6 +229,7 @@ export default function SearchAutocomplete({
                         value={value}
                         onChange={handleInputChange}
                         onFocus={() => setIsFocused(true)}
+                        onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         className="w-full pl-12 pr-12 py-3 bg-[#1a1a1a] border border-gray-800 rounded-xl text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
@@ -244,11 +256,7 @@ export default function SearchAutocomplete({
             {showDropdown && (
                 <div
                     ref={dropdownRef}
-                    className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150"
-                    style={{
-                        backdropFilter: 'blur(12px)',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
-                    }}
+                    className="absolute top-full left-0 right-0 mt-3 bg-[#111420]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] z-[999] animate-in fade-in slide-in-from-top-2 duration-200"
                 >
                     {/* Source header */}
                     {sourceInfo && (

@@ -18,13 +18,14 @@ export interface GeneratedContent {
 }
 
 export interface GenerateContentRequest {
-    video_id?: number; // Optional - only if video exists in DB
-    video_description?: string; // Required if video_id not provided
-    video_title?: string; // Optional
-    content_type: string; // A1, A2, A3, A4, A5
+    video_id?: number;
+    video_description?: string;
+    video_title?: string;
+    content_type: string;
     brand_name?: string;
     industry?: string;
     additional_context?: string;
+    output_language?: string;   // 'vi' | 'en' | 'zh' | ... — ngôn ngữ generate content output
     // Product info
     product_id?: string;
     product_name?: string;
@@ -33,7 +34,7 @@ export interface GenerateContentRequest {
     product_price?: string;
     product_sku?: string;
     // Advanced prompt
-    custom_prompt?: string; // Custom prompt for advanced regeneration
+    custom_prompt?: string;
 }
 
 export function useContentGeneration() {

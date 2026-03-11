@@ -78,135 +78,68 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     const path = pathname?.toLowerCase() || '';
     if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management')) {
       return 'user-management';
-    } else if (pathname.startsWith('/dashboard/facebook')) {
-      return 'facebook';
-    } else if (pathname.startsWith('/dashboard/instagram')) {
-      return 'instagram';
-    } else if (pathname.startsWith('/dashboard/ai')) {
-      return 'tiktok';
-    } else if (pathname.startsWith('/dashboard/douyin')) {
-      return 'douyin';
-    } else if (pathname.startsWith('/dashboard/xiaohongshu')) {
-      return 'xiaohongshu';
+    } else if (
+      pathname.startsWith('/dashboard/facebook') ||
+      pathname.startsWith('/dashboard/instagram') ||
+      pathname.startsWith('/dashboard/tiktok') ||
+      pathname.startsWith('/dashboard/douyin') ||
+      pathname.startsWith('/dashboard/xiaohongshu') ||
+      pathname.startsWith('/dashboard/ai') ||
+      pathname === '/dashboard'
+    ) {
+      return 'social-discovery';
     }
-    return 'facebook';
+    return 'social-discovery';
   }, [pathname]);
 
-  // Platforms configuration with dynamic filtering
-  const platforms = useMemo(() => {
-    const allPlatforms = [
-      {
-        id: 'user-management',
-        icon: Users,
-        label: 'VCB Portal',
-        menus: [
-          {
-            section: 'HỆ THỐNG',
-            items: [
-              { id: 'performance', label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
-              { id: 'dashboard', label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-              { id: 'editors', label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'facebook',
-        icon: Facebook,
-        label: 'Facebook',
-        menus: [
-          {
-            section: 'ANALYTICS',
-            items: [
-              { label: 'Channel Overview', href: '/dashboard/facebook/channels', icon: LayoutGrid },
-              { label: 'Search Post', href: '/dashboard/facebook/search-post', icon: Search },
-              { label: 'Search Reel', href: '/dashboard/facebook/search-reel', icon: Film },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'instagram',
-        icon: Instagram,
-        label: 'Instagram',
-        menus: [
-          {
-            section: 'ANALYTICS',
-            items: [
-              { label: 'Channel Overview', href: '/dashboard/instagram/channels', icon: LayoutGrid },
-              { label: 'Search Post', href: '/dashboard/instagram/search', icon: FileText },
-              { label: 'Search Reels', href: '/dashboard/instagram/search-reel', icon: Film },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'tiktok',
-        icon: Music2,
-        label: 'TikTok',
-        menus: [
-          {
-            section: 'ANALYTICS',
-            items: [
-              { label: 'Channel Overview', href: '/dashboard/ai/channels', icon: LayoutGrid },
-              { label: 'Search Video', href: '/dashboard/ai/search', icon: Search },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'douyin',
-        icon: Music,
-        label: 'Douyin',
-        menus: [
-          {
-            section: 'ANALYTICS',
-            items: [
-              { label: 'Channel Overview', href: '/dashboard/douyin/channels', icon: LayoutGrid },
-              { label: 'Search Video', href: '/dashboard/douyin', icon: Search },
-            ]
-          }
-        ]
-      },
-      {
-        id: 'xiaohongshu',
-        icon: BookOpen,
-        label: 'Xiaohongshu',
-        menus: [
-          {
-            section: 'ANALYTICS',
-            items: [
-              { label: 'Channel Overview', href: '/dashboard/xiaohongshu/channels', icon: LayoutGrid },
-              { label: 'Search Video', href: '/dashboard/xiaohongshu', icon: Search },
-            ]
-          }
-        ]
-      }
-    ];
+  // Memoize platforms configuration to prevent re-creation on every render
+  const platforms = useMemo(() => [
+    // 1. Management & Report Section (Consolidated)
+    {
+      id: 'user-management',
+      icon: Users,
+      label: 'VCB Portal',
+      menus: [
+        {
+          section: 'HỆ THỐNG',
+          items: [
+            { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+              { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+            ] : []),
+            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+              { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
+            ] : []),
+          ]
+        }
+      ]
+    },
 
-    // Filter platforms based on allowedMenuIds
-    return allPlatforms.filter(p => {
-      // If no dynamic permissions fetched yet, show based on legacy role check as fallback
-      if (allowedMenuIds.length === 0) {
-        if (p.id === 'user-management') return user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r));
-        return true;
-      }
-
-      // Check if platform ID is allowed
-      const isPlatformAllowed = allowedMenuIds.includes(p.id);
-
-      // Also filter internal items
-      p.menus.forEach(menu => {
-        menu.items = menu.items.filter(item => {
-          if (!item.id) return true; // Items without ID are always visible if platform is visible
-          return allowedMenuIds.includes(item.id);
-        });
-      });
-
-      // Show platform only if it's explicitly allowed OR has allowed items
-      return isPlatformAllowed || p.menus.some(m => m.items.length > 0);
-    });
-  }, [user?.roles, allowedMenuIds]);
+    // 2. Video & Social Intelligence (Consolidated)
+    {
+      id: 'social-discovery',
+      icon: Search,
+      label: 'Khám phá Video',
+      menus: [
+        {
+          section: 'PHÂN TÍCH',
+          items: [
+            { label: 'Facebook Channels', href: '/dashboard/facebook/channels', icon: Facebook },
+            { label: 'Instagram Channels', href: '/dashboard/instagram/channels', icon: Instagram },
+            { label: 'TikTok Channels', href: '/dashboard/ai/channels', icon: Music2 },
+            { label: 'Douyin Channels', href: '/dashboard/douyin/channels', icon: Music },
+            { label: 'Xiaohongshu Channels', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
+          ]
+        },
+        {
+          section: 'KHÁM PHÁ',
+          items: [
+            { label: 'Tìm kiếm Video (Hub)', href: '/dashboard/search-video', icon: Search },
+          ]
+        }
+      ]
+    }
+  ], [user?.role]); // Dependency on primitive string ensures stability
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
@@ -280,12 +213,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           </div>
 
           <div className="flex flex-col gap-4 w-full px-4 mt-auto">
-            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-              <CreditCard className="w-5 h-5" />
-            </button>
-
             {/* Settings Link - Controlled by 'settings' permission */}
-            {(allowedMenuIds.includes('settings') || user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r))) ? (
+            {(allowedMenuIds.includes('settings') || user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r))) && (
               <Link
                 href="/dashboard/manager/checklist-settings"
                 className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
@@ -294,17 +223,14 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                 <Settings className="w-5 h-5" />
               </Link>
             ) : (
-              <button
-                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
-                title="Cài đặt hệ thống"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+            <button
+              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
+              title="Cài đặt hệ thống"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
             )}
 
-            <button className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105">
-              <HelpCircle className="w-5 h-5" />
-            </button>
             <button
               onClick={onLogout}
               className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-900/20 hover:text-red-500 mt-2 transition-all duration-200 ease-out hover:scale-105"

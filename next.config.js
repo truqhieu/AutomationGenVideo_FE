@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Standalone output cho Docker (giảm image size ~70%)
+  output: 'standalone',
   swcMinify: true,
   // Note: compiler.removeConsole is not supported in Turbopack
   images: {

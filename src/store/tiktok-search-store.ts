@@ -35,6 +35,7 @@ interface TikTokSearchState {
     loading: boolean;
     isFetchingMore: boolean;
     taskId: string | null;
+    searchSessionId: string | null;
 
     // Actions
     setSearchTerm: (term: string) => void;
@@ -47,6 +48,7 @@ interface TikTokSearchState {
     setLoading: (loading: boolean) => void;
     setIsFetchingMore: (isFetchingMore: boolean) => void;
     setTaskId: (taskId: string | null) => void;
+    setSearchSessionId: (id: string | null) => void;
     reset: () => void;
 }
 
@@ -64,6 +66,7 @@ export const useTikTokSearchStore = create<TikTokSearchState>()(
             loading: false,
             isFetchingMore: false,
             taskId: null,
+            searchSessionId: null,
 
             // Actions
             setSearchTerm: (term) => set({ searchTerm: term }),
@@ -76,6 +79,7 @@ export const useTikTokSearchStore = create<TikTokSearchState>()(
             setLoading: (loading) => set({ loading }),
             setIsFetchingMore: (isFetchingMore) => set({ isFetchingMore }),
             setTaskId: (taskId) => set({ taskId }),
+            setSearchSessionId: (id) => set({ searchSessionId: id }),
             reset: () => set({
                 videos: [],
                 currentPage: 1,
@@ -85,6 +89,7 @@ export const useTikTokSearchStore = create<TikTokSearchState>()(
                 loading: false,
                 isFetchingMore: false,
                 taskId: null,
+                searchSessionId: null,
             }),
         }),
         {
@@ -100,6 +105,7 @@ export const useTikTokSearchStore = create<TikTokSearchState>()(
                 loading: state.loading,
                 isFetchingMore: state.isFetchingMore,
                 taskId: state.taskId,
+                searchSessionId: state.searchSessionId,
             }),
         }
     )

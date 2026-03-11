@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "clean": "rimraf .next node_modules/.cache"
+    "clean": "rimraf .next node_modules/.cache",
+    "load:test": "node tests/load-test-30users.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
@@ -27,6 +28,7 @@
     "react-hook-form": "^7.50.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
+    "react-select": "^5.10.2",
     "recharts": "^3.7.0",
     "tailwind-merge": "^2.2.1",
     "zod": "^3.22.4",

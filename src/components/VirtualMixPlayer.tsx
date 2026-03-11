@@ -96,11 +96,59 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
         }
     };
 
+    // When video pauses (e.g. buffering)
+    const onPause = () => {
+        // If we are technically "playing" but the video paused to buffer,
+        // we should pause the audio too so they don't get out of sync.
+        if (isPlaying && audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+        }
+    };
+
+    // When video resumes playing
+    const onPlay = () => {
+        if (isPlaying && audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => { });
+        }
+    };
+
     // When video errors
     const onError = () => {
         setIsLoading(false);
-        setError(`Không thể tải clip slot ${currentClip?.slot} (${currentClip?.slot_name})`);
-        console.error('Video load error for:', clipUrl(currentClip));
+        const clip = manifest.clips[currentClipIndex];
+        const url = clip ? clipUrl(clip) : '';
+        console.warn('Video load error for slot:', clip?.slot_name, '\nURL:', url);
+
+        // Retry 1 lần sau 1.5s (on-the-fly generation cần thêm thời gian)
+        setError(`⏳ Đang tải clip ${clip?.slot}: ${clip?.slot_name}...`);
+
+        setTimeout(() => {
+            const video = videoRef.current;
+            if (!video) return;
+
+            // Retry: reload cùng src
+            const currentSrc = video.src;
+            video.src = '';
+            video.src = currentSrc;
+            video.load();
+
+            // Nếu 5s sau vẫn loading → bỏ qua sang slot tiếp theo
+            setTimeout(() => {
+                if (video.readyState < 2) {
+                    // Vẫn chưa load được → skip
+                    setError(`❌ Slot ${clip?.slot} (${clip?.slot_name}): clip chưa sẵn sàng, bỏ qua...`);
+                    setTimeout(() => {
+                        setError('');
+                        if (currentClipIndex < manifest.clips.length - 1) {
+                            loadClip(currentClipIndex + 1);
+                        } else {
+                            setIsPlaying(false);
+                            audioRef.current?.pause();
+                        }
+                    }, 1500);
+                }
+            }, 5000);
+        }, 1500);
     };
 
     // When the current clip's video naturally ends
@@ -119,14 +167,17 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
             const video = videoRef.current;
             if (!video || !isPlaying) return;
 
+            // Only advance elapsed time if video is actively playing (not stalled state)
             const elapsed = video.currentTime;
             setClipElapsed(elapsed);
 
+            // Compute global time but ensure we don't go backwards
             const gt = getTimeOffset(currentClipIndex) + elapsed;
-            setGlobalTime(gt);
+            setGlobalTime(prevGt => Math.max(prevGt, gt));
 
-            // Sync audio
-            if (audioRef.current) {
+            // Sync audio smoothly - only jump if difference is large 
+            // Avoid syncing if video is effectively paused/stalled
+            if (audioRef.current && !isLoading && !video.paused) {
                 const diff = Math.abs(audioRef.current.currentTime - gt);
                 if (diff > 0.5) {
                     audioRef.current.currentTime = gt;
@@ -153,7 +204,7 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
-    }, [isPlaying, currentClipIndex, currentClip, getTimeOffset, loadClip, manifest.clips.length]);
+    }, [isPlaying, currentClipIndex, currentClip, getTimeOffset, loadClip, manifest.clips.length, isLoading]);
 
     // Load first clip
     useEffect(() => {
@@ -205,6 +256,10 @@ export function VirtualMixPlayer({ manifest }: { manifest: Manifest }) {
                     ref={videoRef}
                     className="w-full h-full object-contain"
                     onCanPlay={onCanPlay}
+                    onPlay={onPlay}
+                    onPause={onPause}
+                    onWaiting={onPause} // Wait explicitly for buffering
+                    onPlaying={onPlay}  // Resume explicitly after buffering
                     onError={onError}
                     onEnded={onVideoEnded}
                     muted
@@ -330,10 +385,11 @@ interface VirtualMixSectionProps {
     productSku?: string;
     numOutputs: number;
     useA4Formula: boolean;
+    disabled?: boolean;
 }
 
 export function VirtualMixSection({
-    audioFile, productId, productSku, numOutputs, useA4Formula,
+    audioFile, productId, productSku, numOutputs, useA4Formula, disabled = false,
 }: VirtualMixSectionProps) {
     const [manifests, setManifests] = useState<Manifest[]>([]);
     const [loading, setLoading] = useState(false);
@@ -367,11 +423,14 @@ export function VirtualMixSection({
             const data = await response.json();
 
             if (!response.ok) {
-                if (data.need_pregen) {
+                if (data.error === 'preview_not_ready') {
+                    setNeedPregen(true);
+                    setError(data.message || 'Thiếu các video đã cache. Vui lòng chạy Pre-generate.');
+                } else if (data.need_pregen) {
                     setNeedPregen(true);
                     setError(data.error || 'Cần chạy Pre-generation trước');
                 } else {
-                    throw new Error(data.error || 'Virtual mix failed');
+                    throw new Error(data.error || data.message || 'Virtual mix failed');
                 }
                 return;
             }
@@ -438,7 +497,7 @@ export function VirtualMixSection({
 
     return (
         <div className="bg-[#1a1a1a] p-6 rounded-xl border border-cyan-500/20">
-            <div className="flex items-center gap-3 mb-4">
+            {/* <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
                     <Eye className="w-5 h-5 text-cyan-400" />
                 </div>
@@ -448,27 +507,23 @@ export function VirtualMixSection({
                         <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded-full border border-cyan-500/30">
                             INSTANT
                         </span>
-                    </h3>
+                    </h3>z``
                     <p className="text-xs text-gray-400">
                         Xem trước video ngay — clips được cache sẵn, không cần chờ encode!
                     </p>
                 </div>
-            </div>
+            </div> */}
 
-            {/* Generate button */}
+            {/* Generate button (Disabled per user request) */}
             {manifests.length === 0 && !needPregen && (
-                <button onClick={generateVirtualMix} disabled={!audioFile || loading}
-                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold hover:from-cyan-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30">
-                    {loading ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" />Đang tạo preview (~7 clips, 1-2 phút lần đầu)...</>
-                    ) : (
-                        <><Eye className="w-5 h-5" />⚡ XEM TRƯỚC NGAY (instant!)</>
-                    )}
+                <button disabled={true}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30 opacity-50 cursor-not-allowed">
+                    <Eye className="w-5 h-5" />⚡ XEM TRƯỚC NGAY (disabled)
                 </button>
             )}
 
             {/* Need Pre-generation notice */}
-            {needPregen && (
+            {/* {needPregen && (
                 <div className="space-y-3">
                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
                         <p className="text-sm text-yellow-400 font-semibold mb-2">
@@ -481,8 +536,8 @@ export function VirtualMixSection({
                         </p>
 
                         {!pregenRunning ? (
-                            <button onClick={startPregen}
-                                className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl text-white font-semibold hover:from-yellow-700 hover:to-orange-700 transition-all flex items-center justify-center gap-2">
+                            <button onClick={startPregen} disabled={disabled}
+                                className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl text-white font-semibold hover:from-yellow-700 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                                 <Loader2 className="w-5 h-5" />
                                 🚀 BẮT ĐẦU PRE-GENERATION (chạy nền)
                             </button>
@@ -506,7 +561,7 @@ export function VirtualMixSection({
                         </button>
                     )}
                 </div>
-            )}
+            )} */}
 
             {/* Pre-gen progress (when running but previews already showing) */}
             {pregenRunning && manifests.length > 0 && (

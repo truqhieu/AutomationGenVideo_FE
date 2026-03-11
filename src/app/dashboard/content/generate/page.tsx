@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, Sparkles, Loader2, CheckCircle, Copy, Check, ArrowRight,
-    Scissors, Upload, Film, Download, Trash2, Music, Mic, Play, Pause
+    Scissors, Upload, Film, Download, Trash2, Music, Mic, Play, Pause, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useContentGeneration, GeneratedContent } from '@/hooks/useContentGeneration';
 import { toast } from 'react-hot-toast';
 import SmartMixVideo from '@/components/SmartMixVideo';
+import LanguageSelect from '@/components/content/LanguageSelect';
 
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -70,6 +71,13 @@ export default function GenerateContentPage() {
     // ─── Content generation state ───
     const [videoId, setVideoId] = useState<number | null>(null);
     const [videoTitle, setVideoTitle] = useState<string>('');
+    const [videoDescription, setVideoDescription] = useState<string>('');
+    const [videoUrl, setVideoUrl] = useState<string>('');
+    const [transcript, setTranscript] = useState<string>('');
+    const [detectedLanguage, setDetectedLanguage] = useState<string>('');  // Ngôn ngữ video gốc (từ Whisper)
+    const [outputLanguage, setOutputLanguage] = useState<string>('vi');    // Ngôn ngữ generate content
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [transcribeError, setTranscribeError] = useState<string>('');
     const [selectedType, setSelectedType] = useState<string | null>(null);
     const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
     const [copiedSection, setCopiedSection] = useState<string | null>(null);
@@ -110,8 +118,12 @@ export default function GenerateContentPage() {
     useEffect(() => {
         const id = searchParams.get('videoId');
         const title = searchParams.get('videoTitle');
+        const desc = searchParams.get('videoDescription');
+        const url = searchParams.get('videoUrl');
         if (id) setVideoId(parseInt(id));
         if (title) setVideoTitle(decodeURIComponent(title));
+        if (desc) setVideoDescription(decodeURIComponent(desc));
+        if (url) setVideoUrl(decodeURIComponent(url));
 
         const urlProduct = {
             id: searchParams.get('productId') || '',
@@ -179,16 +191,53 @@ export default function GenerateContentPage() {
     }, [generatedAudioUrl]);
 
     // ─── Content Generation Handlers ───
+
+    const handleTranscribe = async () => {
+        if (!videoUrl) return;
+        setIsTranscribing(true);
+        setTranscribeError('');
+        try {
+            const AI_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+            const resp = await fetch(`${AI_URL}/api/content/transcribe/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ video_url: videoUrl }),
+            });
+            const data = await resp.json();
+            if (data.success && data.transcript) {
+                setTranscript(data.transcript);
+                // Lưu ngôn ngữ Whisper detect được
+                if (data.detected_language) {
+                    setDetectedLanguage(data.detected_language);
+                    // Nếu video tiếng Anh thì default output language cũng để tiếng Việt
+                    // (generate content cho khách hàng VN nên giữ vi)
+                }
+                toast.success(`✅ Transcribe xong! (${data.char_count} ký tự | ngôn ngữ: ${data.detected_language || 'auto'})`);
+            } else {
+                const msg = data.error || 'Transcribe thất bại';
+                setTranscribeError(msg);
+                toast.error(msg);
+            }
+        } catch (e: any) {
+            const msg = e.message || 'Lỗi kết nối';
+            setTranscribeError(msg);
+            toast.error(msg);
+        } finally {
+            setIsTranscribing(false);
+        }
+    };
+
     const handleGenerate = async () => {
         if (!selectedType) return;
         try {
             const result = await generateContent({
                 video_id: videoId || undefined,
-                video_description: videoTitle,
+                video_description: transcript || videoDescription || videoTitle,  // ưu tiên transcript
                 video_title: videoTitle,
                 content_type: selectedType,
                 brand_name: 'Viễn Chí Bảo',
                 industry: 'kim hoàn (trang sức vàng bạc)',
+                output_language: outputLanguage,   // ngôn ngữ generate content
                 product_id: productInfo.id,
                 product_name: productInfo.name,
                 product_category: productInfo.category,
@@ -232,7 +281,7 @@ export default function GenerateContentPage() {
 
             const prompt = await generatePrompt({
                 video_id: videoId || undefined,
-                video_description: videoTitle,
+                video_description: videoDescription || videoTitle,
                 video_title: videoTitle,
                 content_type: selectedType,
                 product_id: productInfo.id,
@@ -272,7 +321,7 @@ export default function GenerateContentPage() {
         try {
             const result = await generateContent({
                 video_id: videoId || undefined,
-                video_description: videoTitle,
+                video_description: videoDescription || videoTitle,
                 video_title: videoTitle,
                 content_type: selectedType,
                 brand_name: 'Viễn Chí Bảo',
@@ -283,7 +332,7 @@ export default function GenerateContentPage() {
                 product_description: productInfo.description,
                 product_price: productInfo.price,
                 product_sku: productInfo.sku,
-                custom_prompt: advancedPrompt // Pass custom prompt
+                custom_prompt: advancedPrompt
             });
 
             if (result) {
@@ -687,38 +736,188 @@ export default function GenerateContentPage() {
                 <AnimatePresence mode="wait">
                     {/* ═══════════ STEP 1: GENERATE ═══════════ */}
                     {currentStep === 'generate' && (
-                        <motion.div key="step-generate" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
-                                <h2 className="text-xl font-bold text-white mb-6">Chọn loại content bạn muốn tạo</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {CONTENT_TYPES.map((type) => (
-                                        <button key={type.id} onClick={() => setSelectedType(type.id)} disabled={isGenerating}
-                                            className={`text-left p-5 rounded-xl border transition-all duration-200
+                        <motion.div key="step-generate" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
+
+                            {/* ━ PANEL: Nội dung video gốc ━ */}
+                            {(videoTitle || videoDescription) && (
+                                <div className="bg-[#141414] rounded-2xl border border-amber-500/20 shadow-xl">
+                                    {/* Header */}
+                                    <div className="flex items-center gap-3 px-6 py-4 border-b border-amber-500/10 bg-amber-500/5 rounded-t-2xl">
+                                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 flex-shrink-0">
+                                            <span className="text-lg">🎬</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className="text-base font-bold text-amber-300">Nội dung video gốc</h2>
+                                            <p className="text-xs text-amber-500/70 mt-0.5">AI sẽ phân tích toàn bộ nội dung này để tạo kịch bản</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            {/* Nút Transcribe — chỉ hiện khi có videoUrl */}
+                                            {videoUrl && (
+                                                <button
+                                                    onClick={handleTranscribe}
+                                                    disabled={isTranscribing}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-600 hover:to-pink-600 text-white text-xs font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow"
+                                                >
+                                                    {isTranscribing ? (
+                                                        <><Loader2 className="w-3.5 h-3.5 animate-spin" />Đang transcribe...</>
+                                                    ) : transcript ? (
+                                                        <><RefreshCw className="w-3.5 h-3.5" />Transcribe lại</>
+                                                    ) : (
+                                                        <><Mic className="w-3.5 h-3.5" />Transcribe Video</>
+                                                    )}
+                                                </button>
+                                            )}
+                                            <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+                                                NGUỒN
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Nội dung */}
+                                    <div className="px-6 py-5 space-y-4">
+                                        {videoTitle && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Tiêu đề video</p>
+                                                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3">
+                                                    <p className="text-gray-200 font-semibold text-base leading-relaxed whitespace-pre-wrap break-words">{videoTitle}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Caption / Description */}
+                                        <div className="space-y-1.5">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Caption / Hashtag</p>
+                                            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl px-4 py-3 min-h-[60px]">
+                                                {videoDescription ? (
+                                                    <p className="text-gray-400 text-sm leading-loose whitespace-pre-wrap break-words">{videoDescription}</p>
+                                                ) : (
+                                                    <p className="text-gray-600 text-sm italic">Không có caption.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Transcript — hiện sau khi transcribe */}
+                                        {(transcript || isTranscribing || transcribeError) && (
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs text-purple-400 uppercase tracking-wider font-semibold">
+                                                        🎙 Nội dung lời nói (Transcription)
+                                                    </p>
+                                                    {transcript && (
+                                                        <span className="text-xs text-gray-600">— {transcript.length} ký tự</span>
+                                                    )}
+                                                </div>
+                                                <div className={`rounded-xl px-4 py-4 min-h-[100px] border transition-colors ${transcript
+                                                    ? 'bg-purple-950/20 border-purple-500/30'
+                                                    : transcribeError
+                                                        ? 'bg-red-950/20 border-red-500/30'
+                                                        : 'bg-[#1a1a1a] border-gray-800'
+                                                    }`}>
+                                                    {isTranscribing && (
+                                                        <div className="flex items-center gap-3 text-gray-400">
+                                                            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                                                            <div>
+                                                                <p className="text-sm font-medium text-purple-300">Đang transcribe video...</p>
+                                                                <p className="text-xs text-gray-500 mt-0.5">Download → Trích audio → Whisper AI → Text</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {!isTranscribing && transcript && (
+                                                        <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-words">{transcript}</p>
+                                                    )}
+                                                    {!isTranscribing && !transcript && transcribeError && (
+                                                        <p className="text-red-400 text-sm">{transcribeError}</p>
+                                                    )}
+                                                </div>
+                                                {!videoUrl && (
+                                                    <p className="text-xs text-gray-600 italic">
+                                                        ⚠ Không có URL video. Bấm "Generate Content" trực tiếp từ trang kết quả tìm kiếm để kích hoạt tính năng này.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Hint khi chưa transcribe */}
+                                        {videoUrl && !transcript && !isTranscribing && !transcribeError && (
+                                            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-purple-500/5 border border-purple-500/15 text-xs text-purple-400/70">
+                                                <Mic className="w-4 h-4 flex-shrink-0" />
+                                                <span>Nhấn <strong>Transcribe Video</strong> để chuyển giọng nói trong video thành text — AI sẽ phân tích nội dung chính xác hơn.</span>
+                                            </div>
+                                        )}
+
+                                        {/* ── Dropdown chọn ngôn ngữ output ── */}
+                                        <div className="pt-2 border-t border-gray-800">
+                                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">🌐 Ngôn ngữ nội dung generate</span>
+                                                    {detectedLanguage && (
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400">
+                                                            Video gốc: <strong>{detectedLanguage}</strong>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <LanguageSelect
+                                                    value={outputLanguage}
+                                                    onChange={setOutputLanguage}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-600 mt-2">
+                                                AI sẽ generate toàn bộ kịch bản, hook, CTA bằng ngôn ngữ đã chọn — bất kể video gốc nói ngôn ngữ nào.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+
+
+                            {/* ━ PANEL: Chọn loại content ━ */}
+                            <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+                                <div className="px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d] flex items-center gap-3">
+                                    <div className="p-1.5 bg-purple-500/15 rounded-lg border border-purple-500/20">
+                                        <Sparkles className="w-4 h-4 text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm font-bold text-white">Chọn loại content</h2>
+                                        <p className="text-xs text-gray-500 mt-0.5">AI sẽ tạo kịch bản theo phong cách phù hợp</p>
+                                    </div>
+                                </div>
+                                <div className="p-5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {CONTENT_TYPES.map((type) => (
+                                            <button key={type.id} onClick={() => setSelectedType(type.id)} disabled={isGenerating}
+                                                className={`text-left p-5 rounded-xl border transition-all duration-200
                                                 ${selectedType === type.id ? 'border-purple-500 bg-purple-900/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] scale-[1.02]' : 'border-gray-800 bg-[#1a1a1a] hover:border-gray-600 hover:bg-[#202020] hover:shadow-lg'}
                                                 ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                                            <div className="flex items-start gap-3 mb-3">
-                                                <div className={`p-2 rounded-lg bg-gradient-to-br ${type.color} shadow-lg`}><div className="w-6 h-6 bg-white/20 rounded" /></div>
-                                                <div className="flex-1">
-                                                    <h3 className={`font-bold ${selectedType === type.id ? 'text-white' : 'text-gray-200'}`}>{type.name}</h3>
-                                                    <p className="text-gray-500 text-xs mt-1">{type.description}</p>
-                                                </div>
-                                                {selectedType === type.id && <CheckCircle className="w-6 h-6 text-purple-400" />}
-                                            </div>
-                                            <div className="space-y-1 mt-4 pt-4 border-t border-gray-800/50">
-                                                {type.examples.map((ex, idx) => (
-                                                    <div key={idx} className="flex items-start gap-2 text-xs text-gray-500">
-                                                        <span className="text-purple-500 mt-0.5">•</span><span>{ex}</span>
+                                                <div className="flex items-start gap-3 mb-3">
+                                                    <div className={`p-2 rounded-lg bg-gradient-to-br ${type.color} shadow-lg`}><div className="w-6 h-6 bg-white/20 rounded" /></div>
+                                                    <div className="flex-1">
+                                                        <h3 className={`font-bold ${selectedType === type.id ? 'text-white' : 'text-gray-200'}`}>{type.name}</h3>
+                                                        <p className="text-gray-500 text-xs mt-1">{type.description}</p>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </button>
-                                    ))}
+                                                    {selectedType === type.id && <CheckCircle className="w-6 h-6 text-purple-400" />}
+                                                </div>
+                                                <div className="space-y-1 mt-4 pt-4 border-t border-gray-800/50">
+                                                    {type.examples.map((ex, idx) => (
+                                                        <div key={idx} className="flex items-start gap-2 text-xs text-gray-500">
+                                                            <span className="text-purple-500 mt-0.5">•</span><span>{ex}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="mt-8 flex justify-end">
+
+                                {/* Generate Button */}
+                                <div className="px-5 pb-5">
                                     <button onClick={handleGenerate} disabled={!selectedType || isGenerating}
-                                        className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-900/40">
-                                        {isGenerating ? (<><Loader2 className="w-5 h-5 animate-spin" />Đang tạo content...</>) : (<><Sparkles className="w-5 h-5" />Generate Content</>)}
+                                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30">
+                                        {isGenerating ? (<><Loader2 className="w-5 h-5 animate-spin" />Đang tạo kịch bản AI...</>) : (<><Sparkles className="w-5 h-5" />Generate Content</>)}
                                     </button>
+                                    {!selectedType && (
+                                        <p className="text-center text-xs text-gray-600 mt-2">← Chọn loại content để tiếp tục</p>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -727,73 +926,137 @@ export default function GenerateContentPage() {
                     {/* ═══════════ STEP 2: VIEW CONTENT ═══════════ */}
                     {currentStep === 'content' && generatedContent && (
                         <motion.div key="step-content" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-xl shadow-purple-900/20 border border-purple-500/20">
-                                <div className="flex items-center justify-between">
+
+                            {/* Header generated */}
+                            <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-xl shadow-purple-900/20 border border-purple-500/20">
+                                <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-24 translate-x-24 pointer-events-none" />
+                                <div className="relative flex items-center justify-between">
                                     <div>
                                         <h2 className="text-2xl font-bold text-white">{generatedContent.title}</h2>
-                                        <p className="text-white/80 mt-1 text-sm bg-white/10 px-3 py-1 rounded-full inline-block backdrop-blur-sm">
-                                            {generatedContent.word_count} từ • {generatedContent.content_type_display}
-                                        </p>
+                                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                            <span className="text-white/80 text-sm bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                                                {generatedContent.content_type_display}
+                                            </span>
+                                            <span className="text-white/70 text-xs bg-white/10 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                                📝 {generatedContent.word_count} từ
+                                            </span>
+                                            <span className="text-white/70 text-xs bg-white/10 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                                🎙 ~{Math.round(generatedContent.word_count / 2.5)}s
+                                            </span>
+                                        </div>
                                     </div>
-                                    <CheckCircle className="w-12 h-12 text-white/50" />
+                                    <CheckCircle className="w-12 h-12 text-white/40 flex-shrink-0" />
                                 </div>
                             </div>
 
-                            {/* Full Script */}
-                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
-                                <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
-                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                        <div className="w-1 h-6 bg-purple-500 rounded-full" />Kịch bản đầy đủ
-                                    </h3>
+                            {/* ━ SO SÁNH HAI BÊN: Video gốc vs Nội dung mới ━ */}
+                            {(videoTitle || videoDescription) && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {/* Cột trái: Video gốc */}
+                                    <div className="bg-[#141414] rounded-2xl border border-amber-500/20 flex flex-col overflow-hidden">
+                                        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-amber-500/10 bg-amber-500/5">
+                                            <span className="text-base">&#127916;</span>
+                                            <h3 className="font-bold text-amber-300 text-sm">Video gốc (nguồn cảm hứng)</h3>
+                                            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500">GỐC</span>
+                                        </div>
+                                        <div className="px-5 py-4 space-y-3 flex-1">
+                                            {videoTitle && (
+                                                <div>
+                                                    <p className="text-xs text-gray-600 uppercase font-semibold mb-1">Tiêu đề</p>
+                                                    <p className="text-gray-300 font-medium text-sm leading-relaxed">{videoTitle}</p>
+                                                </div>
+                                            )}
+                                            {videoDescription && (
+                                                <div>
+                                                    <p className="text-xs text-gray-600 uppercase font-semibold mb-1">Caption / Mô tả</p>
+                                                    <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">{videoDescription}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Cột phải: Kịch bản mới */}
+                                    <div className="bg-[#141414] rounded-2xl border border-purple-500/20 flex flex-col overflow-hidden">
+                                        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-purple-500/10 bg-purple-500/5">
+                                            <Sparkles className="w-4 h-4 text-purple-400" />
+                                            <h3 className="font-bold text-purple-300 text-sm">Kịch bản đã generate</h3>
+                                            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400">MỚI</span>
+                                        </div>
+                                        <div className="px-5 py-4 flex-1 relative">
+                                            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{generatedContent.script}</p>
+                                            <button onClick={() => copyToClipboard(generatedContent.script, 'compare')}
+                                                className="absolute top-4 right-4 p-1.5 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-400 hover:text-white border border-gray-700 transition-colors">
+                                                {copiedSection === 'compare' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Full Script — hiển riêng nếu không có video gốc */}
+                            {!videoTitle && !videoDescription && (
+                                <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
+                                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <div className="w-1 h-6 bg-purple-500 rounded-full" />Kịch bản đầy đủ
+                                        </h3>
+                                        <button onClick={() => copyToClipboard(generatedContent.script, 'full')}
+                                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-300 transition-colors border border-gray-700">
+                                            {copiedSection === 'full' ? (<><Check className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Đã copy!</span></>) : (<><Copy className="w-4 h-4" />Copy</>)}
+                                        </button>
+                                    </div>
+                                    <p className="text-gray-300 whitespace-pre-wrap leading-relaxed font-sans text-base">{generatedContent.script}</p>
+                                </div>
+                            )}
+
+                            {/* Copy full — hiển khi có view 2 cột */}
+                            {(videoTitle || videoDescription) && (
+                                <div className="bg-[#141414] rounded-2xl p-4 border border-gray-800 flex items-center justify-between">
+                                    <p className="text-xs text-gray-500">Kịch bản đầy đủ ({generatedContent.word_count} từ)</p>
                                     <button onClick={() => copyToClipboard(generatedContent.script, 'full')}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-300 transition-colors border border-gray-700">
-                                        {copiedSection === 'full' ? (<><Check className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Đã copy!</span></>) : (<><Copy className="w-4 h-4" />Copy</>)}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-gray-300 transition-colors border border-gray-700 text-sm">
+                                        {copiedSection === 'full' ? (<><Check className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Đã copy!</span></>) : (<><Copy className="w-4 h-4" />Copy kịch bản</>)}
                                     </button>
                                 </div>
-                                <p className="text-gray-300 whitespace-pre-wrap leading-relaxed font-sans text-base">{generatedContent.script}</p>
-                            </div>
+                            )}
 
                             {/* Advanced Prompt Section */}
-                            <div className="bg-[#141414] rounded-2xl p-6 shadow-xl border border-gray-800">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                            <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full" />
-                                            Tùy chỉnh nâng cao
-                                        </h3>
-                                        <p className="text-gray-500 text-sm mt-1">Sử dụng prompt tùy chỉnh để tạo lại nội dung theo ý bạn</p>
+                            <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden">
+                                <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                                    <div className="p-1.5 bg-purple-500/15 rounded-lg border border-purple-500/20">
+                                        <Sparkles className="w-4 h-4 text-purple-400" />
                                     </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-sm font-semibold text-white">Không hài lòng với kịch bản này?</h3>
+                                        <p className="text-xs text-gray-500 mt-0.5">AI tạo prompt tối ưu rồi generate lại theo ý bạn</p>
+                                    </div>
+                                    <button
+                                        onClick={handleAutoGeneratePrompt}
+                                        disabled={isGenerating}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-600 hover:to-pink-600 rounded-xl text-white text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
+                                    >
+                                        {isGenerating ? (
+                                            <><Loader2 className="w-3.5 h-3.5 animate-spin" />Đang tạo...</>
+                                        ) : (
+                                            <><Sparkles className="w-3.5 h-3.5" />Generate lại với AI Prompt</>
+                                        )}
+                                    </button>
                                 </div>
-
-                                <button
-                                    onClick={handleAutoGeneratePrompt}
-                                    disabled={isGenerating}
-                                    className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-purple-600/10 to-pink-600/10 border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 text-purple-400 font-semibold hover:from-purple-600/20 hover:to-pink-600/20 transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isGenerating ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            <span>Đang tạo prompt...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                            <span>AI: Tạo Prompt Nâng cao từ Video gốc</span>
-                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                        </>
-                                    )}
-                                </button>
+                                <div className="px-5 py-3 flex items-center gap-2 text-xs text-gray-600">
+                                    <span>💡</span>
+                                    <span>AI sẽ phân tích video gốc → tạo prompt style “Kể chuyện đơn khách” → generate kịch bản mới chất lượng hơn</span>
+                                </div>
                             </div>
 
                             {/* Actions */}
-                            <div className="flex justify-between items-center pt-4">
+                            <div className="flex justify-between items-center pt-2 gap-3">
                                 <button onClick={() => { setGeneratedContent(null); setCurrentStep('generate'); }}
-                                    className="px-6 py-3 rounded-xl bg-[#202020] text-gray-400 font-semibold hover:bg-[#2a2a2a] hover:text-white transition-colors border border-gray-800">
-                                    Tạo lại
+                                    className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] text-gray-400 text-sm font-medium hover:bg-[#222] hover:text-white transition-colors border border-gray-800 flex items-center gap-2">
+                                    <RefreshCw className="w-4 h-4" />Tạo lại
                                 </button>
                                 <button onClick={() => setCurrentStep('mix-video')}
                                     className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center gap-2 shadow-lg shadow-purple-900/40">
-                                    Go to Mix Video <ArrowRight className="w-5 h-5" />
+                                    Tiến hành Mix Video <ArrowRight className="w-5 h-5" />
                                 </button>
                             </div>
                         </motion.div>

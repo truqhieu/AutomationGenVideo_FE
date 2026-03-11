@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 import { motion } from 'framer-motion';
-import { Loader2, User, Mail, Lock, ArrowRight, Briefcase } from 'lucide-react';
+import { Loader2, User, Mail, Lock, ArrowRight } from 'lucide-react';
 
 const registerSchema = z.object({
   full_name: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
@@ -20,7 +20,6 @@ const registerSchema = z.object({
     .regex(/[A-Z]/, 'Mật khẩu phải có ít nhất 1 chữ hoa')
     .regex(/[a-z]/, 'Mật khẩu phải có ít nhất 1 chữ thường')
     .regex(/[0-9]/, 'Mật khẩu phải có ít nhất 1 số'),
-  role: z.nativeEnum(UserRole),
   manager_id: z.string().optional(),
 });
 
@@ -34,7 +33,6 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -47,7 +45,7 @@ export default function RegisterPage() {
     try {
       setIsLoading(true);
       clearError();
-      await registerUser(data);
+      await registerUser({ ...data, roles: [UserRole.CONTENT] });
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -149,6 +147,7 @@ export default function RegisterPage() {
                 </div>
                 {errors.password && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
               </div>
+
 
 
 
