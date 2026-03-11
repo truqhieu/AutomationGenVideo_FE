@@ -476,10 +476,7 @@ const UserActivityPage = () => {
                         {/* Directory Trigger Button */}
                         <button
                             onClick={() => setShowTabMenu(true)}
-                            className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab !== 'performance'
-                                ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/40 -translate-y-0.5'
-                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50/50'
-                                }`}
+                            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50"
                         >
                             <LayoutGrid className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline-block">
