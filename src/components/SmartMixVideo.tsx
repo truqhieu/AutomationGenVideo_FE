@@ -779,6 +779,10 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     const isReady = cacheStats && cacheStats.indexed_videos > 0;
     const needsIndexing = !cacheStats || cacheStats.indexed_videos === 0;
+    // Cache ready: pregen completed OR (cached_clips >= indexed_videos và > 0)
+    const isCacheReady = pregenStatus === 'completed' ||
+        (cacheStats != null && cacheStats.indexed_videos > 0 && cacheStats.cached_clips >= cacheStats.indexed_videos);
+
 
     if (!cacheStats && loadingStats) {
         return (
@@ -1341,12 +1345,103 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 </div>
             </div>
 
-            {/* Virtual Preview - Xem trước ngay: đã bị loại bỏ hoàn toàn theo yêu cầu */}
-
-            {/* ──── STEP 4: Mix ──── */}
+            {/* ──── STEP 3.5: Preview ──── */}
             <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-bold">4</div>
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-bold">4</div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-cyan-400" />
+                        Xem trước ngay
+                    </h3>
+                    {isCacheReady && (
+                        <span className="ml-auto px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full border border-green-500/20">✓ Sẵn sàng</span>
+                    )}
+                </div>
+
+                <div className="p-5">
+                    {!isCacheReady ? (
+                        <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                            {pregenStatus === 'running' ? (
+                                <>
+                                    <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                                    <p className="text-blue-400 text-sm font-semibold">Đang cache videos...</p>
+                                    <p className="text-gray-500 text-xs">{pregenDone}/{pregenTotal} ({pregenProgress}%) — Preview sẽ mở sau khi xong</p>
+                                    <div className="w-full max-w-xs bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full animate-pulse transition-all" style={{ width: `${pregenProgress}%` }} />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <Eye className="w-8 h-8 text-gray-600" />
+                                    <p className="text-gray-500 text-sm">Preview chưa khả dụng</p>
+                                    <p className="text-gray-600 text-xs">
+                                        {needsIndexing ? '⚠ Cần index videos trước (bước 1)' : '⚠ Cần cache xong mới xem được — bấm "Cache ngay" ở bước 1'}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <p className="text-xs text-gray-400">Xem trước video trước khi mix chính thức. Preview dùng cached clips nên hiển thị tức thì.</p>
+                            <button
+                                onClick={async () => {
+                                    if (!generatedAudioUrl && !audioFile) {
+                                        toast.error('⚠ Cần generate audio trước (bước 3)');
+                                        return;
+                                    }
+                                    // Gọi virtual-mix API
+                                    try {
+                                        const formData = new FormData();
+                                        if (audioFile) formData.append('audio', audioFile);
+                                        else if (generatedAudioUrl) {
+                                            // Fetch audio URL và gắn vào formData
+                                            const audioResp = await fetch(generatedAudioUrl);
+                                            const audioBlob = await audioResp.blob();
+                                            formData.append('audio', audioBlob, 'audio.mp3');
+                                        }
+                                        formData.append('num_outputs', '1');
+                                        formData.append('use_a4_formula', useA4Formula ? 'true' : 'false');
+                                        if (productSku) formData.append('product_sku', productSku);
+
+                                        const resp = await fetch(`${AI_SERVICE_URL}/api/videos/virtual-mix/`, {
+                                            method: 'POST',
+                                            body: formData,
+                                        });
+                                        const data = await resp.json();
+                                        if (!resp.ok || data.error) {
+                                            toast.error(data.message || data.error || 'Preview thất bại');
+                                            return;
+                                        }
+                                        // Mở tab mới với stream URL của clip đầu tiên
+                                        const firstClip = data.manifests?.[0]?.clips?.[0];
+                                        if (firstClip?.stream_url) {
+                                            window.open(`${AI_SERVICE_URL}${firstClip.stream_url}`, '_blank');
+                                            toast.success(`✅ Preview: ${data.manifests[0].slot_count} clips, ${data.manifests[0].total_duration?.toFixed(1)}s`);
+                                        } else {
+                                            toast.error('Không có clip để preview');
+                                        }
+                                    } catch (err: any) {
+                                        toast.error(`Lỗi preview: ${err.message}`);
+                                    }
+                                }}
+                                disabled={!generatedAudioUrl && !audioFile}
+                                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-xl text-white font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20"
+                            >
+                                <Eye className="w-4 h-4" />
+                                Xem trước ngay
+                            </button>
+                            {(!generatedAudioUrl && !audioFile) && (
+                                <p className="text-xs text-center text-gray-600">⚠ Cần generate audio trước (bước 3)</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ──── STEP 5: Mix ──── */}
+            <div className="bg-[#111111] rounded-2xl border border-gray-800/60 overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800/60 bg-[#0d0d0d]">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-bold">5</div>
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                         <Scissors className="w-4 h-4 text-green-400" />
                         Tiến hành Mix
@@ -1360,7 +1455,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     )}
 
                     {!mixLoading && !mixResult && (
-                        <button onClick={handleMix} disabled={(!generatedAudioUrl && !audioFile) || needsIndexing || isIndexing || isAutoReindexing}
+                        <button onClick={handleMix} disabled={(!generatedAudioUrl && !audioFile) || needsIndexing || isIndexing || isAutoReindexing || !isCacheReady}
                             className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-bold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-green-900/30 text-base">
                             <Zap className="w-5 h-5" />
                             {useA4Formula ? '🎯 BẮT ĐẦU MIX A4 (7 slots)' : '⚡ SMART MIX (5–13s)'}
@@ -1371,6 +1466,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     )}
                     {needsIndexing && (
                         <p className="text-xs text-center text-amber-600">⚠ Cần index videos trước (bước 1)</p>
+                    )}
+                    {!isCacheReady && !needsIndexing && (
+                        <p className="text-xs text-center text-blue-500">⚠ Cần cache xong mới mix được — chờ cache ở bước 1</p>
                     )}
 
                     {/* Progress */}
