@@ -721,21 +721,21 @@ const UserActivityPage = () => {
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{reportOutstandings
                                             .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
+                                            .filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'product_win' ? 'all' : 'product_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'product_win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{reportOutstandings
                                             .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.content?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
+                                            .filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💎</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
                                         <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{reportOutstandings
                                             .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.content?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến/)).length}</h4></div>
+                                            .filter(r => (r.category?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến|ý kiến/)).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
@@ -743,8 +743,8 @@ const UserActivityPage = () => {
                                             .filter(r => matchTeam(r.team))
                                             .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
                                             .filter(r => {
-                                                const c = (r.content?.toLowerCase() || '').normalize('NFC');
-                                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến/);
+                                                const c = (r.category?.toLowerCase() || '').normalize('NFC');
+                                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến|ý kiến/);
                                             }).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
                                     </button>
