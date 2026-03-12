@@ -226,6 +226,12 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         const runReindex = async () => {
             setIsAutoReindexing(true);
             setAutoReindexMsg(`⏳ Đang re-index ${zeroSlots.join(', ')}...`);
+            // Reset pregen state khi bắt đầu re-index
+            setPregenStatus('idle');
+            setPregenProgress(0);
+            setPregenMessage('');
+            setPregenDone(0);
+            setPregenTotal(0);
 
             try {
                 // Trigger index lại manufacturing folder cho SKU hiện tại
@@ -644,6 +650,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         setPregenStatus('idle');
         setPregenProgress(0);
         setPregenMessage('');
+        setPregenDone(0);
+        setPregenTotal(0);
 
         try {
             // Convert to object format
@@ -1041,7 +1049,13 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                                 : (pregenStatus as string) === 'partial' ? 'text-amber-400'
                                                     : pregenStatus === 'error' ? 'text-red-400'
                                                         : 'text-blue-400'}`}>
-                                            {pregenDone}/{pregenTotal} ({pregenProgress}%)
+                                            {(() => {
+                                                // Khi completed: luôn dùng live data từ cacheStats
+                                                const liveDone = cacheStats?.cached_clips ?? pregenDone;
+                                                const liveTotal = cacheStats?.indexed_videos ?? pregenTotal;
+                                                const livePct = liveTotal > 0 ? Math.round(liveDone / liveTotal * 100) : pregenProgress;
+                                                return `${liveDone}/${liveTotal} (${livePct}%)`;
+                                            })()}
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
@@ -1051,7 +1065,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                                     : (pregenStatus as string) === 'partial'
                                                         ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
                                                         : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
-                                            style={{ width: `${pregenProgress}%` }}
+                                            style={{ width: `${pregenStatus === 'completed' && cacheStats
+                                                ? Math.round((cacheStats.cached_clips / (cacheStats.indexed_videos || 1)) * 100)
+                                                : pregenProgress}%` }}
                                         />
                                     </div>
                                     {pregenMessage && (
