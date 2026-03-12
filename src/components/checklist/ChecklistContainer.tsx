@@ -155,7 +155,7 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
             // Kiểm tra các item xem có bị bỏ trống hay bấm "Có" mà không nhập nội dung
             const hasEmptyDetails = details.some(d => d.trim() === '');
             if (hasEmptyDetails) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ các câu hỏi ở phần CHI TIẾT (Nếu không có nội dung trơn, vui lòng chọn "Không ạ").' });
+                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
                 return;
             }
         }
@@ -164,7 +164,7 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
         if (showForm3) {
             const hasEmptyLeader = leaderAnswers.some(l => l.trim() === '');
             if (hasEmptyLeader) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ đánh giá dành cho LEADER (Nếu không có, vui lòng chọn "Không ạ").' });
+                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
                 return;
             }
         }
