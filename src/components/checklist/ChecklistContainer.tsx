@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
+import TrafficReportSection, { TrafficData, initialTrafficData } from './TrafficReportSection';
 import { Send, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
@@ -17,6 +18,7 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
     const [checks, setChecks] = useState<boolean[]>(initialChecks);
     const [details, setDetails] = useState<string[]>(initialDetails);
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
+    const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
@@ -108,6 +110,10 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
         });
     }, []);
 
+    const handleTrafficChange = useCallback((platformId: keyof TrafficData, value: string) => {
+        setTraffic((prev) => ({ ...prev, [platformId]: value }));
+    }, []);
+
     const buildPayload = useCallback((): Record<string, boolean | string> => {
         const payload: Record<string, boolean | string> = {
             isLate: false,
@@ -170,6 +176,24 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
             setChecks(initialChecks());
             setDetails(initialDetails());
             setLeaderAnswers(initialLeaderAnswers());
+
+            // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
+            const hasTrafficData = Object.values(traffic).some(val => val !== '');
+            if (hasTrafficData) {
+                const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                await fetch(`${beBaseUrl}/lark/traffic-report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: user.email,
+                        name: user.full_name,
+                        roles: user.roles,
+                        traffic: traffic
+                    })
+                }).catch(err => console.error('Traffic save error', err));
+                setTraffic(initialTrafficData());
+            }
+
         } catch (e) {
             const err = e instanceof Error ? e : new Error(String(e));
             const isNetwork = err.message?.includes('fetch') || err.name === 'TypeError';
@@ -212,6 +236,13 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
                 {showForm3 && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                         <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
+                    </div>
+                )}
+                
+                {/* Traffic Section - Show for both Member and Leader if needed, or just everyone in Checklist */}
+                {(showForm12 || showForm3) && (
+                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
+                        <TrafficReportSection values={traffic} onChange={handleTrafficChange} />
                     </div>
                 )}
             </div>
