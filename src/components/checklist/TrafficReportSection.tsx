@@ -9,6 +9,7 @@ export const TRAFFIC_PLATFORMS = [
     { id: 'thread', label: 'Traffic Thread' },
     { id: 'lemon8', label: 'Traffic Lemon 8' },
     { id: 'zalo', label: 'Traffic Zalo' },
+    { id: 'twitter', label: 'Traffic Twitter' },
 ];
 
 export interface TrafficData {
@@ -19,6 +20,7 @@ export interface TrafficData {
     thread: string;
     lemon8: string;
     zalo: string;
+    twitter: string;
 }
 
 export const initialTrafficData = (): TrafficData => ({
@@ -29,6 +31,7 @@ export const initialTrafficData = (): TrafficData => ({
     thread: '',
     lemon8: '',
     zalo: '',
+    twitter: '',
 });
 
 interface TrafficReportSectionProps {
