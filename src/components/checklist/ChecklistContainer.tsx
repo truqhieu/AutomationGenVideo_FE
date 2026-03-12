@@ -141,6 +141,34 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
             return;
         }
 
+        // Validate Traffic
+        if (showForm12 || showForm3) {
+            const hasTrafficData = Object.values(traffic).some(val => val !== '');
+            if (!hasTrafficData) {
+                setMessage({ type: 'error', text: 'Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).' });
+                return;
+            }
+        }
+
+        // Validate Form Chi Tiết (Member)
+        if (showForm12) {
+            // Kiểm tra các item xem có bị bỏ trống hay bấm "Có" mà không nhập nội dung
+            const hasEmptyDetails = details.some(d => d.trim() === '');
+            if (hasEmptyDetails) {
+                setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ các câu hỏi ở phần CHI TIẾT (Nếu không có nội dung trơn, vui lòng chọn "Không ạ").' });
+                return;
+            }
+        }
+
+        // Validate Form Đánh Giá (Leader)
+        if (showForm3) {
+            const hasEmptyLeader = leaderAnswers.some(l => l.trim() === '');
+            if (hasEmptyLeader) {
+                setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ đánh giá dành cho LEADER (Nếu không có, vui lòng chọn "Không ạ").' });
+                return;
+            }
+        }
+
         setMessage(null);
         setLoading(true);
         try {
