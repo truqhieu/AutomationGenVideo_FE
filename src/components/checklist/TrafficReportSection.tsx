@@ -58,8 +58,13 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onC
                         <input
                             type="text"
                             placeholder="Nhập số..."
-                            value={values[platform.id as keyof TrafficData] ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') : ''}
-                            onChange={(e) => onChange(platform.id as keyof TrafficData, e.target.value.replace(/\\D/g, ''))}
+                            value={values[platform.id as keyof TrafficData] && !isNaN(Number(values[platform.id as keyof TrafficData])) 
+                                ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') 
+                                : ''}
+                            onChange={(e) => {
+                                const rawValue = e.target.value.replace(/\D/g, '');
+                                onChange(platform.id as keyof TrafficData, rawValue);
+                            }}
                             className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-base font-medium focus:border-purple-300 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all outline-none"
                         />
                     </div>
