@@ -223,6 +223,10 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
                 }).catch(err => console.error('Traffic save error', err));
                 setTraffic(initialTrafficData());
                 setEvidenceTokens([]);
+                // Reload page after a delay to clear local state in child components like preview images
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                 setTimeout(() => window.location.reload(), 1000);
             }
 
         } catch (e) {
