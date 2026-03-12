@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package, Eye } from 'lucide-react';
+import { VirtualMixPlayer } from './VirtualMixPlayer';
 import { toast } from 'react-hot-toast';
 
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -97,7 +98,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     // Preview state
     const [previewLoading, setPreviewLoading] = useState(false);
-    const [previewClips, setPreviewClips] = useState<Array<{ stream_url: string; slot_count?: number; total_duration?: number }>>([]);
+    const [previewClips, setPreviewClips] = useState<any[]>([]);
     const [previewError, setPreviewError] = useState('');
 
     // Fallback: Get product category from localStorage if not provided via props
@@ -346,13 +347,10 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     }, [cacheStats, pregenStatus, isIndexing]);
 
-    // Show reminder to enable A4 when content type is A4
+    // Auto-activate A4 formula when content type is A4
     useEffect(() => {
-        if (contentType === 'A4' && !useA4Formula) {
-            toast('💡 Nhắc nhở: Hãy bật "Công thức A4" bên dưới để mix theo cấu trúc 7 slots!', {
-                duration: 5000,
-                icon: '⚠️'
-            });
+        if (contentType === 'A4') {
+            setUseA4Formula(true);
         }
     }, [contentType]);
 
@@ -1492,19 +1490,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                             toast.error(data.message || data.error || 'Preview thất bại');
                                             return;
                                         }
-                                        // Thu thập tất cả manifests (mỗi manifest = 1 video preview)
-                                        const manifests: Array<{ stream_url: string; slot_count?: number; total_duration?: number }> = [];
-                                        for (const manifest of (data.manifests || [])) {
-                                            // Lấy clip đầu tiên của mỗi manifest làm đại diện
-                                            const firstClip = manifest.clips?.[0];
-                                            if (firstClip?.stream_url) {
-                                                manifests.push({
-                                                    stream_url: `${AI_SERVICE_URL}${firstClip.stream_url}`,
-                                                    slot_count: manifest.slot_count,
-                                                    total_duration: manifest.total_duration,
-                                                });
-                                            }
-                                        }
+                                        // Lưu toàn bộ manifest để VirtualMixPlayer render đầy đủ tất cả slots
+                                        const manifests = (data.manifests || []).filter((m: any) => m.clips?.length > 0);
                                         if (manifests.length === 0) {
                                             setPreviewError('Không có clip để preview. Kiểm tra lại cache.');
                                         } else {
@@ -1538,36 +1525,20 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                 <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-xs">{previewError}</div>
                             )}
 
-                            {/* Kết quả preview - grid video */}
+                            {/* Kết quả preview - VirtualMixPlayer cho từng output */}
                             {previewClips.length > 0 && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Preview — {previewClips.length} video</p>
-                                    <div className={`grid gap-3 ${previewClips.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' :
-                                            previewClips.length <= 2 ? 'grid-cols-2' :
-                                                previewClips.length <= 4 ? 'grid-cols-2 md:grid-cols-2' :
-                                                    'grid-cols-2 md:grid-cols-3'
-                                        }`}>
-                                        {previewClips.map((clip, idx) => (
-                                            <div key={idx} className="bg-[#0a0a0a] rounded-xl border border-gray-800/60 overflow-hidden">
-                                                <div className="relative" style={{ paddingBottom: '177.7%' /* 9:16 ratio */ }}>
-                                                    <video
-                                                        src={clip.stream_url}
-                                                        controls
-                                                        muted
-                                                        playsInline
-                                                        preload="metadata"
-                                                        className="absolute inset-0 w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                                <div className="px-3 py-2 flex items-center justify-between">
-                                                    <span className="text-xs text-gray-400 font-semibold">Video {idx + 1}</span>
-                                                    {clip.total_duration && (
-                                                        <span className="text-[10px] text-gray-600">{clip.total_duration.toFixed(1)}s</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    {previewClips.map((manifest: any, idx: number) => (
+                                        <div key={idx} className="space-y-1">
+                                            <p className="text-[10px] text-gray-600 font-semibold px-1">
+                                                Video {idx + 1}
+                                                {manifest.slot_count && <span className="ml-1 text-gray-700">· {manifest.slot_count} slots</span>}
+                                                {manifest.total_duration && <span className="ml-1 text-gray-700">· {manifest.total_duration.toFixed(1)}s</span>}
+                                            </p>
+                                            <VirtualMixPlayer manifest={manifest} />
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
