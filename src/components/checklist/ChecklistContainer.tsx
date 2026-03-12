@@ -19,6 +19,7 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
     const [details, setDetails] = useState<string[]>(initialDetails);
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
+    const [evidenceTokens, setEvidenceTokens] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
@@ -216,10 +217,12 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
                         email: user.email,
                         name: user.full_name,
                         roles: user.roles,
-                        traffic: traffic
+                        traffic: traffic,
+                        fileTokens: evidenceTokens,
                     })
                 }).catch(err => console.error('Traffic save error', err));
                 setTraffic(initialTrafficData());
+                setEvidenceTokens([]);
             }
 
         } catch (e) {
@@ -270,7 +273,11 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
                 {/* Traffic Section - Show for both Member and Leader if needed, or just everyone in Checklist */}
                 {(showForm12 || showForm3) && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
-                        <TrafficReportSection values={traffic} onChange={handleTrafficChange} />
+                        <TrafficReportSection 
+                            values={traffic} 
+                            onChange={handleTrafficChange}
+                            onEvidenceTokensChange={(tokens) => setEvidenceTokens(tokens)}
+                        />
                     </div>
                 )}
             </div>
