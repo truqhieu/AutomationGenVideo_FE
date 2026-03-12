@@ -100,6 +100,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewClips, setPreviewClips] = useState<any[]>([]);
     const [previewError, setPreviewError] = useState('');
+    const [selectedPreviewIdx, setSelectedPreviewIdx] = useState(0);
 
     // Fallback: Get product category from localStorage if not provided via props
     const [actualProductCategory, setActualProductCategory] = useState<string | undefined>(productCategory);
@@ -1512,6 +1513,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                             setPreviewError('Không có clip để preview. Kiểm tra lại cache.');
                                         } else {
                                             setPreviewClips(manifests);
+                                            setSelectedPreviewIdx(0);
                                             toast.success(`✅ Preview ${manifests.length}/${numOutputs} video sẵn sàng!`);
                                         }
                                     } catch (err: any) {
@@ -1541,20 +1543,40 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                 <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-xs">{previewError}</div>
                             )}
 
-                            {/* Kết quả preview - VirtualMixPlayer cho từng output */}
+                            {/* Kết quả preview - tabs Video 1, 2, 3... */}
                             {previewClips.length > 0 && (
-                                <div className="space-y-4">
-                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Preview — {previewClips.length} video</p>
-                                    {previewClips.map((manifest: any, idx: number) => (
-                                        <div key={idx} className="space-y-1">
-                                            <p className="text-[10px] text-gray-600 font-semibold px-1">
+                                <div className="space-y-3">
+                                    {/* Tab selector */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mr-1">Preview</span>
+                                        {previewClips.map((_: any, idx: number) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setSelectedPreviewIdx(idx)}
+                                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                    selectedPreviewIdx === idx
+                                                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300'
+                                                        : 'bg-gray-800/60 border border-gray-700/40 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                                                }`}
+                                            >
                                                 Video {idx + 1}
-                                                {manifest.slot_count && <span className="ml-1 text-gray-700">· {manifest.slot_count} slots</span>}
-                                                {manifest.total_duration && <span className="ml-1 text-gray-700">· {manifest.total_duration.toFixed(1)}s</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Player cho video đang chọn */}
+                                    {previewClips[selectedPreviewIdx] && (
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] text-gray-600 px-1">
+                                                {previewClips[selectedPreviewIdx].slot_count && (
+                                                    <span>{previewClips[selectedPreviewIdx].slot_count} slots</span>
+                                                )}
+                                                {previewClips[selectedPreviewIdx].total_duration && (
+                                                    <span className="ml-1">· {previewClips[selectedPreviewIdx].total_duration.toFixed(1)}s</span>
+                                                )}
                                             </p>
-                                            <VirtualMixPlayer manifest={manifest} />
+                                            <VirtualMixPlayer manifest={previewClips[selectedPreviewIdx]} />
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             )}
                         </div>
