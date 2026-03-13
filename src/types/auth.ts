@@ -1,6 +1,8 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
+  MEMBER = 'MEMBER',
+  LEADER = 'LEADER',
   EDITOR = 'EDITOR',
   CONTENT = 'CONTENT',
 }
@@ -9,7 +11,7 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
-  role: UserRole;
+  roles: UserRole[];
   manager_id?: string;
   is_active: boolean;
   last_login_at?: string;

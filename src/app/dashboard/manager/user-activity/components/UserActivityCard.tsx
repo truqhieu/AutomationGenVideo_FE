@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, AlertCircle, FileText, Target, CheckCircle2 } from 'lucide-react';
 
 interface UserActivity {
@@ -14,14 +13,21 @@ interface UserActivity {
     done: number;
     traffic: string;
     revenue: string;
-    reportStatus: 'CHƯA BÁO CÁO' | 'ĐÃ XONG' | 'ĐÃ BÁO CÁO';
+    reportStatus: 'CHƯA BÁO CÁO' | 'ĐÃ XONG' | 'ĐÃ BÁO CÁO' | 'ĐÚNG HẠN';
     monthlyProgress: number;
+    task_progress?: {
+        task_auto: number;
+        task_new: number;
+        kpi_status: string;
+    } | null;
 }
 
 interface UserActivityCardProps {
     data: UserActivity;
     onClick?: () => void;
+    canClick?: boolean;
     isActive?: boolean;
+    timeType?: string;
 }
 
 const getAvatarUrl = (url: string | null, name: string) => {
@@ -37,7 +43,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) => {
+const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
     const dailyGoal = data.dailyGoal || 0;
     const done = data.done || 0;
 
@@ -48,66 +54,64 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
 
     const statusStyles = {
         warning: {
-            card: 'border-red-100 bg-gradient-to-br from-white via-white to-red-50/30 hover:border-red-400 shadow-[0_4px_20px_rgb(0,0,0,0.03)]',
-            avatar: 'border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.1)]',
+            card: `border-red-400 border-2 bg-red-100/60 ${canClick ? 'hover:bg-red-100/80 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]' : ''}`,
+            avatar: 'border-red-500 ring-4 ring-red-100',
             icon: 'text-red-500',
-            badge: 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-none shadow-sm',
+            badge: 'bg-red-600 text-white',
             text: 'text-red-600',
-            glow: 'hover:shadow-[0_12px_24px_-8px_rgba(239,68,68,0.12)]',
-            accent: 'bg-red-50'
+            glow: canClick ? 'hover:shadow-red-300/40' : '',
+            accent: 'bg-red-100'
         },
         completed: {
-            card: 'border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/30 hover:border-emerald-400 shadow-[0_4px_20px_rgb(0,0,0,0.03)]',
-            avatar: 'border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.1)]',
+            card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
+            avatar: 'border-emerald-500 ring-4 ring-emerald-100',
             icon: 'text-emerald-500',
-            badge: 'bg-gradient-to-r from-emerald-500 to-green-600 text-white border-none shadow-sm',
+            badge: 'bg-emerald-600 text-white',
             text: 'text-emerald-600',
-            glow: 'hover:shadow-[0_12px_24px_-8px_rgba(16,185,129,0.12)]',
-            accent: 'bg-emerald-50'
+            glow: canClick ? 'hover:shadow-emerald-300/40' : '',
+            accent: 'bg-emerald-100'
         },
         exceeded: {
-            card: 'border-amber-200 bg-gradient-to-br from-amber-50/20 via-white to-yellow-50/20 hover:border-amber-500 shadow-[0_4px_15px_rgba(245,158,11,0.04)]',
-            avatar: 'border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.3)]',
-            icon: 'text-amber-600',
-            badge: 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white border-none shadow-md',
-            text: 'text-amber-700 font-extrabold',
-            glow: 'hover:shadow-[0_15px_30px_-10px_rgba(245,158,11,0.2)]',
-            accent: 'bg-amber-100/20'
+            card: `border-purple-400 border-2 bg-purple-100/60 ${canClick ? 'hover:bg-purple-100/80 transition-all shadow-[0_8px_30px_rgba(168,85,247,0.1)]' : ''}`,
+            avatar: 'border-purple-500 ring-4 ring-purple-100',
+            icon: 'text-purple-600',
+            badge: 'bg-purple-600 text-white',
+            text: 'text-purple-700',
+            glow: canClick ? 'hover:shadow-purple-300/40' : '',
+            accent: 'bg-purple-100'
         }
     };
 
     const style = statusStyles[statusType];
-    const isPending = data.reportStatus === 'CHƯA BÁO CÁO';
+    const isReportedOnTime = data.reportStatus === 'ĐÚNG HẠN' || data.reportStatus === 'ĐÃ XONG';
+    const isRange = timeType && !['today', 'yesterday'].includes(timeType);
+    const goalLabel = isRange ? 'TỔNG MỤC TIÊU' : 'MỤC TIÊU NGÀY';
 
     return (
-        <Card
-            onClick={onClick}
-            className={`relative rounded-[2rem] overflow-hidden border transition-all duration-300 cursor-pointer ${style.card} ${isActive
-                ? 'ring-2 ring-blue-500/30 shadow-xl scale-[1.01] z-10 border-blue-400'
-                : `hover:scale-[1.005] ${style.glow}`
+        <div
+            onClick={canClick ? onClick : undefined}
+            className={`relative rounded-[2.5rem] overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
+                ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
+                : `${style.glow}`
                 }`}>
 
-            {/* Tight decors */}
-            <div className={`absolute -top-16 -right-16 w-32 h-32 rounded-full blur-2xl opacity-10 ${style.accent}`} />
-            <div className={`absolute -bottom-16 -left-16 w-32 h-32 rounded-full blur-2xl opacity-10 ${style.accent}`} />
-
-            <CardContent className="p-4 flex flex-col items-center relative z-10">
+            <div className="p-4 flex flex-col items-center relative z-10">
                 {/* Warning/Status Icon */}
-                <div className="absolute top-1.5 right-1.5">
+                <div className="absolute top-2 right-2">
                     {statusType === 'exceeded' ? (
-                        <div className="bg-amber-100/80 p-1.5 rounded-xl animate-bounce">
-                            <Target className="w-3.5 h-3.5 text-amber-600" />
+                        <div className="bg-purple-100 p-2 rounded-xl border border-purple-200 shadow-sm animate-pulse-slow">
+                            <Target className="w-4 h-4 text-purple-600" />
                         </div>
                     ) : (
-                        <div className={`${isPending ? 'bg-red-50' : 'bg-gray-50'} p-1.5 rounded-xl`}>
-                            <AlertCircle className={`w-3.5 h-3.5 ${isPending ? 'text-red-500 animate-pulse' : style.icon}`} />
+                        <div className={`${!isReportedOnTime ? 'bg-red-100 border-red-200' : 'bg-gray-100 border-gray-200'} p-2 rounded-xl border`}>
+                            <AlertCircle className={`w-4 h-4 ${!isReportedOnTime ? 'text-red-500 animate-pulse' : style.icon}`} />
                         </div>
                     )}
                 </div>
 
                 {/* Profile Info */}
-                <div className="mt-1 mb-2">
-                    <div className={`w-14 h-14 rounded-full border ${style.avatar} p-0.5 transition-all bg-white shadow-sm`}>
+                <div className="mt-2 mb-3">
+                    <div className={`w-16 h-16 rounded-full border-2 ${style.avatar} p-0.5 transition-all bg-white overflow-hidden shadow-inner`}>
                         <img
                             src={getAvatarUrl(data.avatar, data.name)}
                             alt={data.name}
@@ -119,68 +123,70 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                     </div>
                 </div>
 
-                <div className="text-center mb-3">
-                    <h4 className="text-xs font-black text-gray-900 tracking-tight leading-tight mb-1 truncate max-w-[150px]">{data.name}</h4>
+                <div className="text-center mb-4">
+                    <h4 className="text-[13px] font-black text-slate-800 tracking-tight leading-tight mb-1 truncate max-w-[170px]">{data.name}</h4>
                     <div className="flex items-center justify-center gap-1.5">
                         {data.position && (
-                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border shadow-xs ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
-                                ? 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-600 border-orange-100'
-                                : 'bg-white text-gray-500 border-gray-100'
+                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-lg border shadow-xs ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
+                                ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border-orange-200'
+                                : 'bg-white text-slate-500 border-slate-200'
                                 }`}>
-                                {data.position}
+                                {data.position?.toUpperCase()}
                             </span>
                         )}
-                        <span className="text-[7px] font-bold text-blue-600 bg-blue-50/80 px-1.5 py-0.5 rounded-md border border-blue-50">
+                        <span className="text-[8px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs">
                             {data.team}
                         </span>
                     </div>
                 </div>
 
                 {/* Metrics Grid */}
-                <div className="w-full grid grid-cols-1 gap-1 mb-3">
-                    <div className="flex items-center justify-between p-1.5 rounded-xl bg-slate-50/40 border border-slate-100/30">
-                        <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">TGBC</span>
+                <div className="w-full grid grid-cols-1 gap-1.5 mb-4 px-1">
+                    <div className="flex items-center justify-between p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">TGBC</span>
                         </div>
-                        <span className="text-[9px] font-black text-slate-700">{data.time}</span>
+                        <span className="text-[10px] font-black text-slate-800">{data.time}</span>
                     </div>
 
-                    <div className="flex items-center justify-between p-1.5 rounded-xl bg-slate-50/40 border border-slate-100/30">
-                        <div className="flex items-center gap-1.5">
-                            <Target className="w-3 h-3 text-slate-400" />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">TIÊU</span>
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border transition-colors ${statusType === 'exceeded' ? 'bg-purple-50/50 border-purple-100' : 'bg-white border-slate-100'}`}>
+                        <div className="flex items-center gap-2">
+                            <Target className={`w-3.5 h-3.5 ${statusType === 'exceeded' ? 'text-purple-500' : 'text-slate-400'}`} />
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{goalLabel}</span>
                         </div>
-                        <span className="text-[10px] font-black text-slate-900">{data.dailyGoal}</span>
+                        <span className={`text-[12px] font-black ${statusType === 'exceeded' ? 'text-purple-700' : 'text-slate-900'}`}>{dailyGoal}</span>
                     </div>
 
-                    <div className={`flex items-center justify-between p-1.5 rounded-xl border ${statusType === 'exceeded' ? 'bg-amber-50/60 border-amber-100' : 'bg-slate-50/40 border-slate-100/30'}`}>
-                        <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className={`w-3 h-3 ${style.icon}`} />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">XONG</span>
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-purple-100 border-purple-200' : 'bg-white border-slate-100'}`}>
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className={`w-3.5 h-3.5 ${style.icon}`} />
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">ĐÁ XONG</span>
                         </div>
-                        <span className={`text-[10px] font-black ${style.text}`}>{data.done}</span>
+                        <span className={`text-[12px] font-black ${style.text}`}>{done}</span>
                     </div>
                 </div>
 
                 {/* Report Status Badge */}
-                <button className={`w-full py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.1em] mb-3 shadow-xs transition-opacity active:opacity-80 ${isPending
-                    ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white'
-                    : style.badge
-                    }`}>
-                    {data.reportStatus}
-                </button>
+                <div className="w-full flex justify-center mb-4">
+                    <div className={`px-5 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] shadow-md transition-all ${isReportedOnTime
+                        ? 'bg-emerald-600 text-white ring-2 ring-emerald-500/20'
+                        : 'bg-red-600 text-white ring-2 ring-red-500/20'
+                        }`}>
+                        {data.reportStatus || 'Chưa báo cáo'}
+                    </div>
+                </div>
 
                 {/* Monthly Progress */}
-                <div className="w-full space-y-1 mb-3">
-                    <div className="flex justify-between items-center text-[8px] font-black">
-                        <span className="text-slate-400 uppercase">TIẾN ĐỘ THÁNG</span>
-                        <span className={`${statusType === 'exceeded' ? 'text-amber-600' : 'text-blue-600'}`}>{data.monthlyProgress}%</span>
+                <div className="w-full space-y-1.5 mb-4 px-1">
+                    <div className="flex justify-between items-center text-[9px] font-black tracking-wider">
+                        <span className="text-slate-500 uppercase">TIẾN ĐỘ THÁNG</span>
+                        <span className={`${statusType === 'exceeded' ? 'text-purple-600' : 'text-blue-600'}`}>{data.monthlyProgress}%</span>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+                    <div className="h-2 w-full bg-slate-200/50 rounded-full overflow-hidden p-0.5 shadow-inner">
                         <div
                             className={`h-full rounded-full transition-all duration-700 shadow-sm ${statusType === 'exceeded'
-                                ? 'bg-gradient-to-r from-amber-400 to-yellow-500'
+                                ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500'
                                 : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
                             style={{ width: `${Math.min(data.monthlyProgress, 100)}%` }}
                         />
@@ -188,18 +194,18 @@ const UserActivityCard = ({ data, onClick, isActive }: UserActivityCardProps) =>
                 </div>
 
                 {/* Traffic & Revenue Footer */}
-                <div className="grid grid-cols-2 w-full gap-2 mt-1">
-                    <div className="bg-blue-50/30 p-2 rounded-xl border border-blue-100/30 text-center">
-                        <span className="block text-[6px] font-black text-blue-400 uppercase mb-0.5">TRAFFIC</span>
-                        <div className="text-[9px] font-black text-blue-700 truncate">{data.traffic}</div>
+                <div className="grid grid-cols-2 w-full gap-2 px-1">
+                    <div className="bg-white p-2.5 rounded-2xl border border-blue-100 shadow-sm text-center">
+                        <span className="block text-[7px] font-black text-blue-500 uppercase tracking-widest mb-1">TRAFFIC</span>
+                        <div className="text-[11px] font-black text-blue-800 truncate leading-none">{data.traffic}</div>
                     </div>
-                    <div className="bg-emerald-50/30 p-2 rounded-xl border border-emerald-100/30 text-center">
-                        <span className="block text-[6px] font-black text-emerald-400 uppercase mb-0.5">REVENUE</span>
-                        <div className="text-[9px] font-black text-emerald-700 truncate">{data.revenue}</div>
+                    <div className="bg-white p-2.5 rounded-2xl border border-emerald-100 shadow-sm text-center">
+                        <span className="block text-[7px] font-black text-emerald-500 uppercase tracking-widest mb-1">DOANH THU</span>
+                        <div className="text-[11px] font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target } from 'lucide-react';
+import { Target, Globe, Flag } from 'lucide-react';
 
 interface ActivityKPIsProps {
     summary?: {
@@ -12,16 +12,16 @@ interface ActivityKPIsProps {
         totalTrafficCompleted: number;
         totalRevenueTarget: number;
         totalRevenueCompleted: number;
+        totalChannels: number;
     };
-    teamContributions?: {
-        team: string;
-        videoPct: number;
-        trafficPct: number;
-        revenuePct: number;
-    }[];
+    teamContributions?: any[];
+    groupContributions?: {
+        global: { videos: number, traffic: number, revenue: number, channels: number, videoPct: number, trafficPct: number, revenuePct: number, channelPct: number };
+        vn: { videos: number, traffic: number, revenue: number, channels: number, videoPct: number, trafficPct: number, revenuePct: number, channelPct: number };
+    } | null;
 }
 
-const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
+const ActivityKPIs = ({ summary, teamContributions, groupContributions }: ActivityKPIsProps) => {
     const formatNumber = (num: number) => {
         return new Intl.NumberFormat('vi-VN').format(num);
     };
@@ -37,97 +37,141 @@ const ActivityKPIs = ({ summary, teamContributions }: ActivityKPIsProps) => {
             value: formatNumber(summary?.totalVideoCompleted || 0),
             total: `${formatNumber(summary?.totalVideoTarget || 0)} Video`,
             percentage: calculatePercentage(summary?.totalVideoCompleted || 0, summary?.totalVideoTarget || 0),
-            key: 'videoPct'
+            groupKey: 'videos',
+            pctKey: 'videoPct'
         },
         {
             title: 'TỔNG TRAFFIC',
             value: formatNumber(summary?.totalTrafficCompleted || 0),
             total: formatNumber(summary?.totalTrafficTarget || 0),
             percentage: calculatePercentage(summary?.totalTrafficCompleted || 0, summary?.totalTrafficTarget || 0),
-            key: 'trafficPct'
+            groupKey: 'traffic',
+            pctKey: 'trafficPct'
         },
         {
             title: 'TỔNG DOANH THU',
             value: formatNumber(summary?.totalRevenueCompleted || 0),
             total: formatNumber(summary?.totalRevenueTarget || 0),
             percentage: calculatePercentage(summary?.totalRevenueCompleted || 0, summary?.totalRevenueTarget || 0),
-            key: 'revenuePct'
+            groupKey: 'revenue',
+            pctKey: 'revenuePct'
+        },
+        {
+            title: 'SỐ KÊNH',
+            value: formatNumber(summary?.totalChannels || 0),
+            total: `Kênh`,
+            percentage: 100,
+            groupKey: 'channels',
+            pctKey: 'channelPct'
         }
     ];
 
-    const getTeamColor = (idx: number) => {
-        const colors = [
-            'bg-blue-500',
-            'bg-red-500',
-            'bg-orange-500',
-            'bg-green-500',
-            'bg-purple-500',
-            'bg-pink-500',
-            'bg-cyan-500',
-            'bg-emerald-500'
-        ];
-        return colors[idx % colors.length];
-    };
+    const hasAnyKpi = (summary?.totalVideoTarget || 0) + (summary?.totalVideoCompleted || 0) +
+        (summary?.totalTrafficTarget || 0) + (summary?.totalTrafficCompleted || 0) +
+        (summary?.totalRevenueTarget || 0) + (summary?.totalRevenueCompleted || 0) +
+        (summary?.totalChannels || 0) > 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/50 border-slate-200/60 shadow-[0_10px_40px_-15px_rgba(59,130,246,0.1)] rounded-[2rem] overflow-hidden hover:scale-[1.01] transition-all duration-300 border-b-2 border-b-blue-500">
-                    <CardContent className="p-8">
-                        <div className="flex justify-between items-start mb-6">
-                            <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em]">{kpi.title}</h3>
-                            <div className="bg-blue-600/10 p-2 rounded-xl">
-                                <Target className="w-4 h-4 text-blue-600" />
+                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-3xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
+                    <CardContent className="p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
+                            <div className="bg-blue-600/5 p-1.5 rounded-lg">
+                                <Target className="w-3 h-3 text-blue-600" />
                             </div>
                         </div>
 
-                        <div className="flex flex-col xl:flex-row items-center justify-between gap-6 mb-8">
-                            <div className="relative w-24 h-24 flex-shrink-0 flex items-center justify-center">
-                                {/* Enhanced Circular Progress */}
-                                <svg className="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_rgba(59,130,246,0.1)]">
-                                    <circle
-                                        cx="48"
-                                        cy="48"
-                                        r="38"
-                                        stroke="currentColor"
-                                        strokeWidth="8"
-                                        fill="transparent"
-                                        className="text-slate-100"
-                                    />
-                                    <circle
-                                        cx="48"
-                                        cy="48"
-                                        r="38"
-                                        stroke="currentColor"
-                                        strokeWidth="8"
-                                        fill="transparent"
-                                        strokeDasharray={238.76}
-                                        strokeDashoffset={238.76 * (1 - kpi.percentage / 100)}
-                                        strokeLinecap="round"
-                                        className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
-                                    />
-                                </svg>
-                                <div className="absolute flex flex-col items-center">
-                                    <span className="text-xl font-black text-slate-900">
-                                        {kpi.percentage}%
-                                    </span>
+                        <div className="flex items-center gap-4 mb-3">
+                            {kpi.title !== 'SỐ KÊNH' && (
+                                <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
+                                    <svg className="w-full h-full transform -rotate-90">
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            stroke="currentColor"
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                            className="text-slate-50"
+                                        />
+                                        <circle
+                                            cx="32"
+                                            cy="32"
+                                            r="28"
+                                            stroke="currentColor"
+                                            strokeWidth="6"
+                                            fill="transparent"
+                                            strokeDasharray={175.9}
+                                            strokeDashoffset={175.9 * (1 - kpi.percentage / 100)}
+                                            strokeLinecap="round"
+                                            className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
+                                        />
+                                    </svg>
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="absolute text-[12px] font-black text-slate-900">
+                                            {kpi.percentage}%
+                                        </span>
+                                    )}
                                 </div>
-                            </div>
+                            )}
 
-                            <div className="text-center xl:text-right min-w-0 flex-1">
-                                <div className="text-3xl 2xl:text-4xl font-black text-blue-600 leading-tight mb-3 tracking-tighter break-all">
+                            <div className="flex-1 min-w-0">
+                                <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.title === 'SỐ KÊNH' ? 'text-center py-2' : ''}`}>
                                     {kpi.value}
                                 </div>
-                                <div className="inline-block px-3 py-1 bg-blue-50 rounded-full border border-blue-100">
-                                    <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap uppercase">MT: {kpi.total}</span>
+                                <div className={`text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
+                                    <span className="w-1 h-1 rounded-full bg-blue-400"></span>
+                                    {kpi.title === 'SỐ KÊNH' ? 'Đang hoạt động' : (
+                                        <>MT: <span className="text-blue-700">{kpi.total}</span></>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
+                        {/* Breakdown Global vs VN */}
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+                            <div className="flex flex-col">
+                                <div className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1 mb-1">
+                                    <Globe className="w-2.5 h-2.5 text-amber-500" />
+                                    Global
+                                </div>
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
+                                            {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="w-px h-8 bg-slate-200"></div>
+
+                            <div className="flex flex-col text-right">
+                                <div className="text-[8px] font-black text-blue-600 uppercase flex items-center justify-end gap-1 mb-1">
+                                    Việt Nam
+                                    <Flag className="w-2.5 h-2.5 text-blue-500" />
+                                </div>
+                                <div className="flex items-baseline justify-end gap-1.5">
+                                    {kpi.title !== 'SỐ KÊNH' && (
+                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
+                                            {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
+                                        </span>
+                                    )}
+                                    <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
-            ))
-            }
+            ))}
+            {!hasAnyKpi && summary && (
+                <p className="col-span-full text-center text-xs text-slate-500 mt-2">
+                    Nếu toàn bộ số liệu là 0: kiểm tra đã đồng bộ KPI từ Lark chưa và tháng đang chọn có dữ liệu trong Lark.
+                </p>
+            )}
         </div>
     );
 };

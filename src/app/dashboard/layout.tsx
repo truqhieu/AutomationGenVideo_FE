@@ -79,7 +79,7 @@ export default function DashboardLayout({
   ];
 
   const filteredMenuItems = menuItems.filter(item =>
-    user && item.roles.includes(user.role)
+    user && item.roles.some(role => user.roles?.includes(role as UserRole))
   );
 
   if (!isHydrated || !user) {
@@ -111,7 +111,7 @@ export default function DashboardLayout({
               {/* Optional User info in header if sidebar is collapsed? */}
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                <p className="text-xs text-gray-500">{user.role}</p>
+                <p className="text-xs text-gray-500">{user.roles?.join(', ')}</p>
               </div>
             </div>
           </div>

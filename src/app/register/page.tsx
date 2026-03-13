@@ -36,13 +36,16 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: UserRole.MEMBER,
+    },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setIsLoading(true);
       clearError();
-      await registerUser({ ...data, roles : [UserRole.CONTENT] });
+      await registerUser({ ...data, roles: [UserRole.CONTENT] });
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -144,6 +147,7 @@ export default function RegisterPage() {
                 </div>
                 {errors.password && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
               </div>
+
 
 
 

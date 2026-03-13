@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Video, 
-  Heart, 
-  Eye, 
+import { UserRole } from '@/types/auth';
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Video,
+  Heart,
+  Eye,
   MessageCircle,
   Activity,
   Music2,
@@ -53,7 +54,7 @@ interface Channel {
     id: string;
     email: string;
     full_name: string;
-    role: string;
+    roles: string[];
   };
 }
 
@@ -61,7 +62,7 @@ interface UserWithChannels {
   userId: string;
   userName: string;
   userEmail: string;
-  userRole: string;
+  userRoles: string[];
   channels: Channel[];
   totalChannels: number;
 }
@@ -74,10 +75,10 @@ export default function ManagerDashboardPage() {
   const [userGroups, setUserGroups] = useState<UserWithChannels[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filter states
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
-  
+
   // NEW: Load more states for each platform
   const [loadMoreLimits, setLoadMoreLimits] = useState<Record<string, number>>({
     'TIKTOK': 6,
@@ -88,7 +89,8 @@ export default function ManagerDashboardPage() {
 
   useEffect(() => {
     // Check if user is manager
-    if (user && user.role !== 'MANAGER' && user.role !== 'ADMIN') {
+    const roles = user?.roles || [];
+    if (user && !roles.includes(UserRole.MANAGER) && !roles.includes(UserRole.ADMIN)) {
       router.push('/dashboard/ai');
       return;
     }
@@ -139,7 +141,7 @@ export default function ManagerDashboardPage() {
       }
 
       const data: Channel[] = await response.json();
-      
+
       // Debug: Log first Instagram channel
       const firstInsta = data.find(ch => ch.platform === 'INSTAGRAM');
       if (firstInsta) {
@@ -149,9 +151,9 @@ export default function ManagerDashboardPage() {
           total_videos: firstInsta.total_videos,
         });
       }
-      
+
       setAllChannels(data);
-      
+
       // Group channels by user
       const grouped = groupChannelsByUser(data);
       setUserGroups(grouped);
@@ -165,13 +167,13 @@ export default function ManagerDashboardPage() {
 
     channels.forEach(channel => {
       const userId = channel.user.id;
-      
+
       if (!userMap.has(userId)) {
         userMap.set(userId, {
           userId: userId,
           userName: channel.user.full_name,
           userEmail: channel.user.email,
-          userRole: channel.user.role,
+          userRoles: channel.user.roles,
           channels: [],
           totalChannels: 0,
         });
@@ -182,7 +184,7 @@ export default function ManagerDashboardPage() {
       userGroup.totalChannels = userGroup.channels.length;
     });
 
-    return Array.from(userMap.values()).sort((a, b) => 
+    return Array.from(userMap.values()).sort((a, b) =>
       a.userName.localeCompare(b.userName)
     );
   };
@@ -238,9 +240,9 @@ export default function ManagerDashboardPage() {
   // Filter channels based on global search
   const filterChannels = (channels: Channel[]) => {
     if (!globalSearchQuery.trim()) return channels;
-    
+
     const query = globalSearchQuery.toLowerCase();
-    return channels.filter(ch => 
+    return channels.filter(ch =>
       ch.username.toLowerCase().includes(query) ||
       (ch.display_name && ch.display_name.toLowerCase().includes(query)) ||
       ch.user.full_name.toLowerCase().includes(query) ||
@@ -345,7 +347,7 @@ export default function ManagerDashboardPage() {
             const displayedChannels = platformChannels.slice(0, displayLimit);
             const hasMore = platformChannels.length > displayLimit;
             const colors = getPlatformColors(platform.toLowerCase());
-            
+
             return (
               <div key={platform} className="bg-white rounded-2xl shadow-lg border-2 border-slate-100 overflow-hidden flex flex-col min-h-[400px]">
                 {/* Platform Header */}
@@ -398,7 +400,7 @@ export default function ManagerDashboardPage() {
                                 {channel.user.full_name}
                               </p>
                               <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
-                                {channel.user.role}
+                                {channel.user.roles?.[0] || 'USER'}
                               </span>
                             </div>
                           </div>
