@@ -45,7 +45,7 @@ export default function RegisterPage() {
     try {
       setIsLoading(true);
       clearError();
-      await registerUser({ ...data, roles: [UserRole.CONTENT] });
+      await registerUser({ ...data, roles: [UserRole.MEMBER] });
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
