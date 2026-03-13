@@ -104,10 +104,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           section: 'HỆ THỐNG',
           items: [
             { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
-            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+            ...(user?.role === 'LEADER' || user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
             ] : []),
-            ...(user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
+            ...(user?.role === 'LEADER' || user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
               { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
             ] : []),
           ]
