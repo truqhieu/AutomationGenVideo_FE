@@ -73,8 +73,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const isManagerOrAdmin = user?.roles?.some((r: any) =>
-    r === UserRole.ADMIN || r === UserRole.MANAGER
+  const isManagement = user?.roles?.some((r: any) =>
+    r === UserRole.ADMIN || r === UserRole.MANAGER || r === UserRole.LEADER
   );
 
   // Directly derive activePlatform
@@ -91,12 +91,12 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       pathname.startsWith('/dashboard/ai') ||
       pathname === '/dashboard'
     ) {
-      // MANAGER/ADMIN không có social-discovery → fallback về user-management
-      if (isManagerOrAdmin) return 'user-management';
+      // MANAGEMENT roles không có social-discovery → fallback về user-management
+      if (isManagement) return 'user-management';
       return 'social-discovery';
     }
-    return isManagerOrAdmin ? 'user-management' : 'social-discovery';
-  }, [pathname, isManagerOrAdmin]);
+    return isManagement ? 'user-management' : 'social-discovery';
+  }, [pathname, isManagement]);
 
   // Memoize platforms configuration to prevent re-creation on every render
   const platforms = useMemo(() => {
@@ -111,10 +111,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             section: 'HỆ THỐNG',
             items: [
               { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
-              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN) ? [
+              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN || r === UserRole.LEADER) ? [
                 { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
               ] : []),
-              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN) ? [
+              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN || r === UserRole.LEADER) ? [
                 { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
               ] : []),
             ]
@@ -122,8 +122,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         ]
       },
 
-      // 2. Video & Social Intelligence - chỉ hiển thị cho non-manager roles
-      ...(!isManagerOrAdmin ? [{
+      ...(!isManagement ? [{
         id: 'social-discovery',
         icon: Search,
         label: 'Khám phá Video',
@@ -148,7 +147,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       }] : [])
     ];
     return allPlatforms;
-  }, [user?.roles, isManagerOrAdmin]); // Dependency on roles array
+  }, [user?.roles, isManagement]); // Dependency on roles array
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
