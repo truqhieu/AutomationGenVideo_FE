@@ -8,18 +8,11 @@ import { useAuthStore } from '@/store/auth-store';
 
 const roles = [
   {
-    value: 'EDITOR',
-    label: 'Editor',
-    description: 'Chỉnh sửa và sản xuất video',
-    icon: Video,
-    color: 'bg-blue-500',
-  },
-  {
-    value: 'CONTENT',
-    label: 'Content Creator',
-    description: 'Tạo nội dung và kịch bản',
+    value: 'MEMBER',
+    label: 'Thành viên',
+    description: 'Thành viên của hệ thống VCB Portal',
     icon: Users,
-    color: 'bg-green-500',
+    color: 'bg-blue-500',
   },
 ];
 
@@ -40,6 +33,11 @@ function RoleSelectionContent() {
       router.push('/login?error=Invalid session');
     }
   }, [tempToken, router]);
+
+  // Auto-select the only available role
+  useEffect(() => {
+    setSelectedRole('MEMBER');
+  }, []);
 
   const handleRoleSelect = async () => {
     if (!selectedRole) {

@@ -118,6 +118,7 @@ export default function SearchAutocomplete({
         trackSearch(query);
         onSearch(query);
         setIsFocused(false);
+        clearSuggestions();
     };
 
     const handleSuggestionClick = (suggestion: SearchSuggestion) => {

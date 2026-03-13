@@ -328,7 +328,7 @@ export default function GlobalSearchPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative group mb-16"
+                    className="relative group mb-16 z-50"
                 >
                     {/* Futuristic Border Glow */}
                     <div className={`absolute -inset-[1px] rounded-[3rem] bg-gradient-to-r ${platforms.find(p => p.id === platform)?.color} opacity-20 blur-[1px] group-hover:opacity-40 transition-opacity duration-500`} />

@@ -73,6 +73,10 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
+  const isManagerOrAdmin = user?.roles?.some((r: any) =>
+    r === UserRole.ADMIN || r === UserRole.MANAGER
+  );
+
   // Directly derive activePlatform
   const activePlatform = useMemo(() => {
     const path = pathname?.toLowerCase() || '';
@@ -87,59 +91,64 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       pathname.startsWith('/dashboard/ai') ||
       pathname === '/dashboard'
     ) {
+      // MANAGER/ADMIN không có social-discovery → fallback về user-management
+      if (isManagerOrAdmin) return 'user-management';
       return 'social-discovery';
     }
-    return 'social-discovery';
-  }, [pathname]);
+    return isManagerOrAdmin ? 'user-management' : 'social-discovery';
+  }, [pathname, isManagerOrAdmin]);
 
   // Memoize platforms configuration to prevent re-creation on every render
-  const platforms = useMemo(() => [
-    // 1. Management & Report Section (Consolidated)
-    {
-      id: 'user-management',
-      icon: Users,
-      label: 'VCB Portal',
-      menus: [
-        {
-          section: 'HỆ THỐNG',
-          items: [
-            { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
-            ...(user?.role === 'LEADER' || user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
-              { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-            ] : []),
-            ...(user?.role === 'LEADER' || user?.role === 'MANAGER' || user?.role === 'ADMIN' ? [
-              { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
-            ] : []),
-          ]
-        }
-      ]
-    },
+  const platforms = useMemo(() => {
+    const allPlatforms = [
+      // 1. Management & Report Section (Consolidated)
+      {
+        id: 'user-management',
+        icon: Users,
+        label: 'VCB Portal',
+        menus: [
+          {
+            section: 'HỆ THỐNG',
+            items: [
+              { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
+              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN) ? [
+                { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+              ] : []),
+              ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN) ? [
+                { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
+              ] : []),
+            ]
+          }
+        ]
+      },
 
-    // 2. Video & Social Intelligence (Consolidated)
-    {
-      id: 'social-discovery',
-      icon: Search,
-      label: 'Khám phá Video',
-      menus: [
-        {
-          section: 'PHÂN TÍCH',
-          items: [
-            { label: 'Facebook Channels', href: '/dashboard/facebook/channels', icon: Facebook },
-            { label: 'Instagram Channels', href: '/dashboard/instagram/channels', icon: Instagram },
-            { label: 'TikTok Channels', href: '/dashboard/ai/channels', icon: Music2 },
-            { label: 'Douyin Channels', href: '/dashboard/douyin/channels', icon: Music },
-            { label: 'Xiaohongshu Channels', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
-          ]
-        },
-        {
-          section: 'KHÁM PHÁ',
-          items: [
-            { label: 'Tìm kiếm Video (Hub)', href: '/dashboard/search-video', icon: Search },
-          ]
-        }
-      ]
-    }
-  ], [user?.role]); // Dependency on primitive string ensures stability
+      // 2. Video & Social Intelligence - chỉ hiển thị cho non-manager roles
+      ...(!isManagerOrAdmin ? [{
+        id: 'social-discovery',
+        icon: Search,
+        label: 'Khám phá Video',
+        menus: [
+          {
+            section: 'PHÂN TÍCH',
+            items: [
+              { label: 'Facebook Channels', href: '/dashboard/facebook/channels', icon: Facebook },
+              { label: 'Instagram Channels', href: '/dashboard/instagram/channels', icon: Instagram },
+              { label: 'TikTok Channels', href: '/dashboard/ai/channels', icon: Music2 },
+              { label: 'Douyin Channels', href: '/dashboard/douyin/channels', icon: Music },
+              { label: 'Xiaohongshu Channels', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
+            ]
+          },
+          {
+            section: 'KHÁM PHÁ',
+            items: [
+              { label: 'Tìm kiếm Video (Hub)', href: '/dashboard/search-video', icon: Search },
+            ]
+          }
+        ]
+      }] : [])
+    ];
+    return allPlatforms;
+  }, [user?.roles, isManagerOrAdmin]); // Dependency on roles array
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
@@ -223,12 +232,12 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                 <Settings className="w-5 h-5" />
               </Link>
             ) : (
-            <button
-              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
-              title="Cài đặt hệ thống"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+              <button
+                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
+                title="Cài đặt hệ thống"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             )}
 
             <button

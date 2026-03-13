@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Film, Loader2, Trash2, CheckCircle, Download, Music, Scissors, Database, Zap, Info, RefreshCw, Plus, FolderOpen, X, Package, Eye } from 'lucide-react';
+import { VirtualMixPlayer } from './VirtualMixPlayer';
 import { toast } from 'react-hot-toast';
 
 const BE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -94,6 +95,12 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const [pregenTotal, setPregenTotal] = useState(0);
     const [pregenDone, setPregenDone] = useState(0);
     const pregenPollRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Preview state
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewClips, setPreviewClips] = useState<any[]>([]);
+    const [previewError, setPreviewError] = useState('');
+    const [selectedPreviewIdx, setSelectedPreviewIdx] = useState(0);
 
     // Fallback: Get product category from localStorage if not provided via props
     const [actualProductCategory, setActualProductCategory] = useState<string | undefined>(productCategory);
@@ -220,6 +227,12 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         const runReindex = async () => {
             setIsAutoReindexing(true);
             setAutoReindexMsg(`⏳ Đang re-index ${zeroSlots.join(', ')}...`);
+            // Reset pregen state khi bắt đầu re-index
+            setPregenStatus('idle');
+            setPregenProgress(0);
+            setPregenMessage('');
+            setPregenDone(0);
+            setPregenTotal(0);
 
             try {
                 // Trigger index lại manufacturing folder cho SKU hiện tại
@@ -295,13 +308,56 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     }, [cacheStats?.by_folder, isAutoReindexing]);
 
-    // Show reminder to enable A4 when content type is A4
+    // AUTO CACHE KHI THIẾU CLIP
+    const hasAutoCachedRef = useRef<{ missing: number; isTriggered: boolean }>({ missing: 0, isTriggered: false });
+    
     useEffect(() => {
-        if (contentType === 'A4' && !useA4Formula) {
-            toast('💡 Nhắc nhở: Hãy bật "Công thức A4" bên dưới để mix theo cấu trúc 7 slots!', {
-                duration: 5000,
-                icon: '⚠️'
-            });
+        if (!cacheStats || isIndexing) return;
+        
+        const missing = cacheStats.indexed_videos - cacheStats.cached_clips;
+        
+        // Reset nếu đã cache đủ
+        if (missing <= 0) {
+            hasAutoCachedRef.current = { missing: 0, isTriggered: false };
+            return;
+        }
+
+        // Nếu mới có thêm video được index (số lượng thiếu tăng lên đáng kể) -> Cho phép trigger lại
+        if (hasAutoCachedRef.current.isTriggered && missing > hasAutoCachedRef.current.missing + 5) {
+            hasAutoCachedRef.current = { missing, isTriggered: false };
+        }
+
+        // Tự động trigger nếu chưa chạy và đang thiếu
+        if (missing > 0 && pregenStatus === 'idle' && !hasAutoCachedRef.current.isTriggered) {
+            hasAutoCachedRef.current = { missing, isTriggered: true };
+            console.log(`Auto cache trigger: Missing ${missing} clips. Current status: ${pregenStatus}`);
+            
+            const startCache = async () => {
+                try {
+                    const res = await fetch(`${AI_SERVICE_URL}/api/videos/pregen/start/`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ clip_duration: 12.0 }) 
+                    });
+                    if (res.ok) {
+                        toast.success(`⚡ Tự động cache ${missing} video mới...`);
+                        setPregenStatus('running');
+                        startPregenPolling();
+                    }
+                } catch (e) { 
+                    console.error('Không thể auto cache', e); 
+                }
+            };
+            
+            // Đợi 1s rồi mới trigger để tránh spam
+            setTimeout(startCache, 1000);
+        }
+    }, [cacheStats, pregenStatus, isIndexing]);
+
+    // Auto-activate A4 formula when content type is A4
+    useEffect(() => {
+        if (contentType === 'A4') {
+            setUseA4Formula(true);
         }
     }, [contentType]);
 
@@ -466,6 +522,16 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             const data = await response.json();
             if (data.success) {
                 toast.success(`🗑️ ${data.message}`, { duration: 4000 });
+                // Reset pregen state
+                setPregenStatus('idle');
+                setPregenProgress(0);
+                setPregenMessage('');
+                setPregenDone(0);
+                setPregenTotal(0);
+                // Chặn auto-scan: nếu không set thì sau khi load stats thấy 0 → auto-scan trigger lại
+                hasAutoIndexedRef.current = true;
+                // Delay nhỏ để DB commit xong
+                await new Promise(r => setTimeout(r, 500));
                 setCacheStats(null);
                 await loadCacheStats();
                 setShowIndexPanel(true); // Mở panel index để re-index ngay
@@ -585,6 +651,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         setPregenStatus('idle');
         setPregenProgress(0);
         setPregenMessage('');
+        setPregenDone(0);
+        setPregenTotal(0);
 
         try {
             // Convert to object format
@@ -779,9 +847,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
     const isReady = cacheStats && cacheStats.indexed_videos > 0;
     const needsIndexing = !cacheStats || cacheStats.indexed_videos === 0;
-    // Cache ready: pregen completed OR (cached_clips >= indexed_videos và > 0)
-    const isCacheReady = pregenStatus === 'completed' ||
-        (cacheStats != null && cacheStats.indexed_videos > 0 && cacheStats.cached_clips >= cacheStats.indexed_videos);
+    // Cache ready: dùng số liệu DB thực tế (không tin pregenStatus vì nó có thể sai)
+    // Chỉ ready khi cached_clips >= 90% indexed_videos (cho phép tối đa 10% fail)
+    const cacheRatio = cacheStats && cacheStats.indexed_videos > 0
+        ? cacheStats.cached_clips / cacheStats.indexed_videos
+        : 0;
+    const isCacheReady = cacheStats != null &&
+        cacheStats.indexed_videos > 0 &&
+        cacheRatio >= 0.9;
 
 
     if (!cacheStats && loadingStats) {
@@ -942,30 +1015,60 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             )}
 
                             {/* Pregen (background caching) progress bar */}
-                            {(pregenStatus === 'running' || pregenStatus === 'completed') && (
+                            {(pregenStatus === 'running' || pregenStatus === 'completed' || pregenStatus === 'error' || (pregenStatus as string) === 'partial') && (
                                 <div className={`rounded-xl p-4 border ${pregenStatus === 'completed'
-                                    ? 'bg-green-500/8 border-green-500/25'
-                                    : 'bg-blue-500/8 border-blue-500/20'}`}>
+                                        ? 'bg-green-500/8 border-green-500/25'
+                                        : (pregenStatus as string) === 'partial'
+                                            ? 'bg-amber-500/8 border-amber-500/25'
+                                            : pregenStatus === 'error'
+                                                ? 'bg-red-500/8 border-red-500/25'
+                                                : 'bg-blue-500/8 border-blue-500/20'}`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             {pregenStatus === 'running'
                                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
-                                                : <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                                                : pregenStatus === 'completed'
+                                                    ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                                                    : (pregenStatus as string) === 'partial'
+                                                        ? <span className="text-amber-400 text-xs">⚠️</span>
+                                                        : <span className="text-red-400 text-xs">❌</span>
                                             }
-                                            <span className={`text-xs font-semibold ${pregenStatus === 'completed' ? 'text-green-400' : 'text-blue-400'}`}>
-                                                {pregenStatus === 'completed' ? '✅ Cache hoàn tất — Preview đã mở khoá!' : '⚡ Đang cache videos...'}
+                                            <span className={`text-xs font-semibold ${pregenStatus === 'completed' ? 'text-green-400'
+                                                    : (pregenStatus as string) === 'partial' ? 'text-amber-400'
+                                                        : pregenStatus === 'error' ? 'text-red-400'
+                                                            : 'text-blue-400'}`}>
+                                                {pregenStatus === 'completed'
+                                                    ? '✅ Cache hoàn tất — Preview đã mở khoá!'
+                                                    : (pregenStatus as string) === 'partial'
+                                                        ? `⚠️ Cache chưa đủ — ${(cacheStats?.indexed_videos ?? 0) - (cacheStats?.cached_clips ?? 0)} video không cache được`
+                                                        : pregenStatus === 'error'
+                                                            ? '❌ Cache bị lỗi'
+                                                            : '⚡ Đang cache videos...'}
                                             </span>
                                         </div>
-                                        <span className={`text-xs font-bold ${pregenStatus === 'completed' ? 'text-green-400' : 'text-blue-400'}`}>
-                                            {pregenDone}/{pregenTotal} ({pregenProgress}%)
+                                        <span className={`text-xs font-bold ${pregenStatus === 'completed' ? 'text-green-400'
+                                                : (pregenStatus as string) === 'partial' ? 'text-amber-400'
+                                                    : pregenStatus === 'error' ? 'text-red-400'
+                                                        : 'text-blue-400'}`}>
+                                            {(() => {
+                                                // Khi completed: luôn dùng live data từ cacheStats
+                                                const liveDone = cacheStats?.cached_clips ?? pregenDone;
+                                                const liveTotal = cacheStats?.indexed_videos ?? pregenTotal;
+                                                const livePct = liveTotal > 0 ? Math.round(liveDone / liveTotal * 100) : pregenProgress;
+                                                return `${liveDone}/${liveTotal} (${livePct}%)`;
+                                            })()}
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                                         <div
                                             className={`h-full rounded-full transition-all duration-500 ${pregenStatus === 'completed'
-                                                ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                                                : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
-                                            style={{ width: `${pregenProgress}%` }}
+                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+                                                    : (pregenStatus as string) === 'partial'
+                                                        ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                                                        : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
+                                            style={{ width: `${pregenStatus === 'completed' && cacheStats
+                                                ? Math.round((cacheStats.cached_clips / (cacheStats.indexed_videos || 1)) * 100)
+                                                : pregenProgress}%` }}
                                         />
                                     </div>
                                     {pregenMessage && (
@@ -1002,32 +1105,18 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         </div>
                     )}
 
-                    {/* Nút Cache ngay - hiển thị khi có index nhưng pregen chưa chạy */}
-                    {!needsIndexing && pregenStatus === 'idle' && cacheStats && cacheStats.indexed_videos > 0 && (
+                    {/* Tiến trình Auto-Cache */}
+                    {!needsIndexing && pregenStatus === 'idle' && cacheStats && cacheStats.indexed_videos > 0 && cacheStats.cached_clips < cacheStats.indexed_videos && (
                         <div className="p-3.5 bg-blue-500/8 border border-blue-500/20 rounded-xl flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-400 text-xs font-semibold mb-0.5">💾 Cache chưa chạy</p>
-                                <p className="text-gray-500 text-[10px]">
-                                    {cacheStats.cached_clips < cacheStats.indexed_videos
-                                        ? `${cacheStats.indexed_videos - cacheStats.cached_clips} videos chưa được cache`
-                                        : 'Có thể cache lại để đảm bảo preview hoạt động'}
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                                <div>
+                                    <p className="text-blue-400 text-xs font-semibold mb-0.5">Đang kích hoạt Auto-Cache...</p>
+                                    <p className="text-gray-500 text-[10px]">
+                                        Hệ thống phát hiện {cacheStats.indexed_videos - cacheStats.cached_clips} video mới và đang tự động xử lý.
+                                    </p>
+                                </div>
                             </div>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const res = await fetch(`${AI_SERVICE_URL}/api/videos/pregen/start/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clip_duration: 12.0 }) });
-                                        if (res.ok) {
-                                            toast.success('⚡ Bắt đầu cache background!');
-                                            setPregenStatus('running');
-                                            startPregenPolling();
-                                        }
-                                    } catch (e) { toast.error('Không thể bắt đầu cache!'); }
-                                }}
-                                className="px-4 py-2 bg-blue-500/15 hover:bg-blue-500/25 rounded-lg text-blue-400 text-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-1.5">
-                                <Zap className="w-3.5 h-3.5" />
-                                Cache ngay
-                            </button>
                         </div>
                     )}
 
@@ -1352,6 +1441,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                         <Eye className="w-4 h-4 text-cyan-400" />
                         Xem trước ngay
+                        {previewClips.length > 0 && (
+                            <span className="text-xs text-cyan-400 font-normal">({previewClips.length} video)</span>
+                        )}
                     </h3>
                     {isCacheReady && (
                         <span className="ml-auto px-2 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-bold rounded-full border border-green-500/20">✓ Sẵn sàng</span>
@@ -1381,25 +1473,27 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            <p className="text-xs text-gray-400">Xem trước video trước khi mix chính thức. Preview dùng cached clips nên hiển thị tức thì.</p>
+                        <div className="space-y-4">
+                            <p className="text-xs text-gray-400">
+                                Xem trước <strong className="text-cyan-400">{numOutputs} video</strong> trước khi mix chính thức. Preview dùng cached clips nên hiển thị tức thì.
+                            </p>
+
+                            {/* Nút bấm */}
                             <button
+                                id="btn-preview-now"
                                 onClick={async () => {
-                                    if (!generatedAudioUrl && !audioFile) {
+                                    if (!audioFile) {
                                         toast.error('⚠ Cần generate audio trước (bước 3)');
                                         return;
                                     }
-                                    // Gọi virtual-mix API
+                                    setPreviewLoading(true);
+                                    setPreviewClips([]);
+                                    setPreviewError('');
                                     try {
+                                        // Gọi virtual-mix với đúng số lượng numOutputs
                                         const formData = new FormData();
-                                        if (audioFile) formData.append('audio', audioFile);
-                                        else if (generatedAudioUrl) {
-                                            // Fetch audio URL và gắn vào formData
-                                            const audioResp = await fetch(generatedAudioUrl);
-                                            const audioBlob = await audioResp.blob();
-                                            formData.append('audio', audioBlob, 'audio.mp3');
-                                        }
-                                        formData.append('num_outputs', '1');
+                                        formData.append('audio', audioFile);
+                                        formData.append('num_outputs', numOutputs.toString());
                                         formData.append('use_a4_formula', useA4Formula ? 'true' : 'false');
                                         if (productSku) formData.append('product_sku', productSku);
 
@@ -1409,29 +1503,81 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                         });
                                         const data = await resp.json();
                                         if (!resp.ok || data.error) {
+                                            setPreviewError(data.message || data.error || 'Preview thất bại');
                                             toast.error(data.message || data.error || 'Preview thất bại');
                                             return;
                                         }
-                                        // Mở tab mới với stream URL của clip đầu tiên
-                                        const firstClip = data.manifests?.[0]?.clips?.[0];
-                                        if (firstClip?.stream_url) {
-                                            window.open(`${AI_SERVICE_URL}${firstClip.stream_url}`, '_blank');
-                                            toast.success(`✅ Preview: ${data.manifests[0].slot_count} clips, ${data.manifests[0].total_duration?.toFixed(1)}s`);
+                                        // Lưu toàn bộ manifest để VirtualMixPlayer render đầy đủ tất cả slots
+                                        const manifests = (data.manifests || []).filter((m: any) => m.clips?.length > 0);
+                                        if (manifests.length === 0) {
+                                            setPreviewError('Không có clip để preview. Kiểm tra lại cache.');
                                         } else {
-                                            toast.error('Không có clip để preview');
+                                            setPreviewClips(manifests);
+                                            setSelectedPreviewIdx(0);
+                                            toast.success(`✅ Preview ${manifests.length}/${numOutputs} video sẵn sàng!`);
                                         }
                                     } catch (err: any) {
+                                        setPreviewError(`Lỗi preview: ${err.message}`);
                                         toast.error(`Lỗi preview: ${err.message}`);
+                                    } finally {
+                                        setPreviewLoading(false);
                                     }
                                 }}
-                                disabled={!generatedAudioUrl && !audioFile}
+                                disabled={!audioFile || previewLoading}
                                 className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-xl text-white font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20"
                             >
-                                <Eye className="w-4 h-4" />
-                                Xem trước ngay
+                                {previewLoading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" />Đang tạo {numOutputs} preview...</>
+                                ) : (
+                                    <><Eye className="w-4 h-4" />Xem trước ngay ({numOutputs} video)</>
+                                )}
                             </button>
-                            {(!generatedAudioUrl && !audioFile) && (
-                                <p className="text-xs text-center text-gray-600">⚠ Cần generate audio trước (bước 3)</p>
+
+                            {/* Hint audio */}
+                            {!audioFile && (
+                                <p className="text-xs text-center text-amber-500">⚠ Cần generate audio trước (bước 3)</p>
+                            )}
+
+                            {/* Lỗi preview */}
+                            {previewError && (
+                                <div className="p-3 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-xs">{previewError}</div>
+                            )}
+
+                            {/* Kết quả preview - tabs Video 1, 2, 3... */}
+                            {previewClips.length > 0 && (
+                                <div className="space-y-3">
+                                    {/* Tab selector */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mr-1">Preview</span>
+                                        {previewClips.map((_: any, idx: number) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setSelectedPreviewIdx(idx)}
+                                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                    selectedPreviewIdx === idx
+                                                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300'
+                                                        : 'bg-gray-800/60 border border-gray-700/40 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                                                }`}
+                                            >
+                                                Video {idx + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Player cho video đang chọn */}
+                                    {previewClips[selectedPreviewIdx] && (
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] text-gray-600 px-1">
+                                                {previewClips[selectedPreviewIdx].slot_count && (
+                                                    <span>{previewClips[selectedPreviewIdx].slot_count} slots</span>
+                                                )}
+                                                {previewClips[selectedPreviewIdx].total_duration && (
+                                                    <span className="ml-1">· {previewClips[selectedPreviewIdx].total_duration.toFixed(1)}s</span>
+                                                )}
+                                            </p>
+                                            <VirtualMixPlayer manifest={previewClips[selectedPreviewIdx]} />
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
