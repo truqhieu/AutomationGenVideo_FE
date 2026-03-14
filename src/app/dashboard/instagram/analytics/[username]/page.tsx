@@ -376,8 +376,9 @@ function InstagramAnalyticsInner() {
           {/* Right: Back Button */}
           <div className="flex items-center">
             <button
+              type="button"
               onClick={() => router.push('/dashboard/instagram/channels')}
-              className="relative z-50 cursor-pointer group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-800 hover:text-white hover:border-slate-800 transition-all duration-300 shadow-sm hover:shadow-md"
+              className="relative z-[70] cursor-pointer group flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-800 hover:text-white hover:border-slate-800 transition-all duration-300 shadow-sm hover:shadow-md"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" />
               <span className="font-medium">Quay lại</span>

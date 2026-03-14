@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import ActivityKPIs from './components/ActivityKPIs';
 import DashboardAnalytics from './components/DashboardAnalytics';
 import ActivityFilters from './components/ActivityFilters';
@@ -82,7 +82,7 @@ const CardSkeleton = () => (
 
 const CARDS_PER_BATCH = 10;
 
-const UserActivityPage = () => {
+const UserActivityPageContent = () => {
     const { user } = useAuthStore();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
@@ -858,8 +858,9 @@ const UserActivityPage = () => {
                                         <div className="space-y-6">
                                             <div className="px-4">
                                                 <button
+                                                    type="button"
                                                     onClick={() => setReportType('select')}
-                                                    className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
+                                                    className="relative z-[70] flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                                 >
                                                     <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                                     Quay lại chọn Loại
@@ -907,8 +908,9 @@ const UserActivityPage = () => {
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between px-4">
                                                 <button
+                                                    type="button"
                                                     onClick={() => setReportMode('select')}
-                                                    className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
+                                                    className="relative z-[70] flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                                 >
                                                     <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                                     Quay lại chọn Đối tượng
@@ -924,8 +926,9 @@ const UserActivityPage = () => {
                                 <div className="space-y-6">
                                     <div className="px-4">
                                         <button
+                                            type="button"
                                             onClick={() => setReportType('select')}
-                                            className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
+                                            className="relative z-[70] flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                         >
                                             <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                             Quay lại chọn Loại
@@ -941,8 +944,23 @@ const UserActivityPage = () => {
                         </div>
                     ) : null}
                 </main>
-            </div >
-        </div >
+            </div>
+        </div>
+    );
+};
+
+const UserActivityPage = () => {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <RefreshCw className="w-10 h-10 animate-spin text-blue-600" />
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        }>
+            <UserActivityPageContent />
+        </Suspense>
     );
 };
 
