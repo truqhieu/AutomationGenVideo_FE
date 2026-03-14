@@ -35,6 +35,7 @@ const ChecklistContainer = ({
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
+    const [availableChannels, setAvailableChannels] = useState<any[]>([]);
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -89,6 +90,28 @@ const ChecklistContainer = ({
         const interval = setInterval(fetchStatus, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [user?.email]);
+
+    // Fetch user channels
+    useEffect(() => {
+        const fetchChannels = async () => {
+            if (!user?.full_name) return;
+            try {
+                const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                const url = new URL(`${beBaseUrl}/lark/channel`, window.location.origin);
+                url.searchParams.append('owner', user.full_name);
+                if (user.team) url.searchParams.append('team', user.team);
+                
+                const res = await fetch(url.toString());
+                if (res.ok) {
+                    const data = await res.json();
+                    setAvailableChannels(data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch channels:', err);
+            }
+        };
+        fetchChannels();
+    }, [user?.full_name, user?.team]);
 
     const roles = user?.roles || [];
     const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
@@ -344,6 +367,7 @@ const ChecklistContainer = ({
                             key={submitCount}
                             values={traffic} 
                             channels={trafficChannels}
+                            availableChannels={availableChannels}
                             onChange={handleTrafficChange}
                             onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}

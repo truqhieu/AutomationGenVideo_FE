@@ -48,6 +48,7 @@ export const initialTrafficChannels = (): TrafficData => ({
 interface TrafficReportSectionProps {
     values: TrafficData;
     channels: TrafficData;
+    availableChannels?: any[];
     onChange: (platformId: keyof TrafficData, value: string) => void;
     onChannelChange: (platformId: keyof TrafficData, value: string) => void;
     onPlatformEvidenceChange?: (platformEvidences: Record<string, string[]>) => void;
@@ -56,6 +57,7 @@ interface TrafficReportSectionProps {
 const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
     values, 
     channels,
+    availableChannels = [],
     onChange, 
     onChannelChange,
     onPlatformEvidenceChange 
@@ -67,6 +69,32 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     // Store evidence per platform: { platformId: [{ url, name, token }] }
     const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({});
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+    
+    const isPlatformMatch = (platformId: string, channelPlatform: string | null | undefined): boolean => {
+        if (!channelPlatform) return false;
+        const p = channelPlatform.toLowerCase().trim();
+        
+        switch (platformId) {
+            case 'fb':
+                return p === 'fb' || p === 'facebook' || p.includes('fanpage') || p === 'fb-vcb';
+            case 'ig':
+                return p === 'ig' || p === 'instagram' || p === 'ins';
+            case 'tiktok':
+                return p === 'tiktok' || p === 'tt' || p.includes('tiktok');
+            case 'yt':
+                return p === 'yt' || p === 'youtube' || p.includes('youtube');
+            case 'thread':
+                return p === 'thread' || p === 'threads';
+            case 'lemon8':
+                return p === 'lemon8' || p === 'lemon 8';
+            case 'zalo':
+                return p === 'zalo';
+            case 'twitter':
+                return p === 'twitter' || p === 'x';
+            default:
+                return p === platformId.toLowerCase() || p.includes(platformId.toLowerCase());
+        }
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -153,7 +181,10 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {TRAFFIC_PLATFORMS.map((platform) => (
+                {TRAFFIC_PLATFORMS.filter(platform => {
+                    // Only show platform if user has at least one channel for it
+                    return availableChannels.some(c => isPlatformMatch(platform.id, c.platform));
+                }).map((platform) => (
                     <div key={platform.id} className="group flex flex-col gap-3 p-4 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300">
                         <div className="flex items-center justify-between px-1">
                             <label className="text-sm font-bold text-slate-700 uppercase tracking-tight">
@@ -192,13 +223,24 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
 
                             <div className="relative">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh đăng</label>
-                                <input
-                                    type="text"
-                                    placeholder="Tên kênh..."
+                                <select
                                     value={channels[platform.id as keyof TrafficData] || ''}
                                     onChange={(e) => onChannelChange(platform.id as keyof TrafficData, e.target.value)}
-                                    className="w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none placeholder:text-slate-300"
-                                />
+                                    className="w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer"
+                                >
+                                    <option value="">-- Chọn kênh --</option>
+                                    {availableChannels
+                                        ?.filter(c => isPlatformMatch(platform.id, c.platform))
+                                        .map((c, idx) => (
+                                            <option key={c.id || idx} value={c.name}>{c.name}</option>
+                                        ))
+                                    }
+                                </select>
+                                <div className="absolute right-3 top-[26px] pointer-events-none text-slate-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
 
@@ -230,6 +272,16 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                     </div>
                 ))}
             </div>
+
+            {availableChannels.length === 0 && (
+                <div className="flex flex-col items-center justify-center p-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                    <div className="p-4 bg-white rounded-full shadow-sm mb-4">
+                        <Activity className="w-8 h-8 text-slate-300" />
+                    </div>
+                    <p className="text-slate-500 font-bold">Không tìm thấy kênh nào bạn đang quản lý</p>
+                    <p className="text-slate-400 text-sm">Vui lòng kiểm tra lại tài khoản hoặc liên hệ quản trị viên</p>
+                </div>
+            )}
 
             <input
                 ref={fileInputRef}

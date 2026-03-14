@@ -18,6 +18,7 @@ export interface User {
   last_activity_at?: string;
   total_login_count: number;
   total_action_count: number;
+  team?: string;
   created_at: string;
   updated_at: string;
 }
