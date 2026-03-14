@@ -37,10 +37,10 @@ export const initialTrafficData = (): TrafficData => ({
 interface TrafficReportSectionProps {
     values: TrafficData;
     onChange: (platformId: keyof TrafficData, value: string) => void;
-    onEvidenceTokensChange?: (tokens: string[]) => void;
+    onPlatformEvidenceChange?: (platformEvidences: Record<string, string[]>) => void;
 }
 
-const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onChange, onEvidenceTokensChange }) => {
+const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onChange, onPlatformEvidenceChange }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
     const [activePlatform, setActivePlatform] = useState<string | null>(null);
@@ -83,9 +83,12 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onC
             
             setEvidences(updatedEvidences);
             
-            // Flatten all tokens to notify parent
-            const allTokens = Object.values(updatedEvidences).flat().map(e => e.token);
-            onEvidenceTokensChange?.(allTokens);
+            // Notify parent with per-platform tokens
+            const platformTokens: Record<string, string[]> = {};
+            Object.keys(updatedEvidences).forEach(pid => {
+                platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
+            });
+            onPlatformEvidenceChange?.(platformTokens);
             
         } catch (err) {
             setUploadErrors(prev => ({ ...prev, [platformId]: 'Lỗi upload ảnh' }));
@@ -105,9 +108,12 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onC
         
         setEvidences(updatedEvidences);
         
-        // Flatten all tokens to notify parent
-        const allTokens = Object.values(updatedEvidences).flat().map(e => e.token);
-        onEvidenceTokensChange?.(allTokens);
+        // Notify parent with per-platform tokens
+        const platformTokens: Record<string, string[]> = {};
+        Object.keys(updatedEvidences).forEach(pid => {
+            platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
+        });
+        onPlatformEvidenceChange?.(platformTokens);
     };
 
     const triggerUpload = (platformId: string) => {

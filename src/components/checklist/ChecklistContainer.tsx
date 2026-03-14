@@ -27,7 +27,9 @@ const ChecklistContainer = ({
     const [details, setDetails] = useState<string[]>(initialDetails);
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
-    const [evidenceTokens, setEvidenceTokens] = useState<string[]>([]);
+    const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
+    const [trafficDate, setTrafficDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
@@ -151,7 +153,7 @@ const ChecklistContainer = ({
         }
 
         // Validate Traffic
-        if (showForm12 || showForm3) {
+        if ((showForm12 || showForm3) && !showOnlyWork) {
             const hasTrafficData = Object.values(traffic).some(val => val !== '');
             if (!hasTrafficData) {
                 setMessage({ type: 'error', text: 'Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).' });
@@ -160,7 +162,7 @@ const ChecklistContainer = ({
         }
 
         // Validate Form Chi Tiết (Member)
-        if (showForm12) {
+        if (showForm12 && !showOnlyTraffic) {
             // Kiểm tra các item xem có bị bỏ trống hay bấm "Có" mà không nhập nội dung
             const hasEmptyDetails = details.some(d => d.trim() === '');
             if (hasEmptyDetails) {
@@ -170,7 +172,7 @@ const ChecklistContainer = ({
         }
 
         // Validate Form Đánh Giá (Leader)
-        if (showForm3) {
+        if (showForm3 && !showOnlyTraffic) {
             const hasEmptyLeader = leaderAnswers.some(l => l.trim() === '');
             if (hasEmptyLeader) {
                 setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
@@ -181,44 +183,47 @@ const ChecklistContainer = ({
         setMessage(null);
         setLoading(true);
         try {
-            const payload = buildPayload();
-            // Thêm thông tin user vào payload
-            const fullPayload = {
-                ...payload,
-                userEmail: user.email,
-                userName: user.full_name,
-            };
+            if (!showOnlyTraffic) {
+                const payload = buildPayload();
+                // Thêm thông tin user vào payload
+                const fullPayload = {
+                    ...payload,
+                    userEmail: user.email,
+                    userName: user.full_name,
+                };
 
-            // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng AI_SERVICE_URL (mặc định port 8001)
-            const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
-            const base = djangoBase.replace(/\/$/, '');
-            const url = `${base}/api/checklist/submit/`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fullPayload),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const errMsg = typeof data.error === 'string' ? data.error : 'Gửi báo cáo thất bại.';
-                const detail = typeof data.detail === 'string' ? data.detail : '';
-                const hint = typeof data.hint === 'string' ? data.hint : '';
-                const parts = [errMsg];
-                if (detail) parts.push(`Chi tiết: ${detail}`);
-                if (hint) parts.push(hint);
-                setMessage({ type: 'error', text: parts.join(' ') });
-                return;
+                // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng AI_SERVICE_URL (mặc định port 8001)
+                const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
+                const base = djangoBase.replace(/\/$/, '');
+                const url = `${base}/api/checklist/submit/`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fullPayload),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const errMsg = typeof data.error === 'string' ? data.error : 'Gửi báo cáo thất bại.';
+                    const detail = typeof data.detail === 'string' ? data.detail : '';
+                    const hint = typeof data.hint === 'string' ? data.hint : '';
+                    const parts = [errMsg];
+                    if (detail) parts.push(`Chi tiết: ${detail}`);
+                    if (hint) parts.push(hint);
+                    setMessage({ type: 'error', text: parts.join(' ') });
+                    setLoading(false);
+                    return;
+                }
+                setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
+                setChecks(initialChecks());
+                setDetails(initialDetails());
+                setLeaderAnswers(initialLeaderAnswers());
             }
-            setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
-            setChecks(initialChecks());
-            setDetails(initialDetails());
-            setLeaderAnswers(initialLeaderAnswers());
 
             // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
             const hasTrafficData = Object.values(traffic).some(val => val !== '');
-            if (hasTrafficData) {
+            if (hasTrafficData && !showOnlyWork) {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-                await fetch(`${beBaseUrl}/lark/traffic-report`, {
+                const trafficRes = await fetch(`${beBaseUrl}/lark/traffic-report`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -226,15 +231,28 @@ const ChecklistContainer = ({
                         name: user.full_name,
                         roles: user.roles,
                         traffic: traffic,
-                        fileTokens: evidenceTokens,
+                        platformEvidences: platformEvidences,
+                        reportDate: trafficDate, // Send custom date
                     })
-                }).catch(err => console.error('Traffic save error', err));
+                });
+                
+                if (showOnlyTraffic) {
+                    if (trafficRes.ok) {
+                        setMessage({ type: 'success', text: 'Báo cáo Traffic thành công' });
+                    } else {
+                        const errData = await trafficRes.json().catch(() => ({}));
+                        setMessage({ type: 'error', text: errData.message || 'Gửi báo cáo traffic thất bại' });
+                        setLoading(false);
+                        return;
+                    }
+                }
+                
                 setTraffic(initialTrafficData());
-                setEvidenceTokens([]);
-                // Reload page after a delay to clear local state in child components like preview images
-                setTimeout(() => window.location.reload(), 1000);
+                setPlatformEvidences({});
+                setSubmitCount(prev => prev + 1);
             } else {
-                 setTimeout(() => window.location.reload(), 1000);
+                 if (!showOnlyWork) setMessage({ type: 'success', text: 'Báo cáo thành công' });
+                 setSubmitCount(prev => prev + 1);
             }
 
         } catch (e) {
@@ -253,7 +271,7 @@ const ChecklistContainer = ({
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
-            {status.message && !status.is_open && (
+            {status.message && !status.is_open && !showOnlyTraffic && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">{status.message}</p>
@@ -286,10 +304,22 @@ const ChecklistContainer = ({
                 {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
+                        {showOnlyTraffic && (
+                            <div className="mb-6 flex items-center gap-4 bg-purple-50/50 p-4 rounded-2xl border border-purple-100 max-w-sm">
+                                <label className="text-sm font-bold text-purple-700 whitespace-nowrap">Ngày báo cáo:</label>
+                                <input 
+                                    type="date" 
+                                    value={trafficDate}
+                                    onChange={(e) => setTrafficDate(e.target.value)}
+                                    className="bg-white border border-purple-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-purple-200"
+                                />
+                            </div>
+                        )}
                         <TrafficReportSection 
+                            key={submitCount}
                             values={traffic} 
                             onChange={handleTrafficChange}
-                            onEvidenceTokensChange={(tokens) => setEvidenceTokens(tokens)}
+                            onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
                         />
                     </div>
                 )}
@@ -305,7 +335,7 @@ const ChecklistContainer = ({
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading || !status.is_open}
+                    disabled={loading || (!status.is_open && !showOnlyTraffic)}
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     <Send className="w-4 h-4" />
