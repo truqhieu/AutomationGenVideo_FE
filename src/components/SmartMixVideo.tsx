@@ -588,6 +588,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 setPregenTotal(data.total || 0);
                 setPregenDone(data.done || 0);
 
+                // Refresh cacheStats mỗi lần poll để hiển thị đúng cached/indexed
+                await loadCacheStats();
+
                 if (data.status === 'completed' || data.status === 'idle') {
                     if (pregenPollRef.current) clearInterval(pregenPollRef.current);
                     if (data.status === 'completed') {
@@ -1025,43 +1028,50 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             )}
 
                             {/* Pregen (background caching) progress bar */}
-                            {(pregenStatus === 'running' || pregenStatus === 'completed' || pregenStatus === 'error' || (pregenStatus as string) === 'partial') && (
-                                <div className={`rounded-xl p-4 border ${pregenStatus === 'completed'
+                            {(pregenStatus === 'running' || pregenStatus === 'completed' || pregenStatus === 'error' || (pregenStatus as string) === 'partial') && (() => {
+                                const _cached = cacheStats?.cached_clips ?? 0;
+                                const _indexed = cacheStats?.indexed_videos ?? 0;
+                                const _isFullyCached = _indexed > 0 && _cached >= _indexed * 0.9;
+                                const effectiveStatus = (pregenStatus === 'completed' && !_isFullyCached) ? 'partial' : pregenStatus;
+                                return (
+                                <div className={`rounded-xl p-4 border ${effectiveStatus === 'completed'
                                         ? 'bg-green-500/8 border-green-500/25'
-                                        : (pregenStatus as string) === 'partial'
+                                        : effectiveStatus === 'partial'
                                             ? 'bg-amber-500/8 border-amber-500/25'
-                                            : pregenStatus === 'error'
+                                            : effectiveStatus === 'error'
                                                 ? 'bg-red-500/8 border-red-500/25'
                                                 : 'bg-blue-500/8 border-blue-500/20'}`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
-                                            {pregenStatus === 'running'
+                                            {effectiveStatus === 'running'
                                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
-                                                : pregenStatus === 'completed'
+                                                : effectiveStatus === 'completed'
                                                     ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                                                    : (pregenStatus as string) === 'partial'
+                                                    : effectiveStatus === 'partial'
                                                         ? <span className="text-amber-400 text-xs">⚠️</span>
                                                         : <span className="text-red-400 text-xs">❌</span>
                                             }
-                                            <span className={`text-xs font-semibold ${pregenStatus === 'completed' ? 'text-green-400'
-                                                    : (pregenStatus as string) === 'partial' ? 'text-amber-400'
-                                                        : pregenStatus === 'error' ? 'text-red-400'
+                                            <span className={`text-xs font-semibold ${effectiveStatus === 'completed' ? 'text-green-400'
+                                                    : effectiveStatus === 'partial' ? 'text-amber-400'
+                                                        : effectiveStatus === 'error' ? 'text-red-400'
                                                             : 'text-blue-400'}`}>
-                                                {pregenStatus === 'completed'
-                                                    ? '✅ Cache hoàn tất — Preview đã mở khoá!'
-                                                    : (pregenStatus as string) === 'partial'
-                                                        ? `⚠️ Cache chưa đủ — ${(cacheStats?.indexed_videos ?? 0) - (cacheStats?.cached_clips ?? 0)} video không cache được`
-                                                        : pregenStatus === 'error'
-                                                            ? '❌ Cache bị lỗi'
-                                                            : '⚡ Đang cache videos...'}
+                                                {(() => {
+                                                    const cached = cacheStats?.cached_clips ?? 0;
+                                                    const indexed = cacheStats?.indexed_videos ?? 0;
+                                                    const isFullyCached = indexed > 0 && cached >= indexed * 0.9;
+                                                    if (pregenStatus === 'completed' && isFullyCached) return '✅ Cache hoàn tất — Preview đã mở khoá!';
+                                                    if (pregenStatus === 'completed' && !isFullyCached) return `⚠️ Cache chưa đủ — ${indexed - cached} video chưa cache`;
+                                                    if ((pregenStatus as string) === 'partial') return `⚠️ Cache chưa đủ — ${indexed - cached} video không cache được`;
+                                                    if (pregenStatus === 'error') return '❌ Cache bị lỗi';
+                                                    return '⚡ Đang cache videos...';
+                                                })()}
                                             </span>
                                         </div>
-                                        <span className={`text-xs font-bold ${pregenStatus === 'completed' ? 'text-green-400'
-                                                : (pregenStatus as string) === 'partial' ? 'text-amber-400'
-                                                    : pregenStatus === 'error' ? 'text-red-400'
+                                        <span className={`text-xs font-bold ${effectiveStatus === 'completed' ? 'text-green-400'
+                                                : effectiveStatus === 'partial' ? 'text-amber-400'
+                                                    : effectiveStatus === 'error' ? 'text-red-400'
                                                         : 'text-blue-400'}`}>
                                             {(() => {
-                                                // Khi completed: luôn dùng live data từ cacheStats
                                                 const liveDone = cacheStats?.cached_clips ?? pregenDone;
                                                 const liveTotal = cacheStats?.indexed_videos ?? pregenTotal;
                                                 const livePct = liveTotal > 0 ? Math.round(liveDone / liveTotal * 100) : pregenProgress;
@@ -1071,12 +1081,14 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                     </div>
                                     <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                                         <div
-                                            className={`h-full rounded-full transition-all duration-500 ${pregenStatus === 'completed'
+                                            className={`h-full rounded-full transition-all duration-500 ${effectiveStatus === 'completed'
                                                     ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                                                    : (pregenStatus as string) === 'partial'
+                                                    : effectiveStatus === 'partial'
                                                         ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                                                        : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
-                                            style={{ width: `${pregenStatus === 'completed' && cacheStats
+                                                        : effectiveStatus === 'error'
+                                                            ? 'bg-gradient-to-r from-red-500 to-red-400'
+                                                            : 'bg-gradient-to-r from-blue-500 to-cyan-400 animate-pulse'}`}
+                                            style={{ width: `${cacheStats
                                                 ? Math.round((cacheStats.cached_clips / (cacheStats.indexed_videos || 1)) * 100)
                                                 : pregenProgress}%` }}
                                         />
@@ -1085,7 +1097,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                                         <p className="text-[10px] text-gray-500 mt-1.5 truncate">{pregenMessage}</p>
                                     )}
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             <div className="flex gap-2">
                                 <button onClick={() => setShowIndexPanel(!showIndexPanel)}
