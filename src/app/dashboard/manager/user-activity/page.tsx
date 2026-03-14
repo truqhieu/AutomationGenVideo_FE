@@ -46,7 +46,41 @@ const getAvatarUrl = (url: string | null, name: string) => {
 
 const normalize = (str: any) => (str || '').toString().toLowerCase().trim().replace(/\s+/g, '');
 
+const CardSkeleton = () => (
+    <div className="relative rounded-[2.5rem] overflow-hidden border-2 border-slate-200 bg-white animate-pulse">
+        <div className="p-4 flex flex-col items-center">
+            <div className="mt-2 mb-3">
+                <div className="w-16 h-16 rounded-full bg-slate-200" />
+            </div>
+            <div className="text-center mb-4 w-full flex flex-col items-center">
+                <div className="h-4 w-24 bg-slate-200 rounded mb-2" />
+                <div className="flex gap-1.5">
+                    <div className="h-4 w-14 bg-slate-100 rounded" />
+                    <div className="h-4 w-16 bg-slate-100 rounded" />
+                </div>
+            </div>
+            <div className="w-full space-y-1.5 mb-4 px-1">
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+            </div>
+            <div className="h-7 w-28 bg-slate-200 rounded-2xl mb-4" />
+            <div className="w-full space-y-1.5 mb-4 px-1">
+                <div className="flex justify-between">
+                    <div className="h-3 w-20 bg-slate-100 rounded" />
+                    <div className="h-3 w-8 bg-slate-100 rounded" />
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full" />
+            </div>
+            <div className="grid grid-cols-2 w-full gap-2 px-1">
+                <div className="h-14 bg-slate-100 rounded-2xl" />
+                <div className="h-14 bg-slate-100 rounded-2xl" />
+            </div>
+        </div>
+    </div>
+);
 
+const CARDS_PER_BATCH = 10;
 
 const UserActivityPage = () => {
     const { user } = useAuthStore();
@@ -123,6 +157,8 @@ const UserActivityPage = () => {
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
     const [isPersonalDetailed, setIsPersonalDetailed] = React.useState(false);
     const [showTabMenu, setShowTabMenu] = React.useState(false);
+    const [visibleCount, setVisibleCount] = React.useState(CARDS_PER_BATCH);
+    const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
     // Time filter states
     const [timeType, setTimeType] = React.useState('month');
@@ -134,6 +170,27 @@ const UserActivityPage = () => {
         end.setHours(23, 59, 59, 999);
         return { start, end };
     });
+
+    // Reset visible count when filters change
+    React.useEffect(() => {
+        setVisibleCount(CARDS_PER_BATCH);
+    }, [activeTeam, searchName, dateRange]);
+
+    // Infinite scroll: load more cards when sentinel enters viewport
+    React.useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setVisibleCount(prev => prev + CARDS_PER_BATCH);
+                }
+            },
+            { rootMargin: '200px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [reports.length]);
 
     // Categorize teams dynamically based on teamContributions data
     const { globalTeams, vnTeams } = React.useMemo(() => {
@@ -640,7 +697,28 @@ const UserActivityPage = () => {
                                 Đang hiển thị toàn bộ KPI trong DB vì không có bản ghi khớp tháng đang chọn. Để lọc đúng tháng, hãy đặt cột &quot;Tháng&quot; trong Lark đúng format (VD: T2, 2, Tháng 2) rồi đồng bộ lại.
                             </div>
                         )}
-                        <ActivityKPIs summary={summary} teamContributions={teamContributions} groupContributions={groupContributions} />
+                        {loading && !summary ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="bg-white rounded-3xl border border-slate-200/60 p-3 animate-pulse">
+                                        <div className="h-3 w-24 bg-slate-200 rounded mb-3" />
+                                        <div className="flex items-center gap-4 mb-3">
+                                            <div className="w-16 h-16 rounded-full bg-slate-100" />
+                                            <div className="flex-1">
+                                                <div className="h-8 w-20 bg-slate-200 rounded mb-2" />
+                                                <div className="h-3 w-28 bg-slate-100 rounded" />
+                                            </div>
+                                        </div>
+                                        <div className="border-t border-slate-100 pt-3 flex justify-between">
+                                            <div className="h-6 w-16 bg-slate-100 rounded" />
+                                            <div className="h-6 w-16 bg-slate-100 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <ActivityKPIs summary={summary} teamContributions={teamContributions} groupContributions={groupContributions} />
+                        )}
                     </div>
                 )}
 
@@ -654,31 +732,54 @@ const UserActivityPage = () => {
                             />
                         </div>
                     ) : activeTab === 'performance' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                            {filteredPerformanceReports.map((report, idx) => {
-                                const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
-                                const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
-                                const isOwnCard = isOwnName || isOwnEmail;
-                                return (
-                                    <UserActivityCard
-                                        key={report.id || idx}
-                                        data={{ ...report, reportStatus: report.status }}
-                                        timeType={timeType}
-                                        canClick={
-                                            isAdminUser ||
-                                            (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
-                                            isOwnCard
-                                        }
-                                        onClick={() => {
-                                            setSearchName(report.name);
-                                            setIsPersonalDetailed(true);
-                                            setActiveTab('personal');
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                    />
-                                );
-                            })}
-                        </div>
+                        loading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                                {Array.from({ length: 10 }).map((_, i) => (
+                                    <CardSkeleton key={i} />
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                                    {filteredPerformanceReports.slice(0, visibleCount).map((report, idx) => {
+                                        const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
+                                        const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
+                                        const isOwnCard = isOwnName || isOwnEmail;
+                                        return (
+                                            <div
+                                                key={report.id || idx}
+                                                className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                                                style={{ animationDelay: `${Math.min(idx, 9) * 50}ms`, animationFillMode: 'backwards' }}
+                                            >
+                                                <UserActivityCard
+                                                    data={{ ...report, reportStatus: report.status }}
+                                                    timeType={timeType}
+                                                    canClick={
+                                                        isAdminUser ||
+                                                        (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                                        isOwnCard
+                                                    }
+                                                    onClick={() => {
+                                                        setSearchName(report.name);
+                                                        setIsPersonalDetailed(true);
+                                                        setActiveTab('personal');
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {visibleCount < filteredPerformanceReports.length && (
+                                    <div ref={loadMoreRef} className="flex justify-center py-8">
+                                        <div className="flex items-center gap-2 text-sm text-slate-400 font-bold">
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Đang tải thêm...
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )
                     ) : activeTab === 'ranking' ? (
                         <RankingView rankings={rankings} />
                     ) : activeTab === 'personal' ? (
@@ -811,7 +912,17 @@ const UserActivityPage = () => {
                                     </h3>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {filteredPerformanceReports.length > 0 ? filteredPerformanceReports.map(report => (
+                                    {loading ? (
+                                        Array.from({ length: 4 }).map((_, i) => (
+                                            <div key={i} className="bg-white rounded-3xl border border-slate-200 p-6 animate-pulse">
+                                                <div className="flex items-center gap-4 mb-4">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-200" />
+                                                    <div><div className="h-4 w-28 bg-slate-200 rounded mb-2" /><div className="h-3 w-20 bg-slate-100 rounded" /></div>
+                                                </div>
+                                                <div className="space-y-2"><div className="h-3 w-full bg-slate-100 rounded" /><div className="h-3 w-3/4 bg-slate-100 rounded" /></div>
+                                            </div>
+                                        ))
+                                    ) : filteredPerformanceReports.length > 0 ? filteredPerformanceReports.map(report => (
                                         <ReportCard key={report.id} report={report} />
                                     )) : (
                                         <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-xs font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>

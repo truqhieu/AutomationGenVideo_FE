@@ -43,7 +43,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
+const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
     const dailyGoal = data.dailyGoal || 0;
     const done = data.done || 0;
 
@@ -115,6 +115,8 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                         <img
                             src={getAvatarUrl(data.avatar, data.name)}
                             alt={data.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover rounded-full"
                             onError={(e) => {
                                 e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=random`;
@@ -207,7 +209,9 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
             </div>
         </div>
     );
-};
+});
+
+UserActivityCard.displayName = 'UserActivityCard';
 
 export default UserActivityCard;
 export type { UserActivity };
