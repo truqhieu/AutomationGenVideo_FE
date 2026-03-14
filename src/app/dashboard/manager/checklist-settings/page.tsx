@@ -44,22 +44,25 @@ const DAYS = [
 
 export default function ChecklistSettingsPage() {
     const { user } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'checklist' | 'accounts' | 'permissions'>('checklist');
+    const [activeTab, setActiveTab] = useState<'checklist' | 'accounts' | 'permissions'>('accounts');
     const [settings, setSettings] = useState<ReportSettings | null>(null);
     const [loading, setLoading] = useState(true);
+    const [settingsError, setSettingsError] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const isAdmin = useMemo(() => user?.roles?.includes(UserRole.ADMIN), [user]);
 
-    // Load settings
+    // Only load settings when checklist tab is active
     useEffect(() => {
-        fetchSettings();
-    }, []);
+        if (activeTab === 'checklist') {
+            fetchSettings();
+        }
+    }, [activeTab]);
 
     const fetchSettings = async () => {
         try {
-            // Using NEXT_PUBLIC_AI_SERVICE_URL if available, else fallback to 8001
+            setSettingsError(false);
             const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
             const response = await fetch(`${baseUrl}/api/checklist/settings/`);
             if (!response.ok) throw new Error('Failed to fetch settings');
@@ -67,7 +70,7 @@ export default function ChecklistSettingsPage() {
             setSettings(data);
         } catch (error) {
             console.error('Error fetching settings:', error);
-            // Non-critical error if we are just managing accounts
+            setSettingsError(true);
         } finally {
             setLoading(false);
         }
@@ -204,11 +207,11 @@ export default function ChecklistSettingsPage() {
                                     <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
                                     <p className="text-slate-400">Đang tải cấu hình...</p>
                                 </div>
-                            ) : !settings ? (
+                            ) : settingsError || !settings ? (
                                 <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 text-center px-6">
                                     <ShieldCheck className="w-12 h-12 text-slate-700 mb-4" />
                                     <p className="text-slate-400 max-w-md">
-                                        Không thể kết nối với dịch vụ cấu hình. Vui lòng kiểm tra lại AI Service hoặc liên hệ kỹ thuật.
+                                        Tính năng cấu hình giờ báo cáo đang được phát triển. Vui lòng sử dụng tab &quot;Quản lý tài khoản&quot; hoặc &quot;Phân quyền Tab&quot;.
                                     </p>
                                     <button
                                         onClick={fetchSettings}
