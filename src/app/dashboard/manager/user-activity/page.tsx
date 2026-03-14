@@ -135,7 +135,12 @@ const UserActivityPage = () => {
 
                     // Priority 1: Use tab from URL if valid
                     if (tabParam && Object.values(tabMap).includes(tabParam)) {
-                        setActiveTab(tabParam as any);
+                        // Prevent non-admins from accessing dashboard tab
+                        if (tabParam === 'dashboard' && !isAdminUser) {
+                            setActiveTab('performance');
+                        } else {
+                            setActiveTab(tabParam as any);
+                        }
                     } else {
                         // Priority 2: Use default if allowed, or find first allowed
                         const isPerformanceAllowed = data.includes('activity_performance') || data.includes('performance');
@@ -490,8 +495,10 @@ const UserActivityPage = () => {
         { id: 'daily_checklist', label: 'Checklist', icon: ClipboardList }
     ], []);
 
-    // All roles can see all tabs - no tab restriction
-    const visibleTabs = allTabs;
+    const visibleTabs = React.useMemo(() => {
+        if (isAdminUser) return allTabs;
+        return allTabs.filter(tab => tab.id !== 'dashboard');
+    }, [allTabs, isAdminUser]);
 
     // Memoize filtered report lists to avoid expensive re-filtering on every render
     const filteredPerformanceReports = React.useMemo(() => {

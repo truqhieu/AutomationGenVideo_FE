@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 import AccountManagement from '@/components/checklist/AccountManagement';
-import PermissionManagement from '@/components/checklist/PermissionManagement';
 import {
     Settings,
     Users,
@@ -44,7 +43,7 @@ const DAYS = [
 
 export default function ChecklistSettingsPage() {
     const { user } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'checklist' | 'accounts' | 'permissions'>('accounts');
+    const [activeTab, setActiveTab] = useState<'checklist' | 'accounts'>('accounts');
     const [settings, setSettings] = useState<ReportSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [settingsError, setSettingsError] = useState(false);
@@ -173,18 +172,6 @@ export default function ChecklistSettingsPage() {
                             Quản lý tài khoản
                         </button>
                     )}
-                    {isAdmin && (
-                        <button
-                            onClick={() => setActiveTab('permissions')}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'permissions'
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                                }`}
-                        >
-                            <Shield className="w-4 h-4" />
-                            Phân quyền Tab
-                        </button>
-                    )}
                 </div>
 
                 {/* Tab Content */}
@@ -211,7 +198,7 @@ export default function ChecklistSettingsPage() {
                                 <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 text-center px-6">
                                     <ShieldCheck className="w-12 h-12 text-slate-700 mb-4" />
                                     <p className="text-slate-400 max-w-md">
-                                        Tính năng cấu hình giờ báo cáo đang được phát triển. Vui lòng sử dụng tab &quot;Quản lý tài khoản&quot; hoặc &quot;Phân quyền Tab&quot;.
+                                        Tính năng cấu hình giờ báo cáo đang được phát triển. Vui lòng sử dụng tab &quot;Quản lý tài khoản&quot;.
                                     </p>
                                     <button
                                         onClick={fetchSettings}
@@ -380,11 +367,7 @@ export default function ChecklistSettingsPage() {
                         </div>
                     )}
 
-                    {activeTab === 'permissions' && isAdmin && (
-                        <div className="animate-in fade-in duration-500">
-                            <PermissionManagement />
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>

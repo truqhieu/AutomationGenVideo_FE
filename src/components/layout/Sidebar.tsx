@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, memo, useCallback, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -34,14 +34,7 @@ interface SidebarProps {
 }
 
 function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
-  const pathname = usePathname() || '';
-  const searchParams = useSearchParams();
-  const currentTab = searchParams?.get('tab');
   const { token } = useAuthStore();
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isNavigatingRef = useRef(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [allowedMenuIds, setAllowedMenuIds] = useState<string[]>([]);
 
   // Fetch dynamic permissions
@@ -62,6 +55,34 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     };
     fetchPermissions();
   }, [token]);
+
+  return (
+    <Suspense fallback={<div className="w-[80px] bg-[#0f172a]" />}>
+      <SidebarContent 
+        user={user} 
+        onLogout={onLogout} 
+        isPinned={isPinned} 
+        onTogglePin={onTogglePin} 
+        allowedMenuIds={allowedMenuIds}
+      />
+    </Suspense>
+  );
+}
+
+function SidebarContent({ 
+  user, 
+  onLogout, 
+  isPinned, 
+  onTogglePin,
+  allowedMenuIds
+}: any) {
+  const pathname = usePathname() || '';
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get('tab');
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isNavigatingRef = useRef(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   // Detect reduced motion preference
   useEffect(() => {
@@ -104,18 +125,15 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       pathname.startsWith('/dashboard/ai') ||
       pathname.startsWith('/dashboard/search-video')
     ) {
-      // MANAGEMENT roles không có social-discovery → fallback về user-management
       if (isManagement) return 'user-management';
       return 'social-discovery';
     }
-    // Mặc định tất cả roles đều xem user-management (Hiệu suất, etc.)
     return isManagement ? 'user-management' : 'social-discovery';
   }, [pathname, isManagement]);
 
-  // Memoize platforms configuration to prevent re-creation on every render
+  // Platforms configuration
   const platforms = useMemo(() => {
-    const allPlatforms = [
-      // 1. Management & Report Section (Consolidated)
+    return [
       {
         id: 'user-management',
         icon: Users,
@@ -125,14 +143,14 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             section: 'HỆ THỐNG',
             items: [
               { label: 'Hiệu suất', href: '/dashboard/manager/user-activity?tab=performance', icon: Activity },
-              { label: 'Tổng quan', href: '/dashboard/manager/user-activity?tab=dashboard', icon: LayoutDashboard },
+              ...(isManagerOrAdmin ? [
+                { label: 'Tổng quan', href: '/dashboard/manager/user-activity?tab=dashboard', icon: LayoutDashboard },
+                { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
+              ] : []),
               { label: 'Bảng xếp hạng', href: '/dashboard/manager/user-activity?tab=ranking', icon: Layout },
               { label: 'Tiến độ', href: '/dashboard/manager/user-activity?tab=personal', icon: User },
               { label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText },
               { label: 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: ClipboardList },
-              ...(isManagerOrAdmin ? [
-                { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
-              ] : []),
               ...(isManagement ? [
                 { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
               ] : []),
@@ -140,7 +158,6 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           }
         ]
       },
-
       ...(!isManagement ? [{
         id: 'social-discovery',
         icon: Search,
@@ -165,8 +182,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         ]
       }] : [])
     ];
-    return allPlatforms;
-  }, [user?.roles, isManagement, isManagerOrAdmin]); // Dependency on roles array
+  }, [user?.roles, isManagement, isManagerOrAdmin]);
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
@@ -230,7 +246,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           </div>
 
           <div className="flex flex-col gap-4 w-full px-4 mt-auto">
-            {(allowedMenuIds.includes('settings') || isManagerOrAdmin) ? (
+            {allowedMenuIds.includes('settings') || isManagerOrAdmin ? (
               <Link
                 href="/dashboard/manager/checklist-settings"
                 className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors duration-150 ease-out"
@@ -238,14 +254,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
               >
                 <Settings className="w-5 h-5" />
               </Link>
-            ) : (
-              <button
-                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
-                title="Cài đặt hệ thống"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
+            ) : null}
 
             <button
               onClick={onLogout}
@@ -319,20 +328,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             ))}
           </div>
         </div>
-
-        <style jsx>{`
-          .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-        `}</style>
       </aside>
-      {isDrawerVisible && !isPinned && (
-        <div
-          className="fixed inset-0 bg-black/10 z-[90]"
-          onClick={() => setIsSidebarHovered(false)}
-        />
-      )}
     </>
   );
 }
