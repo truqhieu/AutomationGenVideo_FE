@@ -495,16 +495,19 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     };
 
-    const loadCacheStats = async () => {
+    const loadCacheStats = async (): Promise<CacheStats | null> => {
         setLoadingStats(true);
         try {
             const response = await fetch(`${BE_API_URL}/ai/cache-stats`);
             if (response.ok) {
                 const data = await response.json();
                 setCacheStats(data);
+                return data as CacheStats;
             }
+            return null;
         } catch (error) {
             console.error('Failed to load cache stats:', error);
+            return null;
         } finally {
             setLoadingStats(false);
         }
@@ -588,8 +591,15 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 if (data.status === 'completed' || data.status === 'idle') {
                     if (pregenPollRef.current) clearInterval(pregenPollRef.current);
                     if (data.status === 'completed') {
-                        toast.success(`✅ Cache hoàn tất! ${data.total || 0} clips sẵn sàng — Preview đã được mở khoá!`, { duration: 5000 });
-                        loadCacheStats();
+                        const freshStats = await loadCacheStats();
+                        const indexed = freshStats?.indexed_videos ?? cacheStats?.indexed_videos ?? 0;
+                        const cached = freshStats?.cached_clips ?? data.done ?? 0;
+                        if (indexed > 0 && cached < indexed * 0.9) {
+                            setPregenStatus('partial' as any);
+                            toast(`⚠️ Cache ${cached}/${indexed} clips — còn ${indexed - cached} video chưa cache`, { duration: 5000 });
+                        } else {
+                            toast.success(`✅ Cache hoàn tất! ${cached}/${indexed} clips sẵn sàng — Preview đã được mở khoá!`, { duration: 5000 });
+                        }
                     }
                 }
                 if (data.status === 'error') {
