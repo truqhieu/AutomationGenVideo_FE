@@ -51,7 +51,7 @@ export default function ChecklistSettingsPage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const isAdmin = useMemo(() => user?.roles?.includes(UserRole.ADMIN), [user]);
+    const isAdmin = useMemo(() => user?.roles?.includes(UserRole.ADMIN) || user?.roles?.includes(UserRole.MANAGER), [user]);
 
     // Only load settings when checklist tab is active
     useEffect(() => {
