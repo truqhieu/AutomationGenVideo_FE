@@ -647,133 +647,61 @@ export default function ChannelAnalyticsPage() {
           {/* Videos Posted */}
 
           <StatsCard
-
             icon={<Video className="w-5 h-5 text-blue-500" />}
-
             label="Videos Posted"
-
             value={stats?.filteredVideoCount}
-
-            change={0.0}
-
+            change={0}
           />
 
-
-
-          {/* Total Views */}
-
           <StatsCard
-
             icon={<Eye className="w-5 h-5 text-purple-500" />}
-
             label="Total Views"
-
             value={stats?.filteredViews}
-
-            change={51.3}
-
+            change={0}
           />
 
-
-
-          {/* Total Likes */}
-
           <StatsCard
-
             icon={<Heart className="w-5 h-5 text-pink-500" />}
-
             label="Total Likes"
-
             value={stats?.filteredLikes}
-
-            change={60.2}
-
+            change={0}
           />
 
-
-
-          {/* Comments */}
-
           <StatsCard
-
             icon={<MessageCircle className="w-5 h-5 text-indigo-500" />}
-
             label="Comments"
-
             value={stats?.filteredComments}
-
-            change={52.3}
-
+            change={0}
           />
 
-
-
-          {/* Shares */}
-
           <StatsCard
-
             icon={<Share2 className="w-5 h-5 text-emerald-500" />}
-
             label="Shares"
-
             value={stats?.filteredShares}
-
-            change={86.0}
-
+            change={0}
           />
 
-
-
-          {/* Total Engagement */}
-
           <StatsCard
-
             icon={<Zap className="w-5 h-5 text-amber-500" />}
-
             label="Total Engagement"
-
             value={formatNumber(Number(stats?.filteredLikes || 0) + Number(stats?.filteredComments || 0) + Number(stats?.filteredShares || 0))}
-
-            change={66.2}
-
+            change={0}
             isNumberString={true}
-
           />
 
-
-
-          {/* Engagement Rate */}
-
           <StatsCard
-
             icon={<TrendingUp className="w-5 h-5 text-cyan-500" />}
-
             label="Engagement Rate"
-
             value={`${stats?.filteredEngagement}%`}
-
-            change={4.0}
-
+            change={0}
             isNumberString={true}
-
           />
 
-
-
-          {/* Followers (Clone) */}
-
           <StatsCard
-
             icon={<Users className="w-5 h-5 text-slate-500" />}
-
             label="Followers"
-
             value={profile?.follower_count || profile?.followers || profile?.total_followers || 0}
-
-            change={0.0}
-
-            subLabel="+104 this period"
-
+            change={0}
           />
 
 
@@ -871,19 +799,16 @@ function StatsCard({ icon, label, value, change, isNumberString = false, subLabe
 
 
       <div className="flex items-center gap-2">
-
-        <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-
-          {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-
-          {Math.abs(change)}%
-
-        </span>
-
-        <span className="text-[10px] text-slate-400 font-medium">vs previous</span>
-
-        {subLabel && <span className="text-[10px] text-emerald-600 font-medium ml-1">{subLabel}</span>}
-
+        {change !== 0 && (
+          <>
+            <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {Math.abs(change)}%
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">vs previous</span>
+          </>
+        )}
+        {subLabel && <span className="text-[10px] text-emerald-600 font-medium">{subLabel}</span>}
       </div>
 
     </div>
