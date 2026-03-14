@@ -185,8 +185,24 @@ export default function TrackedChannelsPage() {
   const handleAddChannel = () => {
     if (!usernameInput.trim()) return;
 
-    let username = usernameInput.trim();
-    // Auto-add @ if not present
+    let input = usernameInput.trim();
+    let username = input;
+
+    // Basic URL extraction for better UX
+    if (input.includes('tiktok.com/') || input.includes('instagram.com/')) {
+      try {
+        const urlObj = new URL(input.startsWith('http') ? input : `https://${input}`);
+        const pathParts = urlObj.pathname.split('/').filter(p => p);
+        const lastPart = pathParts[pathParts.length - 1];
+        if (lastPart) {
+          username = lastPart.startsWith('@') ? lastPart.substring(1) : lastPart;
+        }
+      } catch (e) {
+        console.error('URL parse error:', e);
+      }
+    }
+
+    // Ensure we send with @ for the profile fetcher (which then strips it)
     if (!username.startsWith('@')) {
       username = '@' + username;
     }
@@ -519,13 +535,13 @@ export default function TrackedChannelsPage() {
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddChannel()}
-                    placeholder="username"
+                    placeholder="username or profile URL"
                     disabled={loading}
                     className="w-full pl-8 pr-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:bg-slate-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Enter the username without @ symbol
+                  Enter the username or paste the full profile URL
                 </p>
               </div>
 
