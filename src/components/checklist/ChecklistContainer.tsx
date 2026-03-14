@@ -28,7 +28,7 @@ const ChecklistContainer = ({
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
-    const [trafficDate, setTrafficDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [trafficDate, setTrafficDate] = useState<string>('');
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -154,10 +154,39 @@ const ChecklistContainer = ({
 
         // Validate Traffic
         if ((showForm12 || showForm3) && !showOnlyWork) {
+            // Validate Date for Traffic Report
+            if (showOnlyTraffic && !trafficDate) {
+                setMessage({ type: 'error', text: 'Vui lòng chọn ngày báo cáo' });
+                return;
+            }
+
             const hasTrafficData = Object.values(traffic).some(val => val !== '');
             if (!hasTrafficData) {
                 setMessage({ type: 'error', text: 'Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).' });
                 return;
+            }
+
+            // Validate Evidence for each platform with traffic > 0
+            const platforms = [
+                { id: 'fb', label: 'FB' },
+                { id: 'ig', label: 'IG' },
+                { id: 'tiktok', label: 'Tiktok' },
+                { id: 'yt', label: 'YT' },
+                { id: 'thread', label: 'Thread' },
+                { id: 'lemon8', label: 'Lemon 8' },
+                { id: 'zalo', label: 'Zalo' },
+                { id: 'twitter', label: 'Twitter' },
+            ];
+
+            for (const p of platforms) {
+                const val = traffic[p.id as keyof TrafficData];
+                if (val && Number(val) > 0) {
+                    const evs = platformEvidences[p.id] || [];
+                    if (evs.length === 0) {
+                        setMessage({ type: 'error', text: `Vui lòng tải ảnh minh chứng cho Traffic ${p.label}` });
+                        return;
+                    }
+                }
             }
         }
 
