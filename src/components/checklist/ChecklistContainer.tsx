@@ -13,7 +13,15 @@ const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
 const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
 
-const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
+const ChecklistContainer = ({ 
+    mode, 
+    showOnlyTraffic = false, 
+    showOnlyWork = false 
+}: { 
+    mode?: 'member' | 'leader',
+    showOnlyTraffic?: boolean,
+    showOnlyWork?: boolean
+}) => {
     const { user } = useAuthStore();
     const [checks, setChecks] = useState<boolean[]>(initialChecks);
     const [details, setDetails] = useState<string[]>(initialDetails);
@@ -253,29 +261,30 @@ const ChecklistContainer = ({ mode }: { mode?: 'member' | 'leader' }) => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-                {/* Always show Checklist Section for both Member and Leader */}
-                {(showForm12 || showForm3) && (
+                {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
+                {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
                         <ChecklistSection values={checks} onChange={handleCheckChange} />
                     </div>
                 )}
 
-                {/* Show Detail Section for Member/Staff */}
-                {showForm12 && (
+
+                {/* Show Detail Section for Member/Staff - Hide if only traffic */}
+                {showForm12 && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                         <DetailSection values={details} onChange={handleDetailChange} />
                     </div>
                 )}
 
-                {/* Leader Section - Show for Leader mode */}
-                {showForm3 && (
+                {/* Leader Section - Show for Leader mode - Hide if only traffic */}
+                {showForm3 && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
                         <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
                     </div>
                 )}
                 
-                {/* Traffic Section - Show for both Member and Leader if needed, or just everyone in Checklist */}
-                {(showForm12 || showForm3) && (
+                {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
+                {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
                         <TrafficReportSection 
                             values={traffic} 
