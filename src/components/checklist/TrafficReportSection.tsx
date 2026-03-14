@@ -74,26 +74,31 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         if (!channelPlatform) return false;
         const p = channelPlatform.toLowerCase().trim();
         
-        switch (platformId) {
-            case 'fb':
-                return p === 'fb' || p === 'facebook' || p.includes('fanpage') || p === 'fb-vcb';
-            case 'ig':
-                return p === 'ig' || p === 'instagram' || p === 'ins';
-            case 'tiktok':
-                return p === 'tiktok' || p === 'tt' || p.includes('tiktok');
-            case 'yt':
-                return p === 'yt' || p === 'youtube' || p.includes('youtube');
-            case 'thread':
-                return p === 'thread' || p === 'threads';
-            case 'lemon8':
-                return p === 'lemon8' || p === 'lemon 8';
-            case 'zalo':
-                return p === 'zalo';
-            case 'twitter':
-                return p === 'twitter' || p === 'x';
-            default:
-                return p === platformId.toLowerCase() || p.includes(platformId.toLowerCase());
-        }
+        // Map of platform ID to valid keywords in the database 'platform' field
+        const platformMap: Record<string, string[]> = {
+            'fb': ['fb', 'facebook', 'fanpage'],
+            'ig': ['ig', 'instagram', 'ins'],
+            'tiktok': ['tiktok', 'tt'],
+            'yt': ['yt', 'youtube'],
+            'thread': ['thread', 'threads'],
+            'lemon8': ['lemon8', 'lemon 8'],
+            'zalo': ['zalo', 'zalo oa', 'zalo video'],
+            'twitter': ['twitter', 'twitter x', 'x']
+        };
+
+        const targets = platformMap[platformId] || [platformId.toLowerCase()];
+        
+        return targets.some(target => {
+            // Priority 1: Exact match
+            if (p === target) return true;
+            // Priority 2: Broad match for specific long terms
+            if (target.length > 3 && p.includes(target)) return true;
+            // Priority 3: Check if the platform string contains the target as a standalone word
+            const words = p.split(/[\s_-]+/);
+            if (words.includes(target)) return true;
+            
+            return false;
+        });
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
