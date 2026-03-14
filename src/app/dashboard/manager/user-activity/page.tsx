@@ -47,7 +47,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
 const normalize = (str: any) => (str || '').toString().toLowerCase().trim().replace(/\s+/g, '');
 
 const CardSkeleton = () => (
-    <div className="relative rounded-[2.5rem] overflow-hidden border-2 border-slate-200 bg-white animate-pulse">
+    <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-white animate-pulse">
         <div className="p-4 flex flex-col items-center">
             <div className="mt-2 mb-3">
                 <div className="w-16 h-16 rounded-full bg-slate-200" />
@@ -541,7 +541,7 @@ const UserActivityPage = () => {
         <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
             <div className="relative z-10 space-y-4">
                 {activeTab !== 'daily_report' && (
-                    <div className="relative z-30 bg-white/80 backdrop-blur-md p-2 rounded-[2rem] border border-white/20 shadow-xl shadow-slate-200/50">
+                    <div className="relative z-30 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-xl shadow-slate-200/50">
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}

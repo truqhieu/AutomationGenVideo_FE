@@ -74,7 +74,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-3xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
+                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>

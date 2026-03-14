@@ -90,7 +90,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
     return (
         <div
             onClick={canClick ? onClick : undefined}
-            className={`relative rounded-[2.5rem] overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
+            className={`relative rounded-2xl overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
                 ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
                 : `${style.glow}`
                 }`}>
