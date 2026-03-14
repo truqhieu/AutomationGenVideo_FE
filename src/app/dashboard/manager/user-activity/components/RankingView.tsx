@@ -108,11 +108,11 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                     </div>
                     <div>
                         <h3 className="text-xl font-black text-slate-900 tracking-tight">{title}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Top 5 Bùng nổ nhất</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Top 5 Bùng nổ nhất</p>
                     </div>
                 </div>
                 <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Tháng 2/2026</span>
+                    <span className="text-xs font-black text-slate-400 uppercase">Tháng 2/2026</span>
                 </div>
             </div>
 
@@ -151,16 +151,16 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                                         }}
                                     />
                                     {user.rank === 1 && (
-                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
-                                            <span className="text-[8px]">👑</span>
-                                        </div>
+                                            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
+                                                <span className="text-[10px]">👑</span>
+                                            </div>
                                     )}
                                 </div>
                                 <div className="flex flex-col">
                                     <span className={`font-black tracking-tight ${isTop3 ? 'text-base' : 'text-sm'} ${style.nameColor}`}>
                                         {user.name}
                                     </span>
-                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1 border ${style.badge}`}>
+                                    <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1 border ${style.badge}`}>
                                         {user.position || 'Member'}
                                     </span>
                                 </div>
@@ -169,7 +169,7 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                                 <span className={`font-black block leading-none ${isTop3 ? 'text-xl' : 'text-lg'} ${style.valueColor}`}>
                                     {user.value}
                                 </span>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">
                                     {title.includes('TRAFFIC') ? 'Lượt xem' : 'VND'}
                                 </span>
                             </div>

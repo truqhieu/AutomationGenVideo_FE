@@ -102,7 +102,7 @@ export default function DashboardLayout({
 
       {/* Main content */}
       {/* Dynamic padding based on sidebar state: 80px (collapsed) or 320px (pinned) */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'pl-[320px]' : 'pl-[80px]'}`}>
+      <div className={`transition-[padding-left] duration-200 ease-out ${sidebarOpen ? 'pl-[320px]' : 'pl-[80px]'}`}>
         {/* Header - Make it stick but transparent or matching? */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
           <div className="flex items-center justify-between px-6 py-4">

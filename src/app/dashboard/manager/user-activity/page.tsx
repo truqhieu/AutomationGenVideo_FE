@@ -46,7 +46,41 @@ const getAvatarUrl = (url: string | null, name: string) => {
 
 const normalize = (str: any) => (str || '').toString().toLowerCase().trim().replace(/\s+/g, '');
 
+const CardSkeleton = () => (
+    <div className="relative rounded-[2.5rem] overflow-hidden border-2 border-slate-200 bg-white animate-pulse">
+        <div className="p-4 flex flex-col items-center">
+            <div className="mt-2 mb-3">
+                <div className="w-16 h-16 rounded-full bg-slate-200" />
+            </div>
+            <div className="text-center mb-4 w-full flex flex-col items-center">
+                <div className="h-4 w-24 bg-slate-200 rounded mb-2" />
+                <div className="flex gap-1.5">
+                    <div className="h-4 w-14 bg-slate-100 rounded" />
+                    <div className="h-4 w-16 bg-slate-100 rounded" />
+                </div>
+            </div>
+            <div className="w-full space-y-1.5 mb-4 px-1">
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+                <div className="h-9 bg-slate-100 rounded-2xl" />
+            </div>
+            <div className="h-7 w-28 bg-slate-200 rounded-2xl mb-4" />
+            <div className="w-full space-y-1.5 mb-4 px-1">
+                <div className="flex justify-between">
+                    <div className="h-3 w-20 bg-slate-100 rounded" />
+                    <div className="h-3 w-8 bg-slate-100 rounded" />
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full" />
+            </div>
+            <div className="grid grid-cols-2 w-full gap-2 px-1">
+                <div className="h-14 bg-slate-100 rounded-2xl" />
+                <div className="h-14 bg-slate-100 rounded-2xl" />
+            </div>
+        </div>
+    </div>
+);
 
+const CARDS_PER_BATCH = 10;
 
 const UserActivityPage = () => {
     const { user } = useAuthStore();
@@ -64,7 +98,7 @@ const UserActivityPage = () => {
     const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
     const [groupContributions, setGroupContributions] = React.useState<any>(null);
     const [kpiMeta, setKpiMeta] = React.useState<{ kpiTotalInDb?: number; kpiFilteredForMonth?: number; kpiMonthFallback?: boolean } | null>(null);
-    const [loading, setLoading] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
     const [userRole, setUserRole] = React.useState<string | null>(null);
     const [userTeam, setUserTeam] = React.useState<string | null>(null);
     const [personalHistory, setPersonalHistory] = React.useState<{
@@ -123,6 +157,8 @@ const UserActivityPage = () => {
     const [dailyFilter, setDailyFilter] = React.useState<'all' | 'video_win' | 'product_win' | 'idea' | 'difficulty'>('all');
     const [isPersonalDetailed, setIsPersonalDetailed] = React.useState(false);
     const [showTabMenu, setShowTabMenu] = React.useState(false);
+    const [visibleCount, setVisibleCount] = React.useState(CARDS_PER_BATCH);
+    const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
     // Time filter states
     const [timeType, setTimeType] = React.useState('month');
@@ -134,6 +170,27 @@ const UserActivityPage = () => {
         end.setHours(23, 59, 59, 999);
         return { start, end };
     });
+
+    // Reset visible count when filters change
+    React.useEffect(() => {
+        setVisibleCount(CARDS_PER_BATCH);
+    }, [activeTeam, searchName, dateRange]);
+
+    // Infinite scroll: load more cards when sentinel enters viewport
+    React.useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setVisibleCount(prev => prev + CARDS_PER_BATCH);
+                }
+            },
+            { rootMargin: '200px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [reports.length]);
 
     // Categorize teams dynamically based on teamContributions data
     const { globalTeams, vnTeams } = React.useMemo(() => {
@@ -162,7 +219,7 @@ const UserActivityPage = () => {
         };
     }, [teamContributions]);
 
-    const matchTeam = (teamName: string | null | undefined): boolean => {
+    const matchTeam = React.useCallback((teamName: string | null | undefined): boolean => {
         if (activeTeam === 'All') return true;
 
         const safeTeam = normalize(teamName || 'Khác');
@@ -172,22 +229,31 @@ const UserActivityPage = () => {
         if (activeTeam === 'All VN') return vnTeams.some(t => normalize(t) === safeTeam);
 
         return safeTeam === safeActive;
-    };
+    }, [activeTeam, globalTeams, vnTeams]);
 
-    // Role helpers
+    // Role helpers (memoized to avoid re-compute on every render)
     const sysRoles = user?.roles || [];
-    const isAdminUser = sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager';
-    const isLeaderUser = sysRoles.includes(UserRole.LEADER) || userRole === 'leader';
+    const isAdminUser = React.useMemo(
+        () => sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager',
+        [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    const isLeaderUser = React.useMemo(
+        () => sysRoles.includes(UserRole.LEADER) || userRole === 'leader',
+        [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
+    );
 
     React.useEffect(() => {
         fetchReports();
-    }, [dateRange, activeTeam, user?.email]); // Fetch data whenever date range, filters or user changes
+    }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // fetchHistory only re-runs when tab or user changes, NOT on every searchName keystroke.
+    // When a card is clicked, searchName + activeTab are set together (batched), so the
+    // updated searchName is already available when the effect fires for activeTab change.
     React.useEffect(() => {
         if (activeTab === 'personal' || activeTab === 'performance') {
             fetchHistory();
         }
-    }, [activeTab, user?.email, searchName]);
+    }, [activeTab, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchHistory = async () => {
         if (!user?.email) return;
@@ -418,28 +484,52 @@ const UserActivityPage = () => {
         { id: 'daily_checklist', label: 'Checklist', icon: ClipboardList }
     ], []);
 
-    const visibleTabs = React.useMemo(() => {
-        // Super users always see everything
-        if (isAdminUser) return allTabs;
+    // All roles can see all tabs - no tab restriction
+    const visibleTabs = allTabs;
 
-        // Fallback: If no dynamic permissions fetched yet
-        if (allowedMenuIds.length === 0) return allTabs;
-
-        const tabMap: any = {
-            'performance': 'activity_performance',
-            'dashboard': 'activity_dashboard',
-            'ranking': 'activity_ranking',
-            'personal': 'activity_personal',
-            'daily_checklist': 'activity_checklist',
-            'daily_report': 'activity_report'
-        };
-
-        // Filter tabs: show if explicitly allowed (either sub-tab ID or parent ID)
-        return allTabs.filter(tab => {
-            const subId = tabMap[tab.id];
-            return allowedMenuIds.includes(subId) || allowedMenuIds.includes(tab.id);
+    // Memoize filtered report lists to avoid expensive re-filtering on every render
+    const filteredPerformanceReports = React.useMemo(() => {
+        return reports.filter(r => {
+            const safeUserTeam = normalize(userTeam);
+            const safeReportTeam = normalize(r.team);
+            const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
+            const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
+            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
+            const isOwnCard = isOwnName || isOwnEmail;
+            const hasNoTeam = !userTeam;
+            const isVisible = isAdminUser || hasNoTeam || isTeamMatch || isOwnCard;
+            return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
         });
-    }, [allowedMenuIds, allTabs, isAdminUser]);
+    }, [reports, userTeam, isAdminUser, matchTeam, searchName, user?.full_name, user?.email]);
+
+    const filteredPersonalMembers = React.useMemo(() => {
+        return personalHistory.members.filter(m => {
+            const safeUserTeam = normalize(userTeam);
+            const safeMemberTeam = normalize(m.team);
+            const isTeamMatch = safeUserTeam && safeMemberTeam === safeUserTeam;
+            const isOwnName = m.name && user?.full_name && normalize(m.name) === normalize(user.full_name);
+            const isOwnEmail = m.email && user?.email && normalize(m.email) === normalize(user.email);
+            const hasNoTeam = !userTeam;
+            return isAdminUser || hasNoTeam || isTeamMatch || isOwnName || isOwnEmail;
+        });
+    }, [personalHistory.members, userTeam, isAdminUser, user?.full_name, user?.email]);
+
+    const filteredAllReports = React.useMemo(() => {
+        return reports.filter(r => {
+            const safeUserTeam = normalize(userTeam);
+            const safeReportTeam = normalize(r.team);
+            const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
+            const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
+            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
+            const hasNoTeam = !userTeam;
+            const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
+            return (isAdminUser || hasNoTeam || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;
+        });
+    }, [reports, userTeam, isAdminUser, searchName, user?.full_name, user?.email]);
+
+    const filteredChecklistReports = React.useMemo(() => {
+        return reportOutstandings.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()));
+    }, [reportOutstandings, matchTeam, searchName]);
 
     return (
         <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
@@ -465,9 +555,10 @@ const UserActivityPage = () => {
                             })}
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black text-white tracking-widest uppercase italic drop-shadow-sm group-hover:text-blue-100 transition-colors">
+                            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight uppercase drop-shadow-sm group-hover:text-blue-100 transition-colors">
                                 {allTabs.find(t => t.id === activeTab)?.label}
                             </h1>
+                            <p className="text-xs font-bold text-blue-200/70 uppercase tracking-[0.2em] mt-1">VCB Report Platform</p>
                         </div>
                     </div>
 
@@ -476,7 +567,7 @@ const UserActivityPage = () => {
                         {/* Directory Trigger Button */}
                         <button
                             onClick={() => setShowTabMenu(true)}
-                            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50"
+                            className="flex items-center gap-3 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-500 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50"
                         >
                             <LayoutGrid className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline-block">
@@ -502,7 +593,7 @@ const UserActivityPage = () => {
                                     <h2 className="text-lg font-black text-slate-900 leading-none tracking-tight uppercase">
                                         Danh mục <span className="text-blue-600">tính năng</span>
                                     </h2>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">VCB REPORT</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">VCB REPORT</p>
                                 </div>
                             </div>
                             <button
@@ -517,7 +608,7 @@ const UserActivityPage = () => {
                         <div className="flex-1 overflow-y-auto px-6 py-8 space-y-4">
                             {/* Current Selection Hint */}
                             <div className="mb-6 px-4">
-                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2 px-1">Đang chọn</p>
+                                <p className="text-xs font-black text-blue-600 uppercase tracking-[0.2em] mb-2 px-1">Đang chọn</p>
                                 <div className="h-1 w-12 bg-blue-600 rounded-full" />
                             </div>
 
@@ -546,7 +637,7 @@ const UserActivityPage = () => {
                                             <h3 className={`text-base font-black uppercase tracking-tight ${activeTab === tab.id ? 'text-white' : 'text-slate-800'}`}>
                                                 {tab.label}
                                             </h3>
-                                            <p className={`text-[11px] font-medium mt-1 ${activeTab === tab.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                            <p className={`text-sm font-medium mt-1 ${activeTab === tab.id ? 'text-blue-100' : 'text-slate-400'}`}>
                                                 {tab.id === 'performance' ? 'Trang chủ theo dõi hiệu suất' : `Hệ thống ${tab.label.toLowerCase()}`}
                                             </p>
                                         </div>
@@ -561,7 +652,7 @@ const UserActivityPage = () => {
 
                         {/* Footer Info */}
                         <div className="p-8 text-center bg-white border-t border-slate-100">
-                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                            <p className="text-xs font-black text-slate-300 uppercase tracking-[0.4em]">
                                 VCB REPORT PLATFORM • PREMIUM EDITION
                             </p>
                         </div>
@@ -606,7 +697,28 @@ const UserActivityPage = () => {
                                 Đang hiển thị toàn bộ KPI trong DB vì không có bản ghi khớp tháng đang chọn. Để lọc đúng tháng, hãy đặt cột &quot;Tháng&quot; trong Lark đúng format (VD: T2, 2, Tháng 2) rồi đồng bộ lại.
                             </div>
                         )}
-                        <ActivityKPIs summary={summary} teamContributions={teamContributions} groupContributions={groupContributions} />
+                        {loading && !summary ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="bg-white rounded-3xl border border-slate-200/60 p-3 animate-pulse">
+                                        <div className="h-3 w-24 bg-slate-200 rounded mb-3" />
+                                        <div className="flex items-center gap-4 mb-3">
+                                            <div className="w-16 h-16 rounded-full bg-slate-100" />
+                                            <div className="flex-1">
+                                                <div className="h-8 w-20 bg-slate-200 rounded mb-2" />
+                                                <div className="h-3 w-28 bg-slate-100 rounded" />
+                                            </div>
+                                        </div>
+                                        <div className="border-t border-slate-100 pt-3 flex justify-between">
+                                            <div className="h-6 w-16 bg-slate-100 rounded" />
+                                            <div className="h-6 w-16 bg-slate-100 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <ActivityKPIs summary={summary} teamContributions={teamContributions} groupContributions={groupContributions} />
+                        )}
                     </div>
                 )}
 
@@ -620,51 +732,54 @@ const UserActivityPage = () => {
                             />
                         </div>
                     ) : activeTab === 'performance' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                            {reports
-                                .filter(r => {
-                                    const safeUserTeam = normalize(userTeam);
-                                    const safeReportTeam = normalize(r.team);
-                                    const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
-
-                                    const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
-                                    const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-                                    const isOwnCard = isOwnName || isOwnEmail;
-
-                                    // Filter by team/role
-                                    const isVisible = isAdminUser || isTeamMatch || isOwnCard;
-
-                                    return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
-                                })
-                                .map((report, idx) => {
-                                    const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
-                                    const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
-                                    const isOwnCard = isOwnName || isOwnEmail;
-
-                                    return (
-                                        <UserActivityCard
-                                            key={report.id || idx}
-                                            data={{
-                                                ...report,
-                                                reportStatus: report.status
-                                            }}
-                                            timeType={timeType}
-                                            canClick={
-                                                isAdminUser ||
-                                                (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
-                                                isOwnCard
-                                            }
-                                            onClick={() => {
-                                                setSearchName(report.name);
-                                                setIsPersonalDetailed(true);
-                                                setActiveTab('personal');
-                                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                                            }}
-                                        />
-                                    );
-                                })
-                            }
-                        </div>
+                        loading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                                {Array.from({ length: 10 }).map((_, i) => (
+                                    <CardSkeleton key={i} />
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                                    {filteredPerformanceReports.slice(0, visibleCount).map((report, idx) => {
+                                        const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
+                                        const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
+                                        const isOwnCard = isOwnName || isOwnEmail;
+                                        return (
+                                            <div
+                                                key={report.id || idx}
+                                                className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                                                style={{ animationDelay: `${Math.min(idx, 9) * 50}ms`, animationFillMode: 'backwards' }}
+                                            >
+                                                <UserActivityCard
+                                                    data={{ ...report, reportStatus: report.status }}
+                                                    timeType={timeType}
+                                                    canClick={
+                                                        isAdminUser ||
+                                                        (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                                        isOwnCard
+                                                    }
+                                                    onClick={() => {
+                                                        setSearchName(report.name);
+                                                        setIsPersonalDetailed(true);
+                                                        setActiveTab('personal');
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {visibleCount < filteredPerformanceReports.length && (
+                                    <div ref={loadMoreRef} className="flex justify-center py-8">
+                                        <div className="flex items-center gap-2 text-sm text-slate-400 font-bold">
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Đang tải thêm...
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )
                     ) : activeTab === 'ranking' ? (
                         <RankingView rankings={rankings} />
                     ) : activeTab === 'personal' ? (
@@ -674,26 +789,8 @@ const UserActivityPage = () => {
                                 teamStats={personalHistory.teamStats}
                                 companyStats={personalHistory.companyStats}
                                 userActivity={personalHistory.userActivity}
-                                members={personalHistory.members.filter(m => {
-                                    const safeUserTeam = normalize(userTeam);
-                                    const safeMemberTeam = normalize(m.team);
-                                    const isTeamMatch = safeUserTeam && safeMemberTeam === safeUserTeam;
-
-                                    const isOwnName = m.name && user?.full_name && normalize(m.name) === normalize(user.full_name);
-                                    const isOwnEmail = m.email && user?.email && normalize(m.email) === normalize(user.email);
-                                    return isAdminUser || isTeamMatch || isOwnName || isOwnEmail;
-                                })}
-                                allReports={reports.filter(r => {
-                                    const safeUserTeam = normalize(userTeam);
-                                    const safeReportTeam = normalize(r.team);
-                                    const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
-
-                                    const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
-                                    const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-
-                                    const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
-                                    return (isAdminUser || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;
-                                })}
+                                members={filteredPersonalMembers}
+                                allReports={filteredAllReports}
                                 setSearchName={setSearchName}
                                 isDetailedMode={isPersonalDetailed}
                                 setIsDetailedMode={setIsPersonalDetailed}
@@ -710,7 +807,7 @@ const UserActivityPage = () => {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between px-4">
                                     <div className="flex items-center gap-3">
-                                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
                                             <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
                                             Vấn đề nổi bật & Video Win
                                         </h3>
@@ -718,34 +815,19 @@ const UserActivityPage = () => {
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
                                     <button onClick={() => setDailyFilter(dailyFilter === 'video_win' ? 'all' : 'video_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'video_win' ? 'bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-600/20' : 'bg-emerald-50/50 border-emerald-100'}`}>
-                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{reportOutstandings
-                                            .filter(r => matchTeam(r.team))
-                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
+                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'product_win' ? 'all' : 'product_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'product_win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
-                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{reportOutstandings
-                                            .filter(r => matchTeam(r.team))
-                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
+                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💎</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
-                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{reportOutstandings
-                                            .filter(r => matchTeam(r.team))
-                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => (r.category?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến|ý kiến/)).length}</h4></div>
+                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến|ý kiến/)).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
                                     </button>
                                     <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
-                                        <div><p className={`text-[8px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{reportOutstandings
-                                            .filter(r => matchTeam(r.team))
-                                            .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                            .filter(r => {
-                                                const c = (r.category?.toLowerCase() || '').normalize('NFC');
-                                                return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến|ý kiến/);
-                                            }).length}</h4></div>
+                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{filteredChecklistReports.filter(r => { const c = (r.category?.toLowerCase() || '').normalize('NFC'); return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến|ý kiến/); }).length}</h4></div>
                                         <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
                                     </button>
                                 </div>
@@ -757,46 +839,40 @@ const UserActivityPage = () => {
                                     <table className="w-full border-collapse text-left">
                                         <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
                                             <tr>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Chức danh
                                                 </th>
-                                                <th className="px-3 py-2 text-[10px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Nhân viên
                                                 </th>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Phân loại
                                                 </th>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
                                                     Nội dung
                                                 </th>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
                                                     Duyệt
                                                 </th>
-                                                <th className="px-3 py-2 text-[8px] font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
                                                     Người duyệt
                                                 </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {reportOutstandings
-                                                .filter(r => matchTeam(r.team))
-                                                .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                                .length > 0 ? reportOutstandings
-                                                    .filter(r => matchTeam(r.team))
-                                                    .filter(r => (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()))
-                                                    .map((r, idx) => {
+                                            {filteredChecklistReports.length > 0 ? filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
                                                         const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa'));
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-[9px] uppercase">{r.role || 'Member'}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-xs uppercase">{r.role || 'Member'}</td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                    <div className="font-bold text-slate-700 text-[10px]">{r.name}</div>
-                                                                    <div className="text-[8px] text-blue-500 font-black italic">{r.team} - {r.date}</div>
+                                                                    <div className="font-bold text-slate-700 text-xs">{r.name}</div>
+                                                                    <div className="text-[10px] text-blue-500 font-black italic">{r.team} - {r.date}</div>
                                                                 </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-amber-600 text-[9px] uppercase">{r.category || '-'}</td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-amber-600 text-xs uppercase">{r.category || '-'}</td>
                                                                 <td className="px-3 py-1 border-r border-slate-50 cursor-pointer group hover:bg-slate-50/50 transition-colors">
-                                                                    <div className="text-[11px] text-slate-700 font-medium leading-relaxed max-w-[350px] whitespace-normal line-clamp-2 group-hover:line-clamp-none py-1.5 px-2 rounded-lg group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-100 transition-all duration-300">
+                                                                    <div className="text-xs text-slate-700 font-medium leading-relaxed max-w-[350px] whitespace-normal line-clamp-2 group-hover:line-clamp-none py-1.5 px-2 rounded-lg group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-100 transition-all duration-300">
                                                                         {r.content || 'Không có nội dung'}
                                                                     </div>
                                                                 </td>
@@ -805,23 +881,23 @@ const UserActivityPage = () => {
                                                                         <button
                                                                             onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa Duyệt' : 'Đã Duyệt')}
                                                                             title="Nhấn để thay đổi trạng thái"
-                                                                            className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${isApproved ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200'}`}
+                                                                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${isApproved ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200'}`}
                                                                         >
                                                                             {r.approval_status || 'Chưa duyệt'}
                                                                         </button>
                                                                     ) : (
-                                                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
                                                                             {r.approval_status || 'Chưa duyệt'}
                                                                         </span>
                                                                     )}
                                                                 </td>
-                                                                <td className="px-3 py-1.5 text-center text-[9px] font-bold text-slate-500 italic">
+                                                                <td className="px-3 py-1.5 text-center text-xs font-bold text-slate-500 italic">
                                                                     {r.approved_by || '-'}
                                                                 </td>
                                                             </tr>
                                                         );
                                                     }) : (
-                                                <tr><td colSpan={6} className="py-20 text-center opacity-30 text-[10px] uppercase font-black">Chưa có dữ liệu</td></tr>
+                                                <tr><td colSpan={6} className="py-20 text-center opacity-30 text-xs uppercase font-black">Chưa có dữ liệu</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -831,15 +907,25 @@ const UserActivityPage = () => {
                             {/* Detailed Report Cards */}
                             <div className="space-y-4 mt-8">
                                 <div className="flex items-center justify-between px-4">
-                                    <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
                                         <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
                                     </h3>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {reports.length > 0 ? reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase())).map(report => (
+                                    {loading ? (
+                                        Array.from({ length: 4 }).map((_, i) => (
+                                            <div key={i} className="bg-white rounded-3xl border border-slate-200 p-6 animate-pulse">
+                                                <div className="flex items-center gap-4 mb-4">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-200" />
+                                                    <div><div className="h-4 w-28 bg-slate-200 rounded mb-2" /><div className="h-3 w-20 bg-slate-100 rounded" /></div>
+                                                </div>
+                                                <div className="space-y-2"><div className="h-3 w-full bg-slate-100 rounded" /><div className="h-3 w-3/4 bg-slate-100 rounded" /></div>
+                                            </div>
+                                        ))
+                                    ) : filteredPerformanceReports.length > 0 ? filteredPerformanceReports.map(report => (
                                         <ReportCard key={report.id} report={report} />
                                     )) : (
-                                        <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
+                                        <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-xs font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
                                     )}
                                 </div>
                             </div>
@@ -859,7 +945,7 @@ const UserActivityPage = () => {
                                         </div>
                                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo ngày</h3>
                                         <p className="text-sm text-slate-500 font-medium leading-relaxed">Báo cáo và đánh giá công việc hàng ngày của Leader và Member.</p>
-                                        <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                        <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
                                             Chọn loại báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                         </div>
                                     </button>
@@ -875,7 +961,7 @@ const UserActivityPage = () => {
                                         </div>
                                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo tháng</h3>
                                         <p className="text-sm text-slate-500 font-medium leading-relaxed">Tổng hợp dữ liệu hiệu suất, traffic và doanh thu theo chu kỳ tháng.</p>
-                                        <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                        <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
                                             Xem báo cáo tháng <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                         </div>
                                     </button>
@@ -906,7 +992,7 @@ const UserActivityPage = () => {
                                                         </div>
                                                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Member</h3>
                                                         <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Editor & Content báo cáo tiến độ checklist và khó khăn hàng ngày.</p>
-                                                        <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                                        <div className="mt-8 flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
                                                             Bắt đầu báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                         </div>
                                                     </button>
@@ -924,7 +1010,7 @@ const UserActivityPage = () => {
                                                         </div>
                                                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Báo cáo Leader</h3>
                                                         <p className="text-sm text-slate-500 font-medium leading-relaxed">Dành cho Team Leader đánh giá chất lượng và quản lý nhân sự hàng ngày.</p>
-                                                        <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
+                                                        <div className="mt-8 flex items-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0">
                                                             Bắt đầu đánh giá <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                         </div>
                                                     </button>

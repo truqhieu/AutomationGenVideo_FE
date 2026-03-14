@@ -36,9 +36,6 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      role: UserRole.MEMBER,
-    },
   });
 
   const onSubmit = async (data: RegisterFormData) => {

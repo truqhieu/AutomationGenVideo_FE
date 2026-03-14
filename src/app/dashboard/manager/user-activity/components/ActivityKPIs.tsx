@@ -77,7 +77,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                 <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-3xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
+                            <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
                             <div className="bg-blue-600/5 p-1.5 rounded-lg">
                                 <Target className="w-3 h-3 text-blue-600" />
                             </div>
@@ -110,7 +110,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                         />
                                     </svg>
                                     {kpi.title !== 'SỐ KÊNH' && (
-                                        <span className="absolute text-[12px] font-black text-slate-900">
+                                        <span className="absolute text-sm font-black text-slate-900">
                                             {kpi.percentage}%
                                         </span>
                                     )}
@@ -121,7 +121,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.title === 'SỐ KÊNH' ? 'text-center py-2' : ''}`}>
                                     {kpi.value}
                                 </div>
-                                <div className={`text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
+                                <div className={`text-[11px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
                                     {kpi.title === 'SỐ KÊNH' ? 'Đang hoạt động' : (
                                         <>MT: <span className="text-blue-700">{kpi.total}</span></>
@@ -133,14 +133,14 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                         {/* Breakdown Global vs VN */}
                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
                             <div className="flex flex-col">
-                                <div className="text-[8px] font-black text-amber-600 uppercase flex items-center gap-1 mb-1">
+                                <div className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-1 mb-1">
                                     <Globe className="w-2.5 h-2.5 text-amber-500" />
                                     Global
                                 </div>
                                 <div className="flex items-baseline gap-1.5">
                                     <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
                                     {kpi.title !== 'SỐ KÊNH' && (
-                                        <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
+                                        <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
                                             {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
                                         </span>
                                     )}
@@ -150,13 +150,13 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             <div className="w-px h-8 bg-slate-200"></div>
 
                             <div className="flex flex-col text-right">
-                                <div className="text-[8px] font-black text-blue-600 uppercase flex items-center justify-end gap-1 mb-1">
+                                <div className="text-[10px] font-black text-blue-600 uppercase flex items-center justify-end gap-1 mb-1">
                                     Việt Nam
                                     <Flag className="w-2.5 h-2.5 text-blue-500" />
                                 </div>
                                 <div className="flex items-baseline justify-end gap-1.5">
                                     {kpi.title !== 'SỐ KÊNH' && (
-                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
+                                        <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
                                             {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
                                         </span>
                                     )}

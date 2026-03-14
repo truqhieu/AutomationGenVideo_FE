@@ -183,7 +183,7 @@ const PersonalCharts = ({
                             <div className="flex items-center gap-3">
                                 <div className="text-right">
                                     <h2 className="text-lg font-black text-slate-800 tracking-tight leading-none">{userActivity.name}</h2>
-                                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">{userActivity.team || 'Cá nhân'}</span>
+                                    <span className="text-xs font-black text-blue-600 uppercase tracking-widest leading-none">{userActivity.team || 'Cá nhân'}</span>
                                 </div>
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-200">
                                     <Users className="w-5 h-5 text-white" />
@@ -209,7 +209,7 @@ const PersonalCharts = ({
                                             <stat.icon className={`w-4 h-4 ${stat.color}`} />
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
                                             <p className={`text-sm font-black text-slate-800`}>{stat.value}</p>
                                         </div>
                                     </div>
@@ -221,8 +221,8 @@ const PersonalCharts = ({
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <Card className="lg:col-span-1 rounded-[2rem] border border-blue-100 shadow-xl overflow-hidden bg-white">
                                 <div className="p-4 border-b border-blue-50 bg-blue-50/30">
-                                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Cân bằng đóng góp</h3>
-                                    <p className="text-[13px] font-black text-slate-800 tracking-tight">{userActivity.name}</p>
+                                    <h3 className="text-xs font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Cân bằng đóng góp</h3>
+                                    <p className="text-sm font-black text-slate-800 tracking-tight">{userActivity.name}</p>
                                 </div>
                                 <div className="h-[250px] w-full p-4">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -252,17 +252,17 @@ const PersonalCharts = ({
                             <Card className="lg:col-span-2 rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden bg-white">
                                 <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Xu hướng hiệu suất tháng</h3>
-                                        <p className="text-[13px] font-black text-slate-800 tracking-tight">Số video & Doanh thu</p>
+                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Xu hướng hiệu suất tháng</h3>
+                                    <p className="text-sm font-black text-slate-800 tracking-tight">Số video & Doanh thu</p>
                                     </div>
                                     <div className="flex gap-4">
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-2 h-2 rounded-full bg-blue-600" />
-                                            <span className="text-[8px] font-black text-slate-400 uppercase">Video</span>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase">Video</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                            <span className="text-[8px] font-black text-slate-400 uppercase">Revenue</span>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase">Revenue</span>
                                         </div>
                                     </div>
                                 </div>
@@ -306,18 +306,18 @@ const PersonalCharts = ({
                                         <Activity className="w-4 h-4 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-0.5">Xu hướng Traffic thực tế</h3>
-                                        <p className="text-[13px] font-black text-slate-800 tracking-tight tracking-tighter">Phân tích tăng trưởng View & Mục tiêu tháng</p>
+                                        <h3 className="text-xs font-black text-blue-600 uppercase tracking-[0.2em] mb-0.5">Xu hướng Traffic thực tế</h3>
+                                        <p className="text-sm font-black text-slate-800 tracking-tight">Phân tích tăng trưởng View & Mục tiêu tháng</p>
                                     </div>
                                 </div>
                                 <div className="hidden sm:flex gap-4">
                                     <div className="flex items-center gap-1.5">
                                         <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Thực tế</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Mục tiêu</span>
+                                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Thực tế</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Mục tiêu</span>
                                     </div>
                                 </div>
                             </div>
@@ -404,14 +404,14 @@ const PersonalCharts = ({
                                         <Layout className="w-5 h-5 text-white" />
                                     </div>
                                     <div className="flex flex-col items-center relative z-10 text-center">
-                                        <span className="text-[11px] font-black text-white uppercase tracking-[0.2em] drop-shadow-md truncate max-w-[120px]">
-                                            VCB REPORT
+                                    <span className="text-xs font-black text-white uppercase tracking-[0.2em] drop-shadow-md truncate max-w-[120px]">
+                                        VCB REPORT
+                                    </span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                                        <span className="text-[10px] font-bold text-blue-100 uppercase tracking-widest opacity-80">
+                                            TOÀN CÔNG TY
                                         </span>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-                                            <span className="text-[8px] font-bold text-blue-100 uppercase tracking-widest opacity-80">
-                                                TOÀN CÔNG TY
-                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -458,7 +458,7 @@ const PersonalCharts = ({
                                                 <div className={`p-1.5 rounded-lg bg-gradient-to-br ${item.color} shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform duration-500`}>
                                                     <item.icon className="w-3.5 h-3.5 text-white" />
                                                 </div>
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">
+                                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">
                                                     {item.label}
                                                 </span>
                                             </div>
@@ -466,7 +466,7 @@ const PersonalCharts = ({
                                                 <span className={`text-xl font-black ${item.textColor} tracking-tight tabular-nums drop-shadow-sm group-hover:scale-[1.02] origin-left transition-transform`}>
                                                     {item.value}
                                                 </span>
-                                                <span className="text-[7px] font-bold text-slate-400 uppercase mt-0.5 tracking-tighter">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-tighter">
                                                     {item.unit}
                                                 </span>
                                             </div>
@@ -488,7 +488,7 @@ const PersonalCharts = ({
                                     <Users className="w-4 h-4 text-blue-600" />
                                     <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Chi tiết hiệu suất nhân viên</h3>
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-slate-400 italic">
+                                <div className="flex items-center gap-2 text-xs text-slate-400 italic">
                                     <span>* Click vào tiêu đề cột để sắp xếp</span>
                                 </div>
                             </div>
@@ -497,31 +497,31 @@ const PersonalCharts = ({
                                 <table className="w-full border-collapse text-left">
                                     <thead className="sticky top-0 z-20">
                                         <tr className="bg-blue-600 shadow-sm">
-                                            <th className="px-4 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-white/10 w-12 text-center">
+                                            <th className="px-4 py-3 text-xs font-black text-white uppercase tracking-widest border-r border-white/10 w-12 text-center">
                                                 STT
                                             </th>
-                                            <th className="px-6 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-white/10">
+                                            <th className="px-6 py-3 text-xs font-black text-white uppercase tracking-widest border-r border-white/10">
                                                 Họ tên
                                             </th>
-                                            <th onClick={() => requestSort('video')} className="px-6 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
+                                            <th onClick={() => requestSort('video')} className="px-6 py-3 text-xs font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span>Số VD</span>
                                                     {getSortIcon('video')}
                                                 </div>
                                             </th>
-                                            <th onClick={() => requestSort('traffic')} className="px-6 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
+                                            <th onClick={() => requestSort('traffic')} className="px-6 py-3 text-xs font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span>Số Traffic</span>
                                                     {getSortIcon('traffic')}
                                                 </div>
                                             </th>
-                                            <th onClick={() => requestSort('revenue')} className="px-6 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
+                                            <th onClick={() => requestSort('revenue')} className="px-6 py-3 text-xs font-black text-white uppercase tracking-widest border-r border-white/10 cursor-pointer hover:bg-blue-700 transition-colors group">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span>Số doanh thu</span>
                                                     {getSortIcon('revenue')}
                                                 </div>
                                             </th>
-                                            <th onClick={() => requestSort('channels')} className="px-6 py-3 text-[10px] font-black text-white uppercase tracking-widest cursor-pointer hover:bg-blue-700 transition-colors group">
+                                            <th onClick={() => requestSort('channels')} className="px-6 py-3 text-xs font-black text-white uppercase tracking-widest cursor-pointer hover:bg-blue-700 transition-colors group">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span>Số kênh</span>
                                                     {getSortIcon('channels')}
@@ -533,7 +533,7 @@ const PersonalCharts = ({
                                         {sortedMembers.map((member, idx) => (
                                             <tr key={idx} className={`hover:bg-blue-50/30 transition-colors ${member.isLeader ? 'bg-orange-50/20' : ''}`}>
                                                 <td className="px-4 py-4 text-center">
-                                                    <span className="text-[10px] font-black text-slate-400">
+                                                    <span className="text-xs font-black text-slate-400">
                                                         {idx + 1}
                                                     </span>
                                                 </td>

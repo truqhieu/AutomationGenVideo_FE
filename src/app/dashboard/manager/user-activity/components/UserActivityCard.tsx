@@ -43,7 +43,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
+const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
     const dailyGoal = data.dailyGoal || 0;
     const done = data.done || 0;
 
@@ -115,6 +115,8 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                         <img
                             src={getAvatarUrl(data.avatar, data.name)}
                             alt={data.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover rounded-full"
                             onError={(e) => {
                                 e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=random`;
@@ -124,17 +126,17 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                 </div>
 
                 <div className="text-center mb-4">
-                    <h4 className="text-[13px] font-black text-slate-800 tracking-tight leading-tight mb-1 truncate max-w-[170px]">{data.name}</h4>
+                    <h4 className="text-sm font-black text-slate-800 tracking-tight leading-tight mb-1 truncate max-w-[170px]">{data.name}</h4>
                     <div className="flex items-center justify-center gap-1.5">
                         {data.position && (
-                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-lg border shadow-xs ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border shadow-xs ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
                                 ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border-orange-200'
                                 : 'bg-white text-slate-500 border-slate-200'
                                 }`}>
                                 {data.position?.toUpperCase()}
                             </span>
                         )}
-                        <span className="text-[8px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs">
+                        <span className="text-[10px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs">
                             {data.team}
                         </span>
                     </div>
@@ -145,31 +147,31 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                     <div className="flex items-center justify-between p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-2">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">TGBC</span>
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">TGBC</span>
                         </div>
-                        <span className="text-[10px] font-black text-slate-800">{data.time}</span>
+                        <span className="text-xs font-black text-slate-800">{data.time}</span>
                     </div>
 
                     <div className={`flex items-center justify-between p-2 rounded-2xl border transition-colors ${statusType === 'exceeded' ? 'bg-purple-50/50 border-purple-100' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
                             <Target className={`w-3.5 h-3.5 ${statusType === 'exceeded' ? 'text-purple-500' : 'text-slate-400'}`} />
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{goalLabel}</span>
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{goalLabel}</span>
                         </div>
-                        <span className={`text-[12px] font-black ${statusType === 'exceeded' ? 'text-purple-700' : 'text-slate-900'}`}>{dailyGoal}</span>
+                        <span className={`text-sm font-black ${statusType === 'exceeded' ? 'text-purple-700' : 'text-slate-900'}`}>{dailyGoal}</span>
                     </div>
 
                     <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-purple-100 border-purple-200' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
                             <CheckCircle2 className={`w-3.5 h-3.5 ${style.icon}`} />
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">ĐÁ XONG</span>
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">ĐÃ XONG</span>
                         </div>
-                        <span className={`text-[12px] font-black ${style.text}`}>{done}</span>
+                        <span className={`text-sm font-black ${style.text}`}>{done}</span>
                     </div>
                 </div>
 
                 {/* Report Status Badge */}
                 <div className="w-full flex justify-center mb-4">
-                    <div className={`px-5 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] shadow-md transition-all ${isReportedOnTime
+                    <div className={`px-5 py-1.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] shadow-md transition-all ${isReportedOnTime
                         ? 'bg-emerald-600 text-white ring-2 ring-emerald-500/20'
                         : 'bg-red-600 text-white ring-2 ring-red-500/20'
                         }`}>
@@ -179,7 +181,7 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
 
                 {/* Monthly Progress */}
                 <div className="w-full space-y-1.5 mb-4 px-1">
-                    <div className="flex justify-between items-center text-[9px] font-black tracking-wider">
+                    <div className="flex justify-between items-center text-[11px] font-black tracking-wider">
                         <span className="text-slate-500 uppercase">TIẾN ĐỘ THÁNG</span>
                         <span className={`${statusType === 'exceeded' ? 'text-purple-600' : 'text-blue-600'}`}>{data.monthlyProgress}%</span>
                     </div>
@@ -196,18 +198,20 @@ const UserActivityCard = ({ data, onClick, canClick = true, isActive, timeType }
                 {/* Traffic & Revenue Footer */}
                 <div className="grid grid-cols-2 w-full gap-2 px-1">
                     <div className="bg-white p-2.5 rounded-2xl border border-blue-100 shadow-sm text-center">
-                        <span className="block text-[7px] font-black text-blue-500 uppercase tracking-widest mb-1">TRAFFIC</span>
-                        <div className="text-[11px] font-black text-blue-800 truncate leading-none">{data.traffic}</div>
+                        <span className="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">TRAFFIC</span>
+                        <div className="text-xs font-black text-blue-800 truncate leading-none">{data.traffic}</div>
                     </div>
                     <div className="bg-white p-2.5 rounded-2xl border border-emerald-100 shadow-sm text-center">
-                        <span className="block text-[7px] font-black text-emerald-500 uppercase tracking-widest mb-1">DOANH THU</span>
-                        <div className="text-[11px] font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
+                        <span className="block text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">DOANH THU</span>
+                        <div className="text-xs font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
                     </div>
                 </div>
             </div>
         </div>
     );
-};
+});
+
+UserActivityCard.displayName = 'UserActivityCard';
 
 export default UserActivityCard;
 export type { UserActivity };

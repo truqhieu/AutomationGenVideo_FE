@@ -69,14 +69,11 @@ const ActivityFilters = ({
     const isPersonalTab = activeTab === 'personal';
     const isPerformanceTab = activeTab === 'performance';
 
-    // Team filter: 
-    // - Show in Ranking and Performance for everyone to allow competition visibility
-    // - Otherwise only for Admin/Manager
-    const canSeeTeamFilter = isAdmin || isRankingTab || isPerformanceTab;
+    // Team filter: visible to all roles
+    const canSeeTeamFilter = true;
 
-    // Team label:
-    // - Show only if main filter is hidden
-    const showTeamLabel = !canSeeTeamFilter && userTeam;
+    // Team label: no longer needed since filter is always visible
+    const showTeamLabel = false;
 
 
 
@@ -332,7 +329,7 @@ const ActivityFilters = ({
                 <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 mr-1">
                         <Layers className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                             Nhóm Team
                         </span>
                     </div>
@@ -474,10 +471,10 @@ const ActivityFilters = ({
                     >
                         <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-100' : 'text-blue-500'}`} />
                         <div className="flex flex-col items-start leading-tight">
-                            <span className={`text-[9px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
                                 {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
                             </span>
-                            <span className="text-[11px] font-bold">
+                            <span className="text-xs font-bold">
                                 {filterMode === 'year' ? dateRange.start.getFullYear() :
                                     filterMode === 'month' ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}` :
                                         (timeType === 'custom' || filterMode === 'week' || filterMode === 'range')
@@ -523,7 +520,7 @@ const ActivityFilters = ({
                                             <button
                                                 key={mode}
                                                 onClick={() => setFilterMode(mode)}
-                                                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${filterMode === mode ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                                className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${filterMode === mode ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                                             >
                                                 {mode === 'day' ? 'Ngày' : mode === 'week' ? 'Tuần' : mode === 'month' ? 'Tháng' : mode === 'year' ? 'Năm' : 'Khoảng'}
                                             </button>
@@ -565,14 +562,14 @@ const ActivityFilters = ({
                                             {/* Calendar Header */}
                                             <div className="flex items-center justify-between mb-4">
                                                 <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 rotate-90" /></button>
-                                                <div className="text-[11px] font-black text-white uppercase tracking-widest">{viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}</div>
+                                                <div className="text-xs font-black text-white uppercase tracking-widest">{viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}</div>
                                                 <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 -rotate-90" /></button>
                                             </div>
 
                                             {/* Calendar Grid */}
                                             <div className="grid grid-cols-7 gap-1 mb-2">
                                                 {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
-                                                    <div key={day} className="text-center text-[9px] font-black text-slate-500">{day}</div>
+                                                    <div key={day} className="text-center text-[10px] font-black text-slate-500">{day}</div>
                                                 ))}
                                             </div>
                                             <div className="grid grid-cols-7 gap-1">
@@ -581,7 +578,7 @@ const ActivityFilters = ({
                                                         {day ? (
                                                             <button
                                                                 onClick={() => handleDateSelect(day)}
-                                                                className={`w-full h-full flex items-center justify-center text-[10px] font-bold rounded-lg transition-all
+                                                                className={`w-full h-full flex items-center justify-center text-[11px] font-bold rounded-lg transition-all
                                                                     ${isSelected(day) || (filterMode === 'week' && isInRange(day))
                                                                         ? 'bg-blue-600 text-white shadow-lg'
                                                                         : isInRange(day)
@@ -601,7 +598,7 @@ const ActivityFilters = ({
                                     )}
 
                                     <div className="mt-auto pt-6 flex justify-end">
-                                        <button onClick={() => setOpenDropdown(null)} className="px-6 py-2 text-[10px] font-black text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition-all uppercase tracking-widest">Hoàn tất</button>
+                                        <button onClick={() => setOpenDropdown(null)} className="px-6 py-2 text-xs font-black text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition-all uppercase tracking-widest">Hoàn tất</button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -609,8 +606,8 @@ const ActivityFilters = ({
                     </AnimatePresence>
                 </div>
 
-                {/* Name Filter - Hidden in Personal unless Admin/Leader */}
-                {(!isPersonalTab || isAdmin || isLeader) && (
+                {/* Name Filter - visible to all roles */}
+                {(true) && (
                     <div className="relative group">
                         <div className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
                             <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
@@ -644,7 +641,7 @@ const ActivityFilters = ({
                         className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all duration-300 hover:shadow-lg shadow-red-200/50 active:scale-95 group"
                     >
                         <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
-                        <span className="text-[10px] font-black uppercase tracking-tight">Tắt lọc</span>
+                        <span className="text-xs font-black uppercase tracking-tight">Tắt lọc</span>
                     </button>
                 )}
 
@@ -653,7 +650,7 @@ const ActivityFilters = ({
                     <button
                         type="button"
                         onClick={onCapture}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest
                                    bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md ml-1"
                     >
                         <Camera className="w-3.5 h-3.5" />
