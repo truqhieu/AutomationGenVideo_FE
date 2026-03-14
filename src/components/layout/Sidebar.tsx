@@ -2,7 +2,7 @@
 
 import { useState, useMemo, memo, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Search,
   Settings,
@@ -16,6 +16,11 @@ import {
   Users,
   Activity,
   BookOpen,
+  LayoutDashboard,
+  Layout,
+  User,
+  FileText,
+  ClipboardList,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useAuthStore } from '@/store/auth-store';
@@ -30,6 +35,8 @@ interface SidebarProps {
 
 function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   const pathname = usePathname() || '';
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get('tab');
   const { token } = useAuthStore();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,7 +124,12 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           {
             section: 'HỆ THỐNG',
             items: [
-              { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
+              { label: 'Hiệu suất', href: '/dashboard/manager/user-activity?tab=performance', icon: Activity },
+              { label: 'Tổng quan', href: '/dashboard/manager/user-activity?tab=dashboard', icon: LayoutDashboard },
+              { label: 'Bảng xếp hạng', href: '/dashboard/manager/user-activity?tab=ranking', icon: Layout },
+              { label: 'Tiến độ', href: '/dashboard/manager/user-activity?tab=personal', icon: User },
+              { label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText },
+              { label: 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: ClipboardList },
               ...(isManagerOrAdmin ? [
                 { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
               ] : []),
@@ -280,7 +292,11 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                 <h3 className="text-xs font-semibold text-slate-500 mb-4 px-2 tracking-wider">{section.section}</h3>
                 <div className="space-y-1">
                   {section.items.map((item: any) => {
-                    const isActive = pathname === item.href;
+                    const itemUrl = item.href.split('?')[0];
+                    const itemTab = item.href.indexOf('tab=') !== -1 ? item.href.split('tab=')[1] : null;
+                    const isActive = itemTab 
+                      ? (pathname === itemUrl && currentTab === itemTab)
+                      : (pathname === itemUrl && !currentTab);
                     return (
                       <Link
                         key={item.href}
