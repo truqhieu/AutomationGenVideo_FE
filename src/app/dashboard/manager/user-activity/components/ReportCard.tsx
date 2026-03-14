@@ -78,7 +78,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                         <div className="flex items-center gap-1.5 mb-0.5">
                             <h3 className="font-semibold text-gray-900 text-sm leading-tight">{report.name}</h3>
                             {report.position && (
-                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${report.position.toLowerCase().includes('lead')
+                                <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${report.position.toLowerCase().includes('lead')
                                     ? 'bg-orange-50 text-orange-600 border-orange-100'
                                     : 'bg-gray-50 text-gray-500 border-gray-100'
                                     }`}>
@@ -86,14 +86,14 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                                 </span>
                             )}
                         </div>
-                        <span className="inline-block px-2 py-0.5 rounded border border-gray-200 text-[10px] text-gray-500 mt-0.5">
+                        <span className="inline-block px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-500 mt-0.5">
                             {report.team}
                         </span>
                     </div>
                 </div>
 
                 <span
-                    className={`px-3 py-1 rounded-lg text-[10px] font-bold flex items-center justify-end gap-1 ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${
                         isOnTime
                             ? 'bg-emerald-500 text-white'
                             : isLate
@@ -113,7 +113,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                             : report.status || 'TRẠNG THÁI?'}
                     </span>
                     {showTime && (
-                        <span className="text-[9px] font-medium opacity-90">
+                        <span className="text-[11px] font-medium opacity-90">
                             • {report.time}
                         </span>
                     )}
@@ -156,7 +156,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between border border-blue-100">
                         <div className="flex items-center gap-2">
                             <span className="text-blue-500 text-base">📹</span>
-                            <span className="text-[10px] font-bold text-blue-600 uppercase">
+                            <span className="text-xs font-bold text-blue-600 uppercase">
                                 SỐ VIDEO EDIT SỬ DỤNG &gt;50% SOURCE TỰ QUAY:
                             </span>
                         </div>
@@ -169,7 +169,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     <div className="space-y-2.5">
                         {report.questions.map((q, index) => (
                             <div key={index} className="border border-gray-100 rounded-xl p-3 bg-white shadow-sm">
-                                <p className="text-[10px] text-gray-500 mb-2 uppercase font-bold tracking-wide">
+                                <p className="text-xs text-gray-500 mb-2 uppercase font-bold tracking-wide">
                                     {index + 1}. {q.question}
                                 </p>
                                 <p className="text-sm text-gray-900 font-medium">

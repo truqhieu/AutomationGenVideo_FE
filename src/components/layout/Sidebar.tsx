@@ -1,29 +1,21 @@
 'use client';
 
-import { useState, useMemo, memo, useCallback, useEffect } from 'react';
+import { useState, useMemo, memo, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Home,
   Search,
   Settings,
   LogOut,
   Facebook,
   Instagram,
-  Music2, // TikTok
-  Music, // Douyin
+  Music2,
+  Music,
   LayoutGrid,
-  CreditCard,
-  HelpCircle,
   Pin,
-  FileText,
   Users,
   Activity,
-  BookOpen, // Xiaohongshu
-  Volume2,
-  ClipboardCheck,
-  Film,
-  Lock
+  BookOpen,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 import { useAuthStore } from '@/store/auth-store';
@@ -40,7 +32,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   const pathname = usePathname() || '';
   const { token } = useAuthStore();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isNavigatingRef = useRef(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [allowedMenuIds, setAllowedMenuIds] = useState<string[]>([]);
 
@@ -73,6 +66,13 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
+
   const isManagerOrAdmin = user?.roles?.some((r: any) =>
     r === UserRole.ADMIN || r === UserRole.MANAGER
   );
@@ -80,7 +80,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   // Directly derive activePlatform
   const activePlatform = useMemo(() => {
     const path = pathname?.toLowerCase() || '';
-    if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management')) {
+    if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management') || path.startsWith('/dashboard/hieu-suat')) {
       return 'user-management';
     } else if (
       pathname.startsWith('/dashboard/facebook') ||
@@ -89,13 +89,14 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       pathname.startsWith('/dashboard/douyin') ||
       pathname.startsWith('/dashboard/xiaohongshu') ||
       pathname.startsWith('/dashboard/ai') ||
-      pathname === '/dashboard'
+      pathname.startsWith('/dashboard/search-video')
     ) {
-      // MANAGER/ADMIN không có social-discovery → fallback về user-management
-      if (isManagerOrAdmin) return 'user-management';
-      return 'social-discovery';
+      // Nếu đang ở trang social media → show social-discovery (chỉ MEMBER mới có)
+      if (!isManagerOrAdmin) return 'social-discovery';
+      return 'user-management';
     }
-    return isManagerOrAdmin ? 'user-management' : 'social-discovery';
+    // Mặc định tất cả roles đều xem user-management (Hiệu suất, etc.)
+    return 'user-management';
   }, [pathname, isManagerOrAdmin]);
 
   // Memoize platforms configuration to prevent re-creation on every render
@@ -110,7 +111,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           {
             section: 'HỆ THỐNG',
             items: [
-              { label: 'Hiệu suất', href: '/dashboard/manager/user-activity', icon: Activity },
+              { label: 'Hiệu suất', href: '/dashboard/hieu-suat', icon: Activity },
               ...(user?.roles?.some((r: any) => r === UserRole.MANAGER || r === UserRole.ADMIN) ? [
                 { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
               ] : []),
@@ -152,34 +153,24 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
-  const [isNavigating, setIsNavigating] = useState(false);
-
   const handleMouseEnter = useCallback(() => {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     setIsSidebarHovered(true);
-  }, [hoverTimeout]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (isNavigating) return;
-    const timeout = setTimeout(() => {
-      setIsSidebarHovered(false);
-    }, 200);
-    setHoverTimeout(timeout);
-  }, [isNavigating]);
-
-  const handleLinkClick = useCallback(() => {
-    setIsNavigating(true);
-    setTimeout(() => setIsNavigating(false), 500);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout) clearTimeout(hoverTimeout);
-    };
-  }, [hoverTimeout]);
+  const handleMouseLeave = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsSidebarHovered(false);
+    }, 150);
+  }, []);
+
+  const handleLinkClick = useCallback(() => {
+    isNavigatingRef.current = true;
+    setTimeout(() => { isNavigatingRef.current = false; }, 500);
+  }, []);
 
   const isDrawerVisible = activePlatform && (isSidebarHovered || isPinned);
-  const transitionDuration = prefersReducedMotion ? '0ms' : '250ms';
 
   return (
     <>
@@ -207,13 +198,13 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                 href={p.menus?.[0]?.items?.[0]?.href || '#'}
                 prefetch={true}
                 onClick={handleLinkClick}
-                className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all duration-200 ease-out group relative
+                className={`w-full aspect-square rounded-xl flex items-center justify-center transition-colors duration-150 ease-out relative
                         ${activePlatform === p.id
                     ? 'bg-blue-600/10 text-blue-500 ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/20'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white hover:scale-105'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
               >
-                <p.icon className="w-6 h-6 transition-transform duration-200 ease-out group-hover:scale-110" />
+                <p.icon className="w-6 h-6" />
                 {activePlatform === p.id && (
                   <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full" />
                 )}
@@ -222,27 +213,26 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           </div>
 
           <div className="flex flex-col gap-4 w-full px-4 mt-auto">
-            {/* Settings Link - Controlled by 'settings' permission */}
             {(allowedMenuIds.includes('settings') || user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r))) ? (
               <Link
                 href="/dashboard/manager/checklist-settings"
-                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
+                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors duration-150 ease-out"
                 title="Cài đặt hệ thống"
               >
                 <Settings className="w-5 h-5" />
               </Link>
             ) : (
-            <button
-              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200 ease-out hover:scale-105"
-              title="Cài đặt hệ thống"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+              <button
+                className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors duration-150 ease-out"
+                title="Cài đặt hệ thống"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             )}
 
             <button
               onClick={onLogout}
-              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-900/20 hover:text-red-500 mt-2 transition-all duration-200 ease-out hover:scale-105"
+              className="w-full aspect-square rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-900/20 hover:text-red-500 mt-2 transition-colors duration-150 ease-out"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -250,14 +240,17 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
         </div>
 
         <div
-          className={`h-full bg-[#0b1121] border-r border-slate-800 flex flex-col overflow-hidden`}
+          className="h-full bg-[#0b1121] border-r border-slate-800 flex flex-col overflow-hidden"
           style={{
-            width: isDrawerVisible ? '240px' : '0px',
+            width: '240px',
+            flexShrink: 0,
             opacity: isDrawerVisible ? 1 : 0,
-            transform: isDrawerVisible ? 'translate3d(0, 0, 0)' : 'translate3d(-100%, 0, 0)',
+            clipPath: isDrawerVisible ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)',
+            pointerEvents: isDrawerVisible ? 'auto' : 'none',
+            willChange: 'clip-path, opacity',
             transition: prefersReducedMotion
               ? 'none'
-              : `all ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1)`,
+              : 'clip-path 200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease',
           }}
         >
           <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 whitespace-nowrap flex-shrink-0">
@@ -270,7 +263,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
             </div>
             <button
               onClick={onTogglePin}
-              className={`p-1.5 rounded-lg transition-all duration-200 ease-out ${isPinned ? 'text-blue-500 bg-blue-500/10 scale-105' : 'text-slate-500 hover:text-white hover:bg-slate-700 hover:scale-105'}`}
+              className={`p-1.5 rounded-lg transition-colors duration-150 ease-out ${isPinned ? 'text-blue-500 bg-blue-500/10' : 'text-slate-500 hover:text-white hover:bg-slate-700'}`}
             >
               <Pin className={`w-4 h-4 transition-transform duration-200 ${isPinned ? 'fill-current rotate-45' : ''}`} />
             </button>
@@ -289,13 +282,13 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                         href={item.href}
                         prefetch={true}
                         onClick={handleLinkClick}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ease-out text-sm font-medium
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 ease-out text-sm font-medium
                                              ${isActive
-                            ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20 scale-[1.02]'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50 hover:translate-x-1'
+                            ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                           }`}
                       >
-                        <item.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
+                        <item.icon className={`w-4 h-4 transition-colors duration-150 ${isActive ? 'text-blue-500' : 'text-slate-500'}`} />
                         {item.label}
                       </Link>
                     )
