@@ -28,7 +28,7 @@ const ChecklistContainer = ({
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
-    const [trafficDate, setTrafficDate] = useState<string>('');
+    const [trafficDate, setTrafficDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -333,17 +333,6 @@ const ChecklistContainer = ({
                 {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
-                        {showOnlyTraffic && (
-                            <div className="mb-6 flex items-center gap-4 bg-purple-50/50 p-4 rounded-2xl border border-purple-100 max-w-sm">
-                                <label className="text-sm font-bold text-purple-700 whitespace-nowrap">Ngày báo cáo:</label>
-                                <input 
-                                    type="date" 
-                                    value={trafficDate}
-                                    onChange={(e) => setTrafficDate(e.target.value)}
-                                    className="bg-white border border-purple-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-purple-200"
-                                />
-                            </div>
-                        )}
                         <TrafficReportSection 
                             key={submitCount}
                             values={traffic} 
