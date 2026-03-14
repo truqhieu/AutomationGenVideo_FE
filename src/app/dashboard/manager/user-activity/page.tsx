@@ -98,7 +98,7 @@ const UserActivityPage = () => {
     const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
     const [groupContributions, setGroupContributions] = React.useState<any>(null);
     const [kpiMeta, setKpiMeta] = React.useState<{ kpiTotalInDb?: number; kpiFilteredForMonth?: number; kpiMonthFallback?: boolean } | null>(null);
-    const [loading, setLoading] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
     const [userRole, setUserRole] = React.useState<string | null>(null);
     const [userTeam, setUserTeam] = React.useState<string | null>(null);
     const [personalHistory, setPersonalHistory] = React.useState<{
