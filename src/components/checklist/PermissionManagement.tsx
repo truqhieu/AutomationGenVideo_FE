@@ -149,7 +149,7 @@ export default function PermissionManagement() {
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-                {Object.values(UserRole).map(role => {
+                {Object.values(UserRole).filter(role => ![UserRole.ADMIN, UserRole.EDITOR, UserRole.CONTENT].includes(role)).map(role => {
                     const rolePerm = permissions.find(p => p.role === role) || { role, menu_ids: [] };
                     return (
                         <div key={role} className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
