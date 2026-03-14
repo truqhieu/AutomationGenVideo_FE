@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
-import TrafficReportSection, { TrafficData, initialTrafficData } from './TrafficReportSection';
+import TrafficReportSection, { TrafficData, initialTrafficData, initialTrafficChannels } from './TrafficReportSection';
 import { Send, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
@@ -27,6 +27,7 @@ const ChecklistContainer = ({
     const [details, setDetails] = useState<string[]>(initialDetails);
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
+    const [trafficChannels, setTrafficChannels] = useState<TrafficData>(initialTrafficChannels());
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
     const [trafficDate, setTrafficDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
@@ -123,6 +124,10 @@ const ChecklistContainer = ({
 
     const handleTrafficChange = useCallback((platformId: keyof TrafficData, value: string) => {
         setTraffic((prev) => ({ ...prev, [platformId]: value }));
+    }, []);
+
+    const handleChannelChange = useCallback((platformId: keyof TrafficData, value: string) => {
+        setTrafficChannels((prev) => ({ ...prev, [platformId]: value }));
     }, []);
 
     const buildPayload = useCallback((): Record<string, boolean | string> => {
@@ -260,6 +265,7 @@ const ChecklistContainer = ({
                         name: user.full_name,
                         roles: user.roles,
                         traffic: traffic,
+                        channels: trafficChannels,
                         platformEvidences: platformEvidences,
                         reportDate: trafficDate, // Send custom date
                     })
@@ -277,6 +283,7 @@ const ChecklistContainer = ({
                 }
                 
                 setTraffic(initialTrafficData());
+                setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
                 setSubmitCount(prev => prev + 1);
             } else {
@@ -336,7 +343,9 @@ const ChecklistContainer = ({
                         <TrafficReportSection 
                             key={submitCount}
                             values={traffic} 
+                            channels={trafficChannels}
                             onChange={handleTrafficChange}
+                            onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
                         />
                     </div>

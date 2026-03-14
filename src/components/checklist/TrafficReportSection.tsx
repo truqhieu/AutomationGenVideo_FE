@@ -34,13 +34,32 @@ export const initialTrafficData = (): TrafficData => ({
     twitter: '',
 });
 
+export const initialTrafficChannels = (): TrafficData => ({
+    fb: '',
+    ig: '',
+    tiktok: '',
+    yt: '',
+    thread: '',
+    lemon8: '',
+    zalo: '',
+    twitter: '',
+});
+
 interface TrafficReportSectionProps {
     values: TrafficData;
+    channels: TrafficData;
     onChange: (platformId: keyof TrafficData, value: string) => void;
+    onChannelChange: (platformId: keyof TrafficData, value: string) => void;
     onPlatformEvidenceChange?: (platformEvidences: Record<string, string[]>) => void;
 }
 
-const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onChange, onPlatformEvidenceChange }) => {
+const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
+    values, 
+    channels,
+    onChange, 
+    onChannelChange,
+    onPlatformEvidenceChange 
+}) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
     const [activePlatform, setActivePlatform] = useState<string | null>(null);
@@ -154,19 +173,33 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ values, onC
                             )}
                         </div>
 
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Nhập số..."
-                                value={values[platform.id as keyof TrafficData] && !isNaN(Number(values[platform.id as keyof TrafficData])) 
-                                    ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') 
-                                    : ''}
-                                onChange={(e) => {
-                                    const rawValue = e.target.value.replace(/\D/g, '');
-                                    onChange(platform.id as keyof TrafficData, rawValue);
-                                }}
-                                className="w-full h-[52px] px-5 rounded-2xl border border-slate-200 bg-white text-slate-800 text-lg font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none placeholder:text-slate-300"
-                            />
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Số Traffic</label>
+                                <input
+                                    type="text"
+                                    placeholder="Nhập số..."
+                                    value={values[platform.id as keyof TrafficData] && !isNaN(Number(values[platform.id as keyof TrafficData])) 
+                                        ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') 
+                                        : ''}
+                                    onChange={(e) => {
+                                        const rawValue = e.target.value.replace(/\D/g, '');
+                                        onChange(platform.id as keyof TrafficData, rawValue);
+                                    }}
+                                    className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none placeholder:text-slate-300"
+                                />
+                            </div>
+
+                            <div className="relative">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh đăng</label>
+                                <input
+                                    type="text"
+                                    placeholder="Tên kênh..."
+                                    value={channels[platform.id as keyof TrafficData] || ''}
+                                    onChange={(e) => onChannelChange(platform.id as keyof TrafficData, e.target.value)}
+                                    className="w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none placeholder:text-slate-300"
+                                />
+                            </div>
                         </div>
 
                         {/* Platform specific Evidence Preview */}
