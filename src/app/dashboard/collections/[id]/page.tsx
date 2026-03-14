@@ -110,7 +110,7 @@ export default function CollectionDetailPage() {
       <div className="mb-8">
         <button
           onClick={() => router.push('/dashboard/collections')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
+          className="relative z-50 cursor-pointer flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
         >
           <ArrowLeft className="w-5 h-5" />
           Quay lại

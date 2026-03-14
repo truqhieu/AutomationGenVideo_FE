@@ -175,7 +175,7 @@ const PersonalCharts = ({
                         <div className="flex items-center justify-between">
                             <button
                                 onClick={() => setIsDetailedMode(false)}
-                                className="group flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all active:scale-95"
+                                className="group relative z-50 cursor-pointer flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all active:scale-95"
                             >
                                 <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:-translate-x-1 transition-all" />
                                 <span className="text-xs font-black text-slate-500 uppercase tracking-widest group-hover:text-slate-800">Quay lại danh sách</span>

@@ -495,8 +495,8 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
         }
     };
 
-    const loadCacheStats = async (): Promise<CacheStats | null> => {
-        setLoadingStats(true);
+    const loadCacheStats = async (silent = false): Promise<CacheStats | null> => {
+        if (!silent) setLoadingStats(true);
         try {
             const response = await fetch(`${BE_API_URL}/ai/cache-stats`);
             if (response.ok) {
@@ -588,13 +588,13 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 setPregenTotal(data.total || 0);
                 setPregenDone(data.done || 0);
 
-                // Refresh cacheStats mỗi lần poll để hiển thị đúng cached/indexed
-                await loadCacheStats();
+                // Refresh cacheStats ngầm (không flash loading)
+                await loadCacheStats(true);
 
                 if (data.status === 'completed' || data.status === 'idle') {
                     if (pregenPollRef.current) clearInterval(pregenPollRef.current);
                     if (data.status === 'completed') {
-                        const freshStats = await loadCacheStats();
+                        const freshStats = await loadCacheStats(true);
                         const indexed = freshStats?.indexed_videos ?? cacheStats?.indexed_videos ?? 0;
                         const cached = freshStats?.cached_clips ?? data.done ?? 0;
                         if (indexed > 0 && cached < indexed * 0.9) {
@@ -959,7 +959,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                             <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20 uppercase tracking-wider">Cần setup</span>
                         )}
                     </div>
-                    <button onClick={loadCacheStats} disabled={loadingStats}
+                    <button onClick={() => loadCacheStats()} disabled={loadingStats}
                         className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-40">
                         <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingStats ? 'animate-spin' : ''}`} />
                     </button>

@@ -353,7 +353,7 @@ export default function FacebookAnalyticsPage() {
 
                     <button
                         onClick={() => router.back()}
-                        className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl transition-all font-semibold text-sm shadow-sm"
+                        className="relative z-50 cursor-pointer flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl transition-all font-semibold text-sm shadow-sm"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Quay lại

@@ -852,7 +852,7 @@ const UserActivityPage = () => {
                                             <div className="px-4">
                                                 <button
                                                     onClick={() => setReportType('select')}
-                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm"
+                                                    className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                                 >
                                                     <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                                     Quay lại chọn Loại
@@ -901,7 +901,7 @@ const UserActivityPage = () => {
                                             <div className="flex items-center justify-between px-4">
                                                 <button
                                                     onClick={() => setReportMode('select')}
-                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm"
+                                                    className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                                 >
                                                     <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                                     Quay lại chọn Đối tượng
@@ -918,7 +918,7 @@ const UserActivityPage = () => {
                                     <div className="px-4">
                                         <button
                                             onClick={() => setReportType('select')}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm"
+                                            className="relative z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
                                         >
                                             <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                             Quay lại chọn Loại
