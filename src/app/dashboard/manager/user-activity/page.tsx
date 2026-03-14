@@ -564,7 +564,7 @@ const UserActivityPage = () => {
                 )}
 
                 {/* KPI Cards section */}
-                {activeTab !== 'personal' && activeTab !== 'daily_report' && (
+                {activeTab !== 'personal' && activeTab !== 'daily_report' && activeTab !== 'daily_checklist' && (
                     <div className="relative z-10 transition-all duration-500 space-y-2">
                         {kpiMeta && kpiMeta.kpiTotalInDb === 0 && (
                             <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
