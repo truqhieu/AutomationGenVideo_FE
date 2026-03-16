@@ -74,7 +74,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         if (!channelPlatform) return false;
         const p = channelPlatform.toLowerCase().trim();
         
-        // Map of platform ID to valid keywords in the database 'platform' field
         const platformMap: Record<string, string[]> = {
             'fb': ['fb', 'facebook', 'fanpage'],
             'ig': ['ig', 'instagram', 'ins'],
@@ -91,11 +90,15 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         return targets.some(target => {
             // Priority 1: Exact match
             if (p === target) return true;
-            // Priority 2: Broad match for specific long terms
+            
+            // Priority 2: Broad match - ONLY for longer terms (more than 3 chars)
+            // Example: "tiktok" should NOT match "ig"
             if (target.length > 3 && p.includes(target)) return true;
+            
             // Priority 3: Check if the platform string contains the target as a standalone word
-            const words = p.split(/[\s_-]+/);
-            if (words.includes(target)) return true;
+            // Using regex to match whole word
+            const regex = new RegExp(`\\b${target}\\b`, 'i');
+            if (regex.test(p)) return true;
             
             return false;
         });

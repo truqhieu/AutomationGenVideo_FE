@@ -94,12 +94,17 @@ const ChecklistContainer = ({
     // Fetch user channels
     useEffect(() => {
         const fetchChannels = async () => {
-            if (!user?.full_name) return;
+            if (!user?.email && !user?.full_name) return;
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const url = new URL(`${beBaseUrl}/lark/channel`, window.location.origin);
-                url.searchParams.append('owner', user.full_name);
-                if (user.team) url.searchParams.append('team', user.team);
+                
+                if (user.email) {
+                    url.searchParams.append('email', user.email);
+                } else {
+                    url.searchParams.append('owner', user.full_name || '');
+                    if (user.team) url.searchParams.append('team', user.team);
+                }
                 
                 const res = await fetch(url.toString());
                 if (res.ok) {
@@ -111,7 +116,7 @@ const ChecklistContainer = ({
             }
         };
         fetchChannels();
-    }, [user?.full_name, user?.team]);
+    }, [user?.email, user?.full_name, user?.team]);
 
     const roles = user?.roles || [];
     const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
