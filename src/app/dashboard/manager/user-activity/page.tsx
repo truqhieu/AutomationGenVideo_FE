@@ -298,7 +298,7 @@ const UserActivityPageContent = () => {
                 const end = dateRange.end;
                 params.append('endDate', `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`);
             }
-            if (activeTeam !== 'All' && activeTeam !== 'All Global' && activeTeam !== 'All VN') {
+            if (activeTeam !== 'All') {
                 params.append('team', activeTeam);
             }
             params.append('requesterEmail', user.email);
