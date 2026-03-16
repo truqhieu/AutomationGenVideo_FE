@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target, Globe, Flag } from 'lucide-react';
+import { Target, Globe } from 'lucide-react';
 
 interface ActivityKPIsProps {
     summary?: {
@@ -152,7 +152,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             <div className="flex flex-col text-right">
                                 <div className="text-[10px] font-black text-blue-600 uppercase flex items-center justify-end gap-1 mb-1">
                                     Việt Nam
-                                    <Flag className="w-2.5 h-2.5 text-blue-500" />
+                                    <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
                                 </div>
                                 <div className="flex items-baseline justify-end gap-1.5">
                                     {kpi.title !== 'SỐ KÊNH' && (

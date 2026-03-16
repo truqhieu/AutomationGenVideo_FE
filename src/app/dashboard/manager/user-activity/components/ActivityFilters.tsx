@@ -407,7 +407,7 @@ const ActivityFilters = ({
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
                                 }`}
                         >
-                            <MapPin className={`w-3.5 h-3.5 ${isVNActive ? 'text-blue-200' : 'text-gray-400'}`} />
+                            <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
                             {getVNLabel()}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
@@ -429,7 +429,8 @@ const ActivityFilters = ({
                                     >
                                         <span className="flex items-center gap-2">
                                             {activeTeam === 'All VN' && <div className="w-1.5 h-1.5 rounded-full bg-red-600" />}
-                                            🇻🇳 Tất cả VN
+                                            <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
+                                            Tất cả VN
                                         </span>
                                         {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-red-600" />}
                                     </button>
