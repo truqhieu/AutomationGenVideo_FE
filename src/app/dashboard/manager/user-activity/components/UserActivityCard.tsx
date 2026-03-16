@@ -96,18 +96,6 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                 }`}>
 
             <div className="p-4 flex flex-col items-center relative z-10">
-                {/* Team Flag Icon - Top Left */}
-                {data.team?.toLowerCase().includes('global - indo') && (
-                    <div className="absolute top-2 left-2 shadow-sm rounded overflow-hidden border border-white/50">
-                        <img src="/indo-flag.png" alt="INDO" className="w-6 h-4 object-contain bg-white/20" />
-                    </div>
-                )}
-                {data.team?.toLowerCase().includes('việt nam') && (
-                    <div className="absolute top-2 left-2 shadow-sm rounded overflow-hidden border border-white/50">
-                        <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain bg-white/20" />
-                    </div>
-                )}
-
                 {/* Warning/Status Icon */}
                 <div className="absolute top-2 right-2">
                     {statusType === 'exceeded' ? (
@@ -148,8 +136,14 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                                 {data.position?.toUpperCase()}
                             </span>
                         )}
-                        <span className="text-[10px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs">
+                        <span className="text-[10px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs flex items-center gap-1">
                             {data.team}
+                            {data.team?.toLowerCase().includes('global - indo') && (
+                                <img src="/indo-flag.png" alt="INDO" className="w-3.5 h-2.5 object-contain" />
+                            )}
+                            {data.team?.toLowerCase().includes('việt nam') && (
+                                <img src="/vn-flag.png" alt="VN" className="w-3.5 h-2.5 object-contain" />
+                            )}
                         </span>
                     </div>
                 </div>
