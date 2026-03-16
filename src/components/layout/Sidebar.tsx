@@ -208,7 +208,8 @@ function SidebarContent({
   return (
     <>
       <aside
-        className="fixed top-0 left-0 h-screen z-[100] flex"
+        className="fixed top-0 left-0 h-screen z-[100] flex transition-[width] duration-200 ease-in-out"
+        style={{ width: isDrawerVisible ? '320px' : '80px' }}
         onMouseLeave={handleMouseLeave}
       >
         <div
