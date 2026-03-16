@@ -391,6 +391,15 @@ const ActivityFilters = ({
                                                 {team.toLowerCase().includes('global - indo') && (
                                                     <img src="/indo-flag.png" alt="INDO" className="w-5 h-3.5 object-contain rounded-sm" />
                                                 )}
+                                                {team.toLowerCase().includes('global thái lan') && (
+                                                    <img src="/thailand-flag.png" alt="TH" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                )}
+                                                {(team.toLowerCase().includes('jp') || team.toLowerCase().includes('nhật bản')) && (
+                                                    <img src="/japan-flag.png" alt="JP" className="w-5 h-3.5 object-contain rounded-sm border border-gray-100" />
+                                                )}
+                                                {team.toLowerCase().includes('đài loan') && (
+                                                    <img src="/taiwan-flag.png" alt="TW" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                )}
                                                 {team}
                                             </span>
                                             {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}

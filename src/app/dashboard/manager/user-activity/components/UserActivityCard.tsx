@@ -138,11 +138,20 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                         )}
                         <span className="text-[10px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs flex items-center gap-1">
                             {data.team}
+                            {data.team?.toLowerCase().includes('thái lan') && (
+                                <img src="/thailand-flag.png" alt="TH" className="w-3.5 h-2.5 object-contain" />
+                            )}
                             {data.team?.toLowerCase().includes('global - indo') && (
                                 <img src="/indo-flag.png" alt="INDO" className="w-3.5 h-2.5 object-contain" />
                             )}
                             {data.team?.toLowerCase().includes('việt nam') && (
                                 <img src="/vn-flag.png" alt="VN" className="w-3.5 h-2.5 object-contain" />
+                            )}
+                            {(data.team?.toLowerCase().includes('jp') || data.team?.toLowerCase().includes('nhật bản')) && (
+                                <img src="/japan-flag.png" alt="JP" className="w-3.5 h-2.5 object-contain border border-gray-100" />
+                            )}
+                            {data.team?.toLowerCase().includes('đài loan') && (
+                                <img src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain" />
                             )}
                         </span>
                     </div>

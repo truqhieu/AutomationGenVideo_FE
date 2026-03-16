@@ -86,12 +86,6 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                         <div className="bg-slate-900 text-white px-4 py-2.5 flex flex-col justify-center">
                             <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
                                 {title}
-                                {title.includes('Việt Nam') && (
-                                    <img src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded shadow-sm" />
-                                )}
-                                {title.toLowerCase().includes('global - indo') && (
-                                    <img src="/indo-flag.png" alt="INDO" className="w-7 h-5 object-contain rounded shadow-sm" />
-                                )}
                             </h3>
                         </div>
                         <div className="px-2 py-2 text-center">
@@ -144,6 +138,15 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                                                     <div className="flex items-center gap-1.5">
                                                         {member.team?.toLowerCase().includes('global - indo') && (
                                                             <img src="/indo-flag.png" alt="INDO" className="w-4 h-3 object-contain rounded-sm" />
+                                                        )}
+                                                        {member.team?.toLowerCase().includes('thái lan') && (
+                                                            <img src="/thailand-flag.png" alt="TH" className="w-4 h-3 object-contain rounded-sm" />
+                                                        )}
+                                                        {(member.team?.toLowerCase().includes('jp') || member.team?.toLowerCase().includes('nhật bản')) && (
+                                                            <img src="/japan-flag.png" alt="JP" className="w-4 h-3 object-contain rounded-sm border border-gray-100" />
+                                                        )}
+                                                        {member.team?.toLowerCase().includes('đài loan') && (
+                                                            <img src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain rounded-sm" />
                                                         )}
                                                         {member.team?.toLowerCase().includes('việt nam') && (
                                                             <img src="/vn-flag.png" alt="VN" className="w-4 h-3 object-contain rounded-sm" />
