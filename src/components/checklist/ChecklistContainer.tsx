@@ -337,6 +337,21 @@ const ChecklistContainer = ({
                 </div>
             )}
 
+            {showOnlyTraffic && (
+                <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
+                    (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
+                        ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                }`}>
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm font-bold uppercase tracking-tight">
+                        {(new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
+                            ? 'Đang trong khung giờ báo cáo Traffic (17:00 - 18:00)'
+                            : 'Ngoài khung giờ báo cáo Traffic (Quy định: 17:00 - 18:00 hàng ngày)'}
+                    </p>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
@@ -386,7 +401,11 @@ const ChecklistContainer = ({
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading || (!status.is_open && !showOnlyTraffic)}
+                    disabled={
+                        loading || 
+                        (!status.is_open && !showOnlyTraffic) ||
+                        (showOnlyTraffic && !isAdmin && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                    }
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     <Send className="w-4 h-4" />
