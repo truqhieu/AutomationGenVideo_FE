@@ -89,6 +89,9 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                                 {title.includes('Việt Nam') && (
                                     <img src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded shadow-sm" />
                                 )}
+                                {title.toLowerCase().includes('global - indo') && (
+                                    <img src="/indo-flag.png" alt="INDO" className="w-7 h-5 object-contain rounded shadow-sm" />
+                                )}
                             </h3>
                         </div>
                         <div className="px-2 py-2 text-center">
@@ -138,7 +141,15 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-1.5 border-b border-slate-50">
-                                                    <span className="text-[11px] font-black text-blue-600 italic uppercase">{member.team}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {member.team?.toLowerCase().includes('global - indo') && (
+                                                            <img src="/indo-flag.png" alt="INDO" className="w-4 h-3 object-contain rounded-sm" />
+                                                        )}
+                                                        {member.team?.toLowerCase().includes('việt nam') && (
+                                                            <img src="/vn-flag.png" alt="VN" className="w-4 h-3 object-contain rounded-sm" />
+                                                        )}
+                                                        <span className="text-[11px] font-black text-blue-600 italic uppercase">{member.team}</span>
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-1.5 text-center border-b border-slate-50">
                                                     <div className="flex flex-col items-center">

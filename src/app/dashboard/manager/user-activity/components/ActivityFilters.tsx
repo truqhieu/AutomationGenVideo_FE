@@ -388,6 +388,9 @@ const ActivityFilters = ({
                                         >
                                             <span className="flex items-center gap-2">
                                                 {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                {team.toLowerCase().includes('global - indo') && (
+                                                    <img src="/indo-flag.png" alt="INDO" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                )}
                                                 {team}
                                             </span>
                                             {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
