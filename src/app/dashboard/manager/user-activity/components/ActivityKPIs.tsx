@@ -57,7 +57,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             pctKey: 'revenuePct'
         },
         {
-            title: 'SỐ KÊNH',
+            title: 'SỐ KÊNH ĐANG HOẠT ĐỘNG',
             value: formatNumber(summary?.totalChannels || 0),
             total: `Kênh`,
             percentage: 100,
@@ -84,7 +84,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                         </div>
 
                         <div className="flex items-center gap-4 mb-3">
-                            {kpi.title !== 'SỐ KÊNH' && (
+                            {kpi.groupKey !== 'channels' && (
                                 <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
                                     <svg className="w-full h-full transform -rotate-90">
                                         <circle
@@ -109,7 +109,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                             className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
                                         />
                                     </svg>
-                                    {kpi.title !== 'SỐ KÊNH' && (
+                                    {kpi.groupKey !== 'channels' && (
                                         <span className="absolute text-sm font-black text-slate-900">
                                             {kpi.percentage}%
                                         </span>
@@ -118,12 +118,12 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             )}
 
                             <div className="flex-1 min-w-0">
-                                <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.title === 'SỐ KÊNH' ? 'text-center py-2' : ''}`}>
+                                <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.groupKey === 'channels' ? 'text-center py-2' : ''}`}>
                                     {kpi.value}
                                 </div>
-                                <div className={`text-[11px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.title === 'SỐ KÊNH' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
+                                <div className={`text-[11px] font-black text-blue-600/70 uppercase flex items-center gap-1.5 ${kpi.groupKey === 'channels' ? 'justify-center border-t border-blue-100/50 pt-2' : ''}`}>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    {kpi.title === 'SỐ KÊNH' ? 'Đang hoạt động' : (
+                                    {kpi.groupKey === 'channels' ? 'Tất cả hệ thống' : (
                                         <>MT: <span className="text-blue-700">{kpi.total}</span></>
                                     )}
                                 </div>
@@ -139,7 +139,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 </div>
                                 <div className="flex items-baseline gap-1.5">
                                     <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
-                                    {kpi.title !== 'SỐ KÊNH' && (
+                                    {kpi.groupKey !== 'channels' && (
                                         <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
                                             {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
                                         </span>
@@ -155,7 +155,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
                                 </div>
                                 <div className="flex items-baseline justify-end gap-1.5">
-                                    {kpi.title !== 'SỐ KÊNH' && (
+                                    {kpi.groupKey !== 'channels' && (
                                         <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
                                             {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
                                         </span>
