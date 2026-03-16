@@ -76,93 +76,91 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             {kpis.map((kpi, idx) => (
                 <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
                     <CardContent className="p-3">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-widest">{kpi.title}</h3>
-                            <div className="bg-blue-600/5 p-1.5 rounded-lg">
-                                <Target className="w-3 h-3 text-blue-600" />
+                        <div className="flex justify-between items-center mb-1">
+                            <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">{kpi.title}</h3>
+                            <div className="bg-blue-600/5 p-1 rounded-lg">
+                                <Target className="w-2.5 h-2.5 text-blue-600" />
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 mb-3">
-                            {kpi.groupKey !== 'channels' && (
-                                <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
-                                    <svg className="w-full h-full transform -rotate-90">
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            stroke="currentColor"
-                                            strokeWidth="6"
-                                            fill="transparent"
-                                            className="text-slate-50"
-                                        />
-                                        <circle
-                                            cx="32"
-                                            cy="32"
-                                            r="28"
-                                            stroke="currentColor"
-                                            strokeWidth="6"
-                                            fill="transparent"
-                                            strokeDasharray={175.9}
-                                            strokeDashoffset={175.9 * (1 - kpi.percentage / 100)}
-                                            strokeLinecap="round"
-                                            className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
-                                        />
-                                    </svg>
-                                    {kpi.groupKey !== 'channels' && (
-                                        <span className="absolute text-sm font-black text-slate-900">
+                        <div className="flex items-center justify-between gap-2 h-14">
+                            {/* Left: Progress/Value Cluster */}
+                            <div className="flex items-center gap-3">
+                                {kpi.groupKey !== 'channels' && (
+                                    <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle
+                                                cx="24"
+                                                cy="24"
+                                                r="20"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="transparent"
+                                                className="text-slate-50"
+                                            />
+                                            <circle
+                                                cx="24"
+                                                cy="24"
+                                                r="20"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="transparent"
+                                                strokeDasharray={125.6}
+                                                strokeDashoffset={125.6 * (1 - kpi.percentage / 100)}
+                                                strokeLinecap="round"
+                                                className={`transition-all duration-1000 ${kpi.percentage >= 100 ? "text-emerald-500" : "text-blue-600"}`}
+                                            />
+                                        </svg>
+                                        <span className="absolute text-[10px] font-black text-slate-900">
                                             {kpi.percentage}%
                                         </span>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            <div className="flex-1 min-w-0">
-                                <div className={`text-3xl font-black text-slate-900 leading-none mb-2 tracking-tighter truncate drop-shadow-sm ${kpi.groupKey === 'channels' ? 'text-center py-2' : ''}`}>
-                                    {kpi.value}
-                                </div>
-                                <div className={`text-[11px] font-black uppercase flex items-center gap-1.5 ${kpi.groupKey === 'channels' ? 'invisible select-none' : 'text-blue-600/70'}`}>
-                                    <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    MT: <span className="text-blue-700">{kpi.total}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Breakdown Global vs VN */}
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
-                            <div className="flex flex-col">
-                                <div className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-1 mb-1">
-                                    <Globe className="w-2.5 h-2.5 text-amber-500" />
-                                    Global
-                                </div>
-                                <div className="flex items-baseline gap-1.5 h-6">
-                                    <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
-                                    {kpi.groupKey !== 'channels' ? (
-                                        <span className="text-[11px] font-bold text-amber-500 bg-amber-50 px-1 rounded">
-                                            {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
-                                        </span>
-                                    ) : (
-                                        <span className="w-[30px]"></span>
-                                    )}
+                                <div className="flex flex-col justify-center">
+                                    <div className="text-2xl font-black text-slate-900 leading-none mb-1 tracking-tighter truncate drop-shadow-sm">
+                                        {kpi.value}
+                                    </div>
+                                    <div className={`text-[10px] font-black uppercase flex items-center gap-1 ${kpi.groupKey === 'channels' ? 'invisible h-0' : 'text-blue-600/70'}`}>
+                                        <span className="w-1 h-1 rounded-full bg-blue-400"></span>
+                                        MT: <span className="text-blue-700">{kpi.total}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="w-px h-8 bg-slate-200"></div>
-
-                            <div className="flex flex-col text-right">
-                                <div className="text-[10px] font-black text-blue-600 uppercase flex items-center justify-end gap-1 mb-1">
-                                    Việt Nam
-                                    <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
+                            {/* Right: Breakdown integrated horizontally */}
+                            <div className="flex items-center gap-4 border-l border-slate-100 pl-4">
+                                {/* Global Stats */}
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-baseline gap-1 leading-none mb-1">
+                                        <span className="text-lg font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
+                                        {kpi.groupKey !== 'channels' && (
+                                            <span className="text-[11px] font-bold text-amber-500">
+                                                {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-[10px] font-black text-amber-600/70 uppercase flex items-center gap-1">
+                                        <Globe className="w-2.5 h-2.5" />
+                                        Global
+                                    </div>
                                 </div>
-                                <div className="flex items-baseline justify-end gap-1.5 h-6">
-                                    {kpi.groupKey !== 'channels' ? (
-                                        <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1 rounded">
-                                            {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
-                                        </span>
-                                    ) : (
-                                        <span className="w-[30px]"></span>
-                                    )}
-                                    <span className="text-lg font-black text-slate-800 leading-none">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
+
+                                <div className="w-px h-8 bg-slate-100"></div>
+
+                                {/* Việt Nam Stats */}
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-baseline gap-1 leading-none mb-1">
+                                        {kpi.groupKey !== 'channels' && (
+                                            <span className="text-[11px] font-bold text-blue-600">
+                                                {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
+                                            </span>
+                                        )}
+                                        <span className="text-lg font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
+                                    </div>
+                                    <div className="text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1">
+                                        VN <img src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
