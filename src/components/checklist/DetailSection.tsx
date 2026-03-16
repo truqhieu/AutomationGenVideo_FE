@@ -30,42 +30,30 @@ const DetailSection = ({ values, onChange }: DetailSectionProps) => {
             </CardHeader>
             <CardContent className="space-y-8 pt-4">
                 {DETAIL_ITEMS.map((item, index) => {
-                    const isNo = values[index] === "Không ạ";
-                    const hasValue = values[index] && values[index] !== "Không ạ";
-
                     return (
                         <div key={index} className="space-y-3">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-tight block">
                                 {item.question}
                             </label>
 
-                            <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-                                <button
-                                    type="button"
-                                    onClick={() => onChange(index, "Không ạ")}
-                                    className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${isNo ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
-                                >
-                                    Không ạ
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { if (isNo || !values[index]) onChange(index, "") }}
-                                    className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${!isNo && values[index] !== undefined ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
-                                >
-                                    Có
-                                </button>
-                            </div>
-
-                            {!isNo && (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                {index === 0 ? (
+                                    <input
+                                        type="number"
+                                        value={values[index] ?? ''}
+                                        onChange={(e) => onChange(index, e.target.value)}
+                                        placeholder={item.placeholder}
+                                        className="w-full px-4 py-3 border border-gray-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20 bg-gray-50/30 text-sm font-bold text-gray-900 rounded-2xl outline-none transition-all"
+                                    />
+                                ) : (
                                     <Textarea
-                                        value={isNo ? "" : (values[index] ?? '')}
+                                        value={values[index] ?? ''}
                                         onChange={(e) => onChange(index, e.target.value)}
                                         placeholder={item.placeholder}
                                         className="min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl"
                                     />
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     );
                 })}
