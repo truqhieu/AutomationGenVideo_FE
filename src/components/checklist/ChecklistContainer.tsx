@@ -5,7 +5,7 @@ import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
 import TrafficReportSection, { TrafficData, initialTrafficData, initialTrafficChannels } from './TrafficReportSection';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send, AlertCircle, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 
@@ -29,7 +29,7 @@ const ChecklistContainer = ({
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [trafficChannels, setTrafficChannels] = useState<TrafficData>(initialTrafficChannels());
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
-    const [trafficDate, setTrafficDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -161,6 +161,7 @@ const ChecklistContainer = ({
     const buildPayload = useCallback((): Record<string, boolean | string> => {
         const payload: Record<string, boolean | string> = {
             isLate: false,
+            reportDate: reportDate,
         };
         CHECKLIST_ITEMS.forEach((label, i) => {
             payload[label] = checks[i] ?? false;
@@ -188,7 +189,7 @@ const ChecklistContainer = ({
         // Validate Traffic
         if ((showForm12 || showForm3) && !showOnlyWork) {
             // Validate Date for Traffic Report
-            if (showOnlyTraffic && !trafficDate) {
+            if (showOnlyTraffic && !reportDate) {
                 setMessage({ type: 'error', text: 'Vui lòng chọn ngày báo cáo' });
                 return;
             }
@@ -252,6 +253,7 @@ const ChecklistContainer = ({
                     ...payload,
                     userEmail: user.email,
                     userName: user.full_name,
+                    reportDate: reportDate,
                 };
 
                 // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng AI_SERVICE_URL (mặc định port 8001)
@@ -295,7 +297,7 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
-                        reportDate: trafficDate, // Send custom date
+                        reportDate: reportDate, // Send custom date
                     })
                 });
                 
@@ -335,6 +337,29 @@ const ChecklistContainer = ({
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
+            {/* Header with Date Picker */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/40 shadow-xl shadow-slate-200/50">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200">
+                        <Calendar className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Ngày báo cáo</h2>
+                        <p className="text-sm text-slate-500 font-medium">Chọn ngày bạn muốn gửi báo cáo</p>
+                    </div>
+                </div>
+                <div className="relative group w-full sm:w-auto">
+                    <input
+                        type="date"
+                        value={reportDate}
+                        onChange={(e) => setReportDate(e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="w-full sm:w-64 h-14 pl-12 pr-6 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-800 font-bold focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer"
+                    />
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" />
+                </div>
+            </div>
+
             {status.message && !status.is_open && !showOnlyTraffic && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
