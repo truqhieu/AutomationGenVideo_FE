@@ -80,7 +80,7 @@ const CardSkeleton = () => (
     </div>
 );
 
-const CARDS_PER_BATCH = 10;
+const CARDS_PER_BATCH = 100;
 
 const UserActivityPageContent = () => {
     const { user } = useAuthStore();
