@@ -125,7 +125,6 @@ function SidebarContent({
       pathname.startsWith('/dashboard/ai') ||
       pathname.startsWith('/dashboard/search-video')
     ) {
-      if (isManagement) return 'user-management';
       return 'social-discovery';
     }
     return isManagement ? 'user-management' : 'social-discovery';
@@ -158,7 +157,7 @@ function SidebarContent({
           }
         ]
       },
-      ...(!isManagement ? [{
+      {
         id: 'social-discovery',
         icon: Search,
         label: 'Khám phá Video',
@@ -180,7 +179,7 @@ function SidebarContent({
             ]
           }
         ]
-      }] : [])
+      }
     ];
   }, [user?.roles, isManagement, isManagerOrAdmin]);
 
