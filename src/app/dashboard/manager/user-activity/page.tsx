@@ -173,10 +173,9 @@ const UserActivityPageContent = () => {
     const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
     // Time filter states
-    const [timeType, setTimeType] = React.useState('month');
+    const [timeType, setTimeType] = React.useState('today');
     const [dateRange, setDateRange] = React.useState<{ start: Date; end: Date }>(() => {
         const start = new Date();
-        start.setDate(1); // Mặc định từ đầu tháng
         start.setHours(0, 0, 0, 0);
         const end = new Date();
         end.setHours(23, 59, 59, 999);
