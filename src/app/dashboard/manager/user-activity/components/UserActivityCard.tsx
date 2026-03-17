@@ -85,7 +85,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
     const style = statusStyles[statusType];
     const isReportedOnTime = data.reportStatus === 'ĐÚNG HẠN' || data.reportStatus === 'ĐÃ XONG';
     const isRange = timeType && !['today', 'yesterday'].includes(timeType);
-    const goalLabel = isRange ? 'TỔNG MỤC TIÊU' : 'MỤC TIÊU NGÀY';
+    const goalLabel = 'MỤC TIÊU NGÀY';
 
     return (
         <div
