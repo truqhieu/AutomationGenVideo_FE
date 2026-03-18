@@ -5,6 +5,7 @@ import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Vid
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/api-client';
+import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
   username: string;
@@ -286,6 +287,9 @@ export default function TrackedChannelsPage() {
               Add Channel
             </button>
           </div>
+          <div className="mt-4">
+            <ChannelsPlatformSwitcher />
+          </div>
         </div>
       </div>
 
@@ -509,11 +513,11 @@ export default function TrackedChannelsPage() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
                   {platformName} Username
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">@</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">@</span>
                   <input
                     type="text"
                     value={usernameInput}
@@ -521,7 +525,7 @@ export default function TrackedChannelsPage() {
                     onKeyPress={(e) => e.key === 'Enter' && handleAddChannel()}
                     placeholder="username"
                     disabled={loading}
-                    className="w-full pl-8 pr-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                    className="w-full pl-8 pr-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:bg-slate-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
@@ -533,7 +537,7 @@ export default function TrackedChannelsPage() {
                 <button
                   onClick={() => setShowAddModal(false)}
                   disabled={loading}
-                  className="flex-1 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 border-2 border-slate-200 text-slate-900 font-semibold rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>

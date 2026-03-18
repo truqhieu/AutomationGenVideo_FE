@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
+import { Roboto } from 'next/font/google';
+
+const roboto = Roboto({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['300', '400', '500', '700', '900'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Video Production System',
@@ -14,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="antialiased">
+      <body className={`${roboto.className} antialiased`}>
         {children}
         <Toaster position="top-right" />
       </body>

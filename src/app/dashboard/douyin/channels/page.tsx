@@ -5,6 +5,7 @@ import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Vid
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/api-client';
+import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
     username: string;
@@ -195,6 +196,9 @@ export default function DouyinChannelsPage() {
                             <Plus className="w-5 h-5" />
                             Add Channel
                         </button>
+                    </div>
+                    <div className="mt-4">
+                        <ChannelsPlatformSwitcher />
                     </div>
                 </div>
             </div>

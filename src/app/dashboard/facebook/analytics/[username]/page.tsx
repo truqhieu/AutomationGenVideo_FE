@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, Video, Image as ImageIcon,
     BarChart3, LayoutGrid, Loader2, Users,
-    ThumbsUp, MessageCircle, Share2, TrendingUp
+    ThumbsUp, MessageCircle, Share2, TrendingUp,
+    ChevronDown, ChevronUp, FileText
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line
@@ -39,7 +40,11 @@ const Avatar = ({ src, alt, fallback }: { src?: string, alt: string, fallback: s
 export default function FacebookAnalyticsPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const username = params.username as string;
+
+    // Nếu mở từ "Phân tích kênh" hub/report: chỉ hiển thị UI insights (điểm mạnh/điểm yếu/cơ hội...)
+    const insightsOnly = (searchParams.get('view') || '').toLowerCase() === 'insights';
 
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<FacebookPost[]>([]);
@@ -47,8 +52,19 @@ export default function FacebookAnalyticsPage() {
     const [error, setError] = useState('');
     const [hasFetched, setHasFetched] = useState(false);
 
+    // Insights (SocialLens-style 12 mục)
+    const [insights, setInsights] = useState<Record<string, string>>({});
+    const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsError, setInsightsError] = useState('');
+    const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
+
+    // Channel Metrics (viral posts, ads, charts) - NO Gemini
+    const [channelMetrics, setChannelMetrics] = useState<any>(null);
+    const [metricsLoading, setMetricsLoading] = useState(false);
+    const [metricsError, setMetricsError] = useState('');
+
     // UI State
-    const [activeTab, setActiveTab] = useState<'all' | 'video' | 'post'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'video' | 'post' | 'insights'>(insightsOnly ? 'insights' : 'all');
     const [showAllContent, setShowAllContent] = useState(false);
     const [visibleCount, setVisibleCount] = useState(1000); // Default high to show all initially
 
@@ -65,6 +81,7 @@ export default function FacebookAnalyticsPage() {
     const endDateRef = useRef(endDate);
     const ignoreNextFetch = useRef(false);
     const isFetchingRef = useRef(false); // Prevent duplicate calls
+    const insightsAutoRunRef = useRef(false);
 
     useEffect(() => {
         startDateRef.current = startDate;
@@ -88,7 +105,7 @@ export default function FacebookAnalyticsPage() {
         setLoading(true);
         setError('');
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
         let timeoutId: NodeJS.Timeout | undefined;
 
@@ -221,13 +238,241 @@ export default function FacebookAnalyticsPage() {
 
     // Initial fetch on mount - ALWAYS FORCE REFRESH
     useEffect(() => {
-        console.log(`📍 useEffect triggered: username=${username}, hasFetched=${hasFetched}, startDate=${startDate}, endDate=${endDate}`);
+        console.log(`📍 useEffect triggered: username=${username}, hasFetched=${hasFetched}`);
         if (username && !hasFetched) {
             console.log('🔄 Initial load: Force refreshing data from Facebook...');
-            console.log(`🔄 Calling fetchData(${startDate}, ${endDate}, true)`);
-            fetchData(startDate, endDate, true); // force_refresh = true
+            fetchData(startDate, endDate, true);
         }
-    }, [username]); // Only run once on mount
+    }, [username]);
+
+    // Mỗi lần restart FE server/build, Next.js buildId thường đổi.
+    // Gắn cache theo buildId để tránh hiển thị output cũ sau restart.
+    const getBuildId = () => {
+        try {
+            return (window as any).__NEXT_DATA__?.buildId?.toString?.() || 'unknown';
+        } catch (_) {
+            return 'unknown';
+        }
+    };
+
+    const INSIGHTS_PREFIX = 'fb_insights_';
+    const BUILD_ID_KEY = 'app_build_id';
+    const STORAGE_KEY = (id: string, buildId: string) => `${INSIGHTS_PREFIX}${buildId}_${id}`;
+    const CACHE_TTL_MS = 60 * 60 * 1000; // 1 giờ
+
+    // Insights chỉ coi là "có data thật" khi có ít nhất 1 mục KHÔNG phải placeholder "Chưa đủ dữ liệu..."
+    const hasRealInsights = useCallback((i: Record<string, string>) => {
+        if (!i || Object.keys(i).length === 0) return false;
+        const vals = Object.values(i);
+        const isPlaceholder = (v?: string) => {
+            const s = (v || '').trim();
+            if (!s) return true;
+            return s.startsWith('Chưa đủ dữ liệu');
+        };
+        return vals.some(v => !isPlaceholder(v));
+    }, []);
+
+    // Clear insights cache nếu buildId đổi (tức server restart/rebuild)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const current = getBuildId();
+        const prev = sessionStorage.getItem(BUILD_ID_KEY) || '';
+        if (prev && prev !== current) {
+            try {
+                for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                    const k = sessionStorage.key(i) || '';
+                    if (k.startsWith(INSIGHTS_PREFIX)) sessionStorage.removeItem(k);
+                }
+            } catch (_) {}
+            setInsights({});
+            setInsightsError('');
+            setInsightsLoading(false);
+        }
+        try { sessionStorage.setItem(BUILD_ID_KEY, current); } catch (_) {}
+    }, []);
+
+    const saveInsightsState = useCallback((id: string, state: { loading?: boolean; insights?: Record<string, string>; error?: string }) => {
+        try {
+            const buildId = getBuildId();
+            const existing = sessionStorage.getItem(STORAGE_KEY(id, buildId));
+            const prev = existing ? JSON.parse(existing) : {};
+            const next = { ...prev, ...state, updatedAt: Date.now() };
+            sessionStorage.setItem(STORAGE_KEY(id, buildId), JSON.stringify(next));
+        } catch (_) {}
+    }, []);
+
+    const getRequestedMaxPosts = useCallback((id: string) => {
+        // Prefer selection from "Tạo báo cáo" (channel-analysis hub)
+        try {
+            const raw = sessionStorage.getItem('channel_analysis_autorun');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const p = (parsed?.platform || '').toString().toLowerCase();
+                const u = (parsed?.username || '').toString().replace(/^@/, '').trim().toLowerCase();
+                const cur = (id || '').toString().replace(/^@/, '').trim().toLowerCase();
+                if (p === 'facebook' && u && cur && u === cur) {
+                    const n = parseInt(parsed?.maxPosts, 10);
+                    if (!Number.isNaN(n) && n > 0) return Math.min(Math.max(n, 10), 200);
+                }
+            }
+        } catch (_) {}
+        return 30;
+    }, []);
+
+    const fetchInsights = useCallback(async () => {
+        const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+        if (!id) return;
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/facebook/insights`;
+        const url = `https://www.facebook.com/${encodeURIComponent(id)}`;
+        const requestedMaxPosts = getRequestedMaxPosts(id);
+        setInsightsLoading(true);
+        setInsightsError('');
+        saveInsightsState(id, { loading: true, error: '' });
+        try {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, max_posts: requestedMaxPosts, language: 'vi' }),
+            });
+            let json: any = {};
+            try {
+                if (res.headers.get('content-type')?.includes('json')) json = await res.json();
+            } catch (_) {}
+            if (!res.ok) {
+                const msg = (json.error || json.message || '').toString();
+                const friendly = res.status === 429 || msg.includes('429') || msg.toLowerCase().includes('quota')
+                    ? 'Gemini API hết quota. Vui lòng thử lại sau 1–2 phút.'
+                    : msg || `Lỗi ${res.status}`;
+                throw new Error(friendly);
+            }
+            if (json.success === false && json.error) throw new Error(json.error);
+            const data = json.insights || {};
+            setInsights(data);
+            saveInsightsState(id, { loading: false, insights: data, error: '' });
+        } catch (e: any) {
+            const msg = (e.message || 'Không thể tải phân tích kênh').toString();
+            setInsightsError(msg);
+            saveInsightsState(id, { loading: false, error: msg });
+            console.error('[Insights]', msg, { apiUrl, url });
+        } finally {
+            setInsightsLoading(false);
+            saveInsightsState(id, { loading: false });
+        }
+    }, [username, profile?.username, saveInsightsState, getRequestedMaxPosts]);
+
+    const fetchChannelMetrics = useCallback(async () => {
+        const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+        if (!id) return;
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+        const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/facebook/channel-metrics`;
+        const url = `https://www.facebook.com/${encodeURIComponent(id)}`;
+        const requestedMaxPosts = getRequestedMaxPosts(id);
+        setMetricsLoading(true);
+        setMetricsError('');
+        try {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, max_posts: Math.max(30, requestedMaxPosts) }),
+            });
+            let json: any = {};
+            try {
+                if (res.headers.get('content-type')?.includes('json')) json = await res.json();
+            } catch (_) {}
+            if (!res.ok) {
+                const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
+                throw new Error(msg);
+            }
+            if (json.success === false && json.error) throw new Error(json.error);
+            setChannelMetrics(json.metrics || null);
+        } catch (e: any) {
+            const msg = (e.message || 'Không thể tải thống kê kênh').toString();
+            setMetricsError(msg);
+            console.error('[ChannelMetrics]', msg, { apiUrl, url });
+        } finally {
+            setMetricsLoading(false);
+        }
+    }, [username, profile?.username, getRequestedMaxPosts]);
+
+    const runChannelAnalysis = useCallback(async () => {
+        // Insights-only view: chỉ chạy Gemini insights (UI accordion)
+        if (insightsOnly) {
+            await fetchInsights();
+        } else {
+            // Full view: chạy song song metrics + Gemini insights
+            await Promise.all([fetchChannelMetrics(), fetchInsights()]);
+        }
+        // Mark analyzed (for Channel Analysis list page)
+        try {
+            const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+            if (id) {
+                localStorage.setItem(
+                    `channel_analysis_facebook_${id}`,
+                    JSON.stringify({ status: 'completed', analyzedAt: Date.now() })
+                );
+            }
+        } catch (_) {}
+    }, [fetchChannelMetrics, fetchInsights, insightsOnly, profile?.username, username]);
+
+    // Insights-only view: auto-run analysis once on enter.
+    useEffect(() => {
+        if (!insightsOnly) return;
+        setActiveTab('insights');
+        const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+        if (!id) return;
+        if (insightsAutoRunRef.current) return;
+        insightsAutoRunRef.current = true;
+        runChannelAnalysis();
+        // We intentionally do not depend on runChannelAnalysis to avoid reruns.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [insightsOnly, username, profile?.username]);
+
+    // Chỉ restore từ cache khi có data THẬT (không restore "Chưa đủ dữ liệu" / lỗi cũ)
+    useEffect(() => {
+        const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+        if (!id) return;
+        try {
+            const buildId = getBuildId();
+            const raw = sessionStorage.getItem(STORAGE_KEY(id, buildId));
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const age = Date.now() - (parsed.updatedAt || 0);
+                if (parsed.insights && hasRealInsights(parsed.insights) && age < CACHE_TTL_MS) {
+                    setInsights(parsed.insights);
+                    setInsightsError('');
+                } else if (parsed.loading && age < 3 * 60 * 1000) {
+                    setInsightsLoading(true);
+                }
+                // Không restore error/empty state - để user bấm "Phân tích" mới hiện
+            }
+        } catch (_) {}
+    }, [username, profile?.username, hasRealInsights]);
+
+    // KHÔNG auto-fetch. User phải bấm nút "Phân tích kênh" mới gọi API.
+
+    // Khi đang loading (vd user quay lại sau khi chuyển tab), poll sessionStorage để nhận kết quả từ fetch nền
+    useEffect(() => {
+        if (!insightsLoading) return;
+        const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
+        if (!id) return;
+        const iv = setInterval(() => {
+            try {
+                const buildId = getBuildId();
+                const raw = sessionStorage.getItem(STORAGE_KEY(id, buildId));
+                if (!raw) return;
+                const p = JSON.parse(raw);
+                if (!p.loading && p.insights && hasRealInsights(p.insights)) {
+                    setInsights(p.insights);
+                    setInsightsLoading(false);
+                } else if (!p.loading && p.error) {
+                    setInsightsError(p.error);
+                    setInsightsLoading(false);
+                }
+            } catch (_) {}
+        }, 2000);
+        return () => clearInterval(iv);
+    }, [insightsLoading, username, profile?.username, hasRealInsights]);
 
     // Manual apply filter function
     const handleApplyFilter = () => {
@@ -427,6 +672,7 @@ export default function FacebookAnalyticsPage() {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
 
                         {/* Tabs Switcher & Date Filter Row */}
+                        {!insightsOnly && (
                         <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                             <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 inline-flex">
                                 <button
@@ -458,6 +704,22 @@ export default function FacebookAnalyticsPage() {
                                 >
                                     <ImageIcon className="w-4 h-4" />
                                     Posts / Ảnh
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('insights'); setShowAllContent(false); }}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all relative ${activeTab === 'insights'
+                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                                        }`}
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Phân tích kênh
+                                    {insightsLoading && (
+                                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse border-2 border-white" title="Đang phân tích..." />
+                                    )}
+                                    {!insightsLoading && hasRealInsights(insights) && (
+                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" title="Đã có kết quả" />
+                                    )}
                                 </button>
                             </div>
 
@@ -505,9 +767,10 @@ export default function FacebookAnalyticsPage() {
                                 </button>
                             </div>
                         </div>
+                        )}
 
                         {/* --- RENDER CONTENT BASED ON TAB --- */}
-                        {activeTab === 'all' && (
+                        {!insightsOnly && activeTab === 'all' && (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 {/* Stats Grid for All */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -667,14 +930,247 @@ export default function FacebookAnalyticsPage() {
                             </div>
                         )}
 
-                        {activeTab === 'video' && (
+                        {!insightsOnly && activeTab === 'video' && (
                             <ReelsAnalytics data={data} loading={loading} />
                         )}
 
-                        {activeTab === 'post' && (
+                        {!insightsOnly && activeTab === 'post' && (
                             <PostsAnalytics data={data} loading={loading} />
                         )}
 
+                        {(activeTab === 'insights' || insightsOnly) && (
+                            <div className="space-y-6 animate-in fade-in duration-300 w-full max-w-2xl">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-800">Phân tích kênh</h3>
+                                    </div>
+                                    <button
+                                        onClick={() => runChannelAnalysis()}
+                                        disabled={insightsLoading || metricsLoading || (!insightsOnly && !hasFetched)}
+                                        className={`px-4 py-2 text-sm font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+                                            insightsError
+                                                ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        }`}
+                                    >
+                                        {(insightsLoading || metricsLoading) ? 'Đang phân tích...' : insightsError ? 'Thử lại' : hasRealInsights(insights) ? 'Phân tích lại' : 'Phân tích kênh'}
+                                    </button>
+                                </div>
+                                {insightsLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+                                        <p className="text-slate-500 text-sm font-medium">Đang phân tích kênh bằng AI (Gemini)...</p>
+                                        <p className="text-slate-400 text-xs mt-2">Bạn có thể chuyển trang khác, tiến trình vẫn chạy nền. Quay lại đây để xem kết quả.</p>
+                                    </div>
+                                ) : insightsError ? (
+                                    <div className="py-8 px-6 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">
+                                        <p className="font-medium">{insightsError}</p>
+                                        <p className="text-sm mt-2 text-amber-700">
+                                            Kiểm tra: BE chạy, AI service chạy, GEMINI_API_KEY đã cấu hình.
+                                        </p>
+                                        <button
+                                            onClick={() => runChannelAnalysis()}
+                                            className="mt-4 px-4 py-2 bg-amber-500 text-white text-sm font-bold rounded-xl hover:bg-amber-600"
+                                        >
+                                            Thử lại
+                                        </button>
+                                    </div>
+                                ) : !hasRealInsights(insights) ? (
+                                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <FileText className="w-16 h-16 text-indigo-300 mb-4" />
+                                        <p className="text-slate-600 font-medium mb-2">Chưa có phân tích kênh</p>
+                                        <p className="text-slate-500 text-sm mb-6">Bấm nút bên dưới để AI phân tích kênh này</p>
+                                        <button
+                                            onClick={() => runChannelAnalysis()}
+                                            disabled={!insightsOnly && !hasFetched}
+                                            className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Phân tích kênh
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {/* Metrics section (charts + lists) - hide in insights-only mode */}
+                                        {!insightsOnly && (
+                                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800">Thống kê kênh</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">Top viral, bài quảng cáo và biểu đồ được tính từ các bài đã quét (Apify)</p>
+                                                </div>
+                                                {metricsLoading && <span className="text-xs text-slate-500">Đang tải metrics...</span>}
+                                            </div>
+
+                                            {metricsError ? (
+                                                <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                                    {metricsError}
+                                                </div>
+                                            ) : channelMetrics?.charts ? (
+                                                <div className="space-y-6">
+                                                    {/* Avg engagement by day */}
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-sm font-semibold text-slate-700">Tương tác trung bình theo ngày</p>
+                                                            <p className="text-xs text-slate-500">{channelMetrics?.meta?.posts_analyzed || 0} bài phân tích</p>
+                                                        </div>
+                                                        <div className="h-56">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <AreaChart data={channelMetrics.charts.avg_engagement_by_day || []}>
+                                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                                                                    <YAxis tick={{ fontSize: 11 }} />
+                                                                    <Tooltip />
+                                                                    <Area type="monotone" dataKey="avgLikes" stroke="#4f46e5" fill="#c7d2fe" name="Like TB" />
+                                                                    <Area type="monotone" dataKey="avgComments" stroke="#059669" fill="#bbf7d0" name="Comment TB" />
+                                                                    <Area type="monotone" dataKey="avgShares" stroke="#f59e0b" fill="#fde68a" name="Share TB" />
+                                                                </AreaChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Posting frequency */}
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-700 mb-2">Tần suất đăng bài</p>
+                                                        <div className="h-44">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <AreaChart data={channelMetrics.charts.posting_frequency || []}>
+                                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                                                                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                                                    <Tooltip />
+                                                                    <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#bae6fd" name="Bài/ngày" />
+                                                                </AreaChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Distributions */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="border border-slate-200 rounded-xl p-4">
+                                                            <p className="text-sm font-semibold text-slate-700 mb-3">Phân bố định dạng nội dung</p>
+                                                            <div className="space-y-2">
+                                                                {(channelMetrics.charts.format_distribution || []).map((it: any) => {
+                                                                    const total = (channelMetrics?.meta?.posts_analyzed || 1);
+                                                                    const pct = Math.round((it.count / total) * 100);
+                                                                    return (
+                                                                        <div key={it.format} className="space-y-1">
+                                                                            <div className="flex items-center justify-between text-xs text-slate-600">
+                                                                                <span className="font-semibold">{it.format}</span>
+                                                                                <span>{it.count} ({pct}%)</span>
+                                                                            </div>
+                                                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                                <div className="h-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                        <div className="border border-slate-200 rounded-xl p-4">
+                                                            <p className="text-sm font-semibold text-slate-700 mb-3">Phân bố định dạng quảng cáo (heuristic)</p>
+                                                            <div className="space-y-2">
+                                                                {(channelMetrics.charts.ad_format_distribution || []).map((it: any) => {
+                                                                    const total = (channelMetrics?.meta?.ad_posts_found || 1);
+                                                                    const pct = Math.round((it.count / total) * 100);
+                                                                    return (
+                                                                        <div key={it.type} className="space-y-1">
+                                                                            <div className="flex items-center justify-between text-xs text-slate-600">
+                                                                                <span className="font-semibold">{it.type}</span>
+                                                                                <span>{it.count} ({pct}%)</span>
+                                                                            </div>
+                                                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                                <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Lists */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="border border-slate-200 rounded-xl p-4">
+                                                            <p className="text-sm font-semibold text-slate-700 mb-3">Top 10 bài viral</p>
+                                                            <div className="space-y-3">
+                                                                {(channelMetrics.top_viral_posts || []).slice(0, 10).map((p: any, idx: number) => (
+                                                                    <a key={p.id || idx} href={p.url || '#'} target="_blank" className="block p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-xs font-bold text-slate-500">#{idx + 1}</span>
+                                                                            <span className="text-xs text-slate-600">Score: {Math.round(p.viral_score || 0)}</span>
+                                                                        </div>
+                                                                        <p className="text-sm text-slate-700 line-clamp-2">{p.text || '(Không có nội dung)'}</p>
+                                                                        <p className="text-xs text-slate-500 mt-2">👍 {p.likes} · 💬 {p.comments} · 🔁 {p.shares} · 👁️ {p.views}</p>
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div className="border border-slate-200 rounded-xl p-4">
+                                                            <p className="text-sm font-semibold text-slate-700 mb-3">Bài quảng cáo (heuristic)</p>
+                                                            <div className="space-y-3">
+                                                                {(channelMetrics.ad_posts || []).slice(0, 10).map((p: any, idx: number) => (
+                                                                    <a key={p.id || idx} href={p.url || '#'} target="_blank" className="block p-3 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-xs font-bold text-slate-500">#{idx + 1}</span>
+                                                                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">{p.ad_type || 'Quảng cáo'}</span>
+                                                                        </div>
+                                                                        <p className="text-sm text-slate-700 line-clamp-2">{p.text || '(Không có nội dung)'}</p>
+                                                                        <p className="text-xs text-slate-500 mt-2">👍 {p.likes} · 💬 {p.comments} · 🔁 {p.shares} · 👁️ {p.views}</p>
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm text-slate-500">Bấm “Phân tích kênh” để tải metrics.</div>
+                                            )}
+                                        </div>
+                                        )}
+
+                                        {/* Gemini insights (accordion) */}
+                                        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                                            {[
+                                                'Định vị Thương hiệu', 'Giọng nói Thương hiệu', 'Khách hàng Mục tiêu',
+                                                'Tuyến Nội dung', 'Công thức Nội dung', 'Phân tích Reel',
+                                                'Chiến lược Quảng cáo', 'Phễu Marketing', 'Tương tác & Bình luận',
+                                                'Tóm tắt Chiến lược', 'Điểm mạnh', 'Điểm yếu & Cơ hội',
+                                                'Đề xuất hành động',
+                                            ].map((key) => {
+                                                const isExpanded = expandedInsight === key;
+                                                const content = insights[key] || 'Chưa đủ dữ liệu.';
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                                                    >
+                                                        <button
+                                                            onClick={() => setExpandedInsight(isExpanded ? null : key)}
+                                                            className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-slate-50 transition-colors"
+                                                        >
+                                                            <span className="font-semibold text-slate-800">{key}</span>
+                                                            {isExpanded ? (
+                                                                <ChevronUp className="w-5 h-5 text-slate-500 shrink-0" />
+                                                            ) : (
+                                                                <ChevronDown className="w-5 h-5 text-slate-500 shrink-0" />
+                                                            )}
+                                                        </button>
+                                                        {isExpanded && (
+                                                            <div className="px-4 pb-4 pt-0 border-t border-slate-100">
+                                                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

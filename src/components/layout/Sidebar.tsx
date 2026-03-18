@@ -7,6 +7,7 @@ import {
   Search,
   Settings,
   LogOut,
+  BarChart3,
   Facebook,
   Instagram,
   Music2,
@@ -89,7 +90,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       pathname.startsWith('/dashboard/douyin') ||
       pathname.startsWith('/dashboard/xiaohongshu') ||
       pathname.startsWith('/dashboard/ai') ||
-      pathname.startsWith('/dashboard/search-video')
+      pathname.startsWith('/dashboard/search-video') ||
+      pathname.startsWith('/dashboard/channel-analysis')
     ) {
       // Nếu đang ở trang social media → show social-discovery (chỉ MEMBER mới có)
       if (!isManagerOrAdmin) return 'social-discovery';
@@ -132,11 +134,8 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
           {
             section: 'PHÂN TÍCH',
             items: [
-              { label: 'Facebook Channels', href: '/dashboard/facebook/channels', icon: Facebook },
-              { label: 'Instagram Channels', href: '/dashboard/instagram/channels', icon: Instagram },
-              { label: 'TikTok Channels', href: '/dashboard/ai/channels', icon: Music2 },
-              { label: 'Douyin Channels', href: '/dashboard/douyin/channels', icon: Music },
-              { label: 'Xiaohongshu Channels', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
+              { label: 'Channels', href: '/dashboard/facebook/channels', icon: Users },
+              { label: 'Phân tích kênh', href: '/dashboard/channel-analysis', icon: BarChart3 },
             ]
           },
           {
@@ -296,6 +295,9 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
                 </div>
               </div>
             ))}
+
+            {/* Quick action (do not touch menu structure above) */}
+            {/* Quick action removed: Channel Analytics is now main menu */}
           </div>
         </div>
 
