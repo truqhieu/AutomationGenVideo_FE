@@ -195,7 +195,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         }
 
                         toast.success('✅ Đã chuẩn bị xong dữ liệu nền!');
-                        loadCacheStats();
+                        loadCacheStats(true);
                     }
                 } catch (e) {
                     console.error('Auto-index failed', e);
@@ -272,7 +272,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 const poll = () => {
                     attempts++;
                     setAutoReindexMsg(`⏳ Đang index... (${attempts * 3}s)`);
-                    loadCacheStats();
+                    loadCacheStats(true);
                     if (attempts < 10) {
                         autoReindexPollRef.current = setTimeout(poll, 3000);
                     } else {
@@ -387,12 +387,12 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             });
             if (res.ok) toast.success('Đang quét video Sản phẩm...');
 
-            // Poll loadCacheStats để cập nhật số liệu (indexing UNC + ffprobe mất thời gian)
+            // Poll loadCacheStats ngầm để cập nhật số liệu (không flash loading)
             pollCleanupRef.current?.();
             const delays = [1500, 3000, 6000, 10000, 15000, 20000];
             const timeouts: NodeJS.Timeout[] = [];
             delays.forEach((ms) => {
-                timeouts.push(setTimeout(loadCacheStats, ms));
+                timeouts.push(setTimeout(() => loadCacheStats(true), ms));
             });
             pollCleanupRef.current = () => timeouts.forEach((t) => clearTimeout(t));
         } catch (e) {
@@ -693,9 +693,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
             setIndexingProgress(`✅ Hoàn tất! Index ${data.total_indexed || 0} videos — Đang cache tự động...`);
             toast.success(`🎉 Index ${data.total_indexed || 0} videos! Đang cache background...`);
 
-            // Reload stats & start pregen polling
+            // Reload stats ngầm & start pregen polling (tránh flash "Đang tải...")
             setTimeout(() => {
-                loadCacheStats();
+                loadCacheStats(true);
                 setShowIndexPanel(false);
             }, 2000);
 
@@ -966,13 +966,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 </div>
 
                 <div className="p-5">
-                    {loadingStats && (
-                        <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />Đang tải...
-                        </div>
-                    )}
-
-                    {!loadingStats && cacheStats && (
+                    {cacheStats && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {[

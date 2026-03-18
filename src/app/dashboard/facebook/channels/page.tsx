@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
   username: string;
@@ -218,6 +219,9 @@ export default function FacebookChannelsPage() {
         await fetchTrackedChannels();
         setShowAddModal(false);
         setUsernameInput('');
+        // After adding, go straight to analysis page (SocialLens-like flow)
+        setLoadingChannelId(username);
+        router.push(`/dashboard/facebook/analytics/${username}`);
       } else {
         const errorData = await saveResponse.json();
         alert(errorData.message || 'Lỗi khi lưu kênh vào hệ thống.');
@@ -288,6 +292,9 @@ export default function FacebookChannelsPage() {
               <Plus className="w-5 h-5" />
               <span className="hidden sm:inline">Thêm Kênh Mới</span>
             </button>
+          </div>
+          <div className="mt-4">
+            <ChannelsPlatformSwitcher />
           </div>
         </div>
       </div>
@@ -488,7 +495,7 @@ export default function FacebookChannelsPage() {
                     onKeyPress={(e) => e.key === 'Enter' && handleAddChannel()}
                     placeholder="Ví dụ: https://www.facebook.com/vtv24"
                     disabled={processing}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all font-medium text-lg placeholder:text-slate-400"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all font-medium text-lg text-slate-900 placeholder:text-slate-400"
                   />
                   {usernameInput && (
                     <button

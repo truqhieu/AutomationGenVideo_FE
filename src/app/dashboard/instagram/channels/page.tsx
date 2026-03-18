@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Instagram as InstagramIcon, MessageCircle, Share2, Link as LinkIcon, BarChart3, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
   username: string;
@@ -293,6 +294,9 @@ export default function InstagramChannelsPage() {
               <Plus className="w-5 h-5" />
               <span className="hidden sm:inline">Thêm Kênh Mới</span>
             </button>
+          </div>
+          <div className="mt-4">
+            <ChannelsPlatformSwitcher />
           </div>
         </div>
       </div>

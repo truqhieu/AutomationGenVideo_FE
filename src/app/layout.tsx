@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import { Roboto } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
-import { ReactNode } from 'react';
+import { Roboto } from 'next/font/google';
 
 const roboto = Roboto({
+  subsets: ['latin', 'vietnamese'],
   weight: ['300', '400', '500', '700', '900'],
-  subsets: ['vietnamese', 'latin'],
   display: 'swap',
 });
 
