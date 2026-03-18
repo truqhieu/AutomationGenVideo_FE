@@ -59,8 +59,11 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
     };
 
     const handleDateSelect = (day: number) => {
-        const newDate = new Date(currentYear, currentMonth, day);
-        onChange(newDate.toISOString().split('T')[0]);
+        const year = currentYear;
+        const month = String(currentMonth + 1).padStart(2, '0');
+        const d = String(day).padStart(2, '0');
+        onChange(`${year}-${month}-${d}`);
+        setIsOpen(false);
     };
 
     const formatDateDisplay = (dateStr: string) => {
