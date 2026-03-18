@@ -21,6 +21,8 @@ import {
     LayoutDashboard,
     LayoutGrid,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Menu,
     X,
     ShieldCheck,
@@ -170,6 +172,8 @@ const UserActivityPageContent = () => {
     const [isPersonalDetailed, setIsPersonalDetailed] = React.useState(false);
     const [showTabMenu, setShowTabMenu] = React.useState(false);
     const [visibleCount, setVisibleCount] = React.useState(CARDS_PER_BATCH);
+    const [checklistPage, setChecklistPage] = React.useState(1);
+    const CHECKLIST_PAGE_SIZE = 6;
     const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
     // Time filter states
@@ -185,6 +189,7 @@ const UserActivityPageContent = () => {
     // Reset visible count when filters change
     React.useEffect(() => {
         setVisibleCount(CARDS_PER_BATCH);
+        setChecklistPage(1);
     }, [activeTeam, searchName, dateRange]);
 
     // Infinite scroll: load more cards when sentinel enters viewport
@@ -699,24 +704,6 @@ const UserActivityPageContent = () => {
                                         </h3>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
-                                    <button onClick={() => setDailyFilter(dailyFilter === 'video_win' ? 'all' : 'video_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'video_win' ? 'bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-600/20' : 'bg-emerald-50/50 border-emerald-100'}`}>
-                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'video_win' ? 'text-emerald-100' : 'text-emerald-600/70'}`}>Video Win</p><h4 className={`text-xl font-black ${dailyFilter === 'video_win' ? 'text-white' : 'text-emerald-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('VIDEO WIN')).length}</h4></div>
-                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🏆</div>
-                                    </button>
-                                    <button onClick={() => setDailyFilter(dailyFilter === 'product_win' ? 'all' : 'product_win')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'product_win' ? 'bg-green-600 border-green-600 shadow-md shadow-green-600/20' : 'bg-green-50/50 border-green-100'}`}>
-                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'product_win' ? 'text-green-100' : 'text-green-600/70'}`}>Sản phẩm Win</p><h4 className={`text-xl font-black ${dailyFilter === 'product_win' ? 'text-white' : 'text-green-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toUpperCase() || '').normalize('NFC').includes('SẢN PHẨM WIN')).length}</h4></div>
-                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💎</div>
-                                    </button>
-                                    <button onClick={() => setDailyFilter(dailyFilter === 'idea' ? 'all' : 'idea')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'idea' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-600/20' : 'bg-blue-50/50 border-blue-100'}`}>
-                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'idea' ? 'text-blue-100' : 'text-blue-600/70'}`}>Ý kiến</p><h4 className={`text-xl font-black ${dailyFilter === 'idea' ? 'text-white' : 'text-blue-600'}`}>{filteredChecklistReports.filter(r => (r.category?.toLowerCase() || '').normalize('NFC').match(/đóng góp|ý kĩen|cải tiến|ý kiến/)).length}</h4></div>
-                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">💡</div>
-                                    </button>
-                                    <button onClick={() => setDailyFilter(dailyFilter === 'difficulty' ? 'all' : 'difficulty')} className={`border rounded-xl p-2.5 flex items-center justify-between transition-all ${dailyFilter === 'difficulty' ? 'bg-orange-600 border-orange-600 shadow-md shadow-orange-600/20' : 'bg-orange-50/50 border-orange-100'}`}>
-                                        <div><p className={`text-[10px] font-black uppercase mb-0 ${dailyFilter === 'difficulty' ? 'text-orange-100' : 'text-orange-600/70'}`}>Khó khăn</p><h4 className={`text-xl font-black ${dailyFilter === 'difficulty' ? 'text-white' : 'text-orange-600'}`}>{filteredChecklistReports.filter(r => { const c = (r.category?.toLowerCase() || '').normalize('NFC'); return !c.includes('win') && !c.match(/đóng góp|ý kĩen|cải tiến|ý kiến/); }).length}</h4></div>
-                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-xs">🛡️</div>
-                                    </button>
-                                </div>
                             </div>
 
                             {/* Outstanding Items Table */}
@@ -808,12 +795,62 @@ const UserActivityPageContent = () => {
                                                 <div className="space-y-2"><div className="h-3 w-full bg-slate-100 rounded" /><div className="h-3 w-3/4 bg-slate-100 rounded" /></div>
                                             </div>
                                         ))
-                                    ) : filteredPerformanceReports.length > 0 ? filteredPerformanceReports.map(report => (
-                                        <ReportCard key={report.id} report={report} />
-                                    )) : (
+                                    ) : filteredPerformanceReports.length > 0 ? (
+                                        <>
+                                            {filteredPerformanceReports.slice((checklistPage - 1) * CHECKLIST_PAGE_SIZE, checklistPage * CHECKLIST_PAGE_SIZE).map((report, idx) => (
+                                                <div key={report.id || idx} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                    <ReportCard report={report} />
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : (
                                         <div className="col-span-full text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-xs font-black text-slate-400 italic">KHÔNG TÌM THẤY BÁO CÁO CHI TIẾT</div>
                                     )}
                                 </div>
+
+                                {/* Pagination for Checklist */}
+                                {!loading && filteredPerformanceReports.length > CHECKLIST_PAGE_SIZE && (
+                                    <div className="flex items-center justify-center gap-2 mt-8 pb-4">
+                                        <button
+                                            onClick={() => setChecklistPage(p => Math.max(1, p - 1))}
+                                            disabled={checklistPage === 1}
+                                            className={`p-2 rounded-xl border transition-all ${checklistPage === 1 ? 'opacity-30 cursor-not-allowed bg-slate-50 text-slate-400 border-slate-100' : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50/50 hover:border-blue-200'}`}
+                                        >
+                                            <ChevronLeft className="w-5 h-5" />
+                                        </button>
+
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE) }).map((_, i) => {
+                                                const pageNum = i + 1;
+                                                const isCurrent = pageNum === checklistPage;
+                                                // Only show current, first, last, and neighbors
+                                                const totalPages = Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE);
+                                                if (pageNum === 1 || pageNum === totalPages || (pageNum >= checklistPage - 1 && pageNum <= checklistPage + 1)) {
+                                                    return (
+                                                        <button
+                                                            key={pageNum}
+                                                            onClick={() => setChecklistPage(pageNum)}
+                                                            className={`min-w-[40px] h-10 rounded-xl font-black text-sm transition-all border ${isCurrent ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 hover:border-slate-200'}`}
+                                                        >
+                                                            {pageNum}
+                                                        </button>
+                                                    );
+                                                }
+                                                if (pageNum === 2 && checklistPage > 3) return <span key="dots1" className="px-2 text-slate-400 font-bold">...</span>;
+                                                if (pageNum === totalPages - 1 && checklistPage < totalPages - 2) return <span key="dots2" className="px-2 text-slate-400 font-bold">...</span>;
+                                                return null;
+                                            })}
+                                        </div>
+
+                                        <button
+                                            onClick={() => setChecklistPage(p => Math.min(Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE), p + 1))}
+                                            disabled={checklistPage === Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE)}
+                                            className={`p-2 rounded-xl border transition-all ${checklistPage === Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE) ? 'opacity-30 cursor-not-allowed bg-slate-50 text-slate-400 border-slate-100' : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50/50 hover:border-blue-200'}`}
+                                        >
+                                            <ChevronRight className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : activeTab === 'daily_report' ? (
