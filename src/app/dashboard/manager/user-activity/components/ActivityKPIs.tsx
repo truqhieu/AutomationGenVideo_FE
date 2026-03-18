@@ -83,7 +83,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 h-14">
+                        <div className="flex items-center justify-between gap-2 min-h-[3.5rem] flex-wrap sm:flex-nowrap">
                             {/* Left: Progress/Value Cluster */}
                             <div className="flex items-center gap-3">
                                 {kpi.groupKey !== 'channels' && (
@@ -129,13 +129,13 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             </div>
 
                             {/* Right: Breakdown integrated horizontally */}
-                            <div className="flex items-center gap-4 border-l border-slate-100 pl-4">
+                            <div className="flex items-center gap-2 sm:gap-4 border-l border-slate-100 pl-2 sm:pl-4 ml-auto">
                                 {/* Global Stats */}
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-baseline gap-1 leading-none mb-1">
-                                        <span className="text-lg font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
+                                        <span className="text-base sm:text-lg font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
                                         {kpi.groupKey !== 'channels' && (
-                                            <span className="text-[11px] font-bold text-amber-500">
+                                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-500">
                                                 {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
                                             </span>
                                         )}
@@ -156,7 +156,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                                 {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
                                             </span>
                                         )}
-                                        <span className="text-lg font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
+                                        <span className="text-base sm:text-lg font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
                                     </div>
                                     <div className="text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1">
                                         VN <img src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" />

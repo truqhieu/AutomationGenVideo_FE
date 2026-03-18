@@ -707,8 +707,8 @@ const UserActivityPageContent = () => {
                                     </div>
 
                                     {/* Outstanding Items Table */}
-                                    <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
-                                        <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+                                    <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-x-auto">
+                                        <div className="max-h-[280px] overflow-y-auto scrollbar-thin min-w-[1000px]">
                                             <table className="w-full border-collapse text-left">
                                                 <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
                                                     <tr>

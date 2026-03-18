@@ -157,7 +157,7 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                                     )}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className={`font-black tracking-tight ${isTop3 ? 'text-base' : 'text-sm'} ${style.nameColor}`}>
+                                    <span className={`font-black tracking-tight ${isTop3 ? 'text-base' : 'text-sm'} ${style.nameColor} truncate max-w-[120px] sm:max-w-[200px]`}>
                                         {user.name}
                                     </span>
                                     <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-wider mt-1 border ${style.badge}`}>
