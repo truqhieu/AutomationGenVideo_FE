@@ -1,17 +1,152 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
 import TrafficReportSection, { TrafficData, initialTrafficData, initialTrafficChannels } from './TrafficReportSection';
-import { Send, AlertCircle, Calendar } from 'lucide-react';
+import { Send, AlertCircle, Calendar, ChevronDown, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
 const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
+
+const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const date = new Date(value);
+    const [viewDate, setViewDate] = useState(new Date(date));
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+    const currentMonth = viewDate.getMonth();
+    const currentYear = viewDate.getFullYear();
+
+    const changeMonth = (offset: number) => {
+        const newDate = new Date(viewDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        setViewDate(newDate);
+    };
+
+    const days = [];
+    const totalDays = daysInMonth(currentYear, currentMonth);
+    const startDay = firstDayOfMonth(currentYear, currentMonth);
+
+    for (let i = 0; i < startDay; i++) days.push(null);
+    for (let i = 1; i <= totalDays; i++) days.push(i);
+
+    const isToday = (day: number) => {
+        const today = new Date();
+        return today.getDate() === day && today.getMonth() === currentMonth && today.getFullYear() === currentYear;
+    };
+
+    const isSelected = (day: number) => {
+        return date.getDate() === day && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    };
+
+    const handleDateSelect = (day: number) => {
+        const newDate = new Date(currentYear, currentMonth, day);
+        onChange(newDate.toISOString().split('T')[0]);
+    };
+
+    const formatDateDisplay = (dateStr: string) => {
+        const [y, m, d] = dateStr.split('-');
+        return `${d}/${m}/${y}`;
+    };
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full sm:w-72 h-14 pl-14 pr-12 rounded-2xl border border-blue-500 bg-blue-600 text-white font-black transition-all outline-none flex items-center shadow-lg shadow-blue-200/50 hover:bg-blue-700 hover:shadow-blue-300/50 group"
+            >
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-blue-500/30 rounded-lg flex items-center justify-center pointer-events-none group-focus-within:bg-blue-400/40 transition-colors">
+                    <Calendar className="w-4 h-4 text-white" />
+                </div>
+                <span>{formatDateDisplay(value)}</span>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-100 pointer-events-none group-hover:text-white transition-colors">
+                    <ChevronDown className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </div>
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full mt-2 right-0 w-[320px] bg-slate-950 rounded-[2rem] shadow-2xl border border-slate-800 p-6 z-[1000]"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors">
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <div className="text-sm font-black text-white uppercase tracking-widest leading-none">
+                                Thang {currentMonth + 1} Năm {currentYear}
+                            </div>
+                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors">
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1 mb-2">
+                            {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
+                                <div key={day} className="text-center text-[10px] font-black text-slate-600 uppercase tracking-tighter h-8 flex items-center justify-center">{day}</div>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1">
+                            {days.map((day, idx) => (
+                                <div key={idx} className="aspect-square flex items-center justify-center">
+                                    {day ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDateSelect(day)}
+                                            className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-xl transition-all
+                                                ${isSelected(day)
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                                    : isToday(day)
+                                                        ? 'bg-slate-800 text-blue-400 ring-1 ring-blue-500/30'
+                                                        : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                                                }`}
+                                        >
+                                            {day}
+                                        </button>
+                                    ) : <div className="w-10 h-10" />}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                className="w-full py-4 text-xs font-black text-white bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 hover:border-slate-700 transition-all uppercase tracking-[0.2em] shadow-inner"
+                            >
+                                Hoàn tất
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 const ChecklistContainer = ({ 
     mode, 
@@ -338,25 +473,18 @@ const ChecklistContainer = ({
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
             {/* Header with Date Picker */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/40 shadow-xl shadow-slate-200/50">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-blue-100/30 shadow-xl shadow-blue-100/20">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200">
+                    <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-400/30">
                         <Calendar className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Ngày báo cáo</h2>
-                        <p className="text-sm text-slate-500 font-medium">Chọn ngày bạn muốn gửi báo cáo</p>
+                        <h2 className="text-xl font-black text-blue-900 uppercase tracking-tight">Ngày báo cáo</h2>
+                        <p className="text-sm text-blue-600/60 font-medium italic">Chọn thời điểm thực hiện báo cáo</p>
                     </div>
                 </div>
-                <div className="relative group w-full sm:w-auto">
-                    <input
-                        type="date"
-                        value={reportDate}
-                        onChange={(e) => setReportDate(e.target.value)}
-                        max={new Date().toISOString().split('T')[0]}
-                        className="w-full sm:w-64 h-14 pl-12 pr-6 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-800 font-bold focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer"
-                    />
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" />
+                <div className="w-full sm:w-auto">
+                    <ChecklistDatePicker value={reportDate} onChange={setReportDate} />
                 </div>
             </div>
 
