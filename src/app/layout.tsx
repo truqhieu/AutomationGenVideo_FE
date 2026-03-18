@@ -1,8 +1,8 @@
+import React, { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { Roboto } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
-import { Roboto } from 'next/font/google';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
