@@ -252,9 +252,19 @@ const ChecklistContainer = ({
                         setIsReadOnly(true);
 
                         if (data.report) {
-                            if (data.report.checklist) setChecks(data.report.checklist);
-                            if (data.report.details) setDetails(data.report.details);
-                            if (data.report.leader_answers) setLeaderAnswers(data.report.leader_answers);
+                            const answers = (data.report.answers || {}) as Record<string, any>;
+                            
+                            // Restore checklist
+                            const newChecks = CHECKLIST_ITEMS.map(label => !!answers[label]);
+                            setChecks(newChecks);
+
+                            // Restore details
+                            const newDetails = DETAIL_ITEMS.map(item => String(answers[item.question] || ''));
+                            setDetails(newDetails);
+
+                            // Restore leader answers
+                            const newLeaderAnswers = LEADER_QUESTIONS.map(item => String(answers[item.question] || ''));
+                            setLeaderAnswers(newLeaderAnswers);
                         }
 
                         if (data.traffic) {
@@ -263,6 +273,18 @@ const ChecklistContainer = ({
                             const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
 
                             const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+                            
+                            // Check for evidence_files fallback for older/synced records
+                            let sharedEvidences: any[] = [];
+                            if (data.traffic.evidence_files) {
+                                try {
+                                    sharedEvidences = JSON.parse(data.traffic.evidence_files);
+                                    if (!Array.isArray(sharedEvidences)) sharedEvidences = [];
+                                } catch (e) {
+                                    if (data.traffic.evidence_files) sharedEvidences = [data.traffic.evidence_files];
+                                }
+                            }
+
                             platforms.forEach(p => {
                                 // Traffic values
                                 const trafficKey = `traffic_${p}` as keyof any;
@@ -281,7 +303,6 @@ const ChecklistContainer = ({
                                 const rawEvidence = data.traffic[evidenceKey];
                                 if (rawEvidence) {
                                     try {
-                                        // Try parsing as JSON (could be a stringified array of objects or strings)
                                         let evidenceData = [];
                                         if (typeof rawEvidence === 'string' && (rawEvidence.startsWith('[') || rawEvidence.startsWith('{'))) {
                                             evidenceData = JSON.parse(rawEvidence);
@@ -299,11 +320,17 @@ const ChecklistContainer = ({
                                             newEvidences[p] = [{ url: evidenceData, name: 'Minh chứng', token: '' }];
                                         }
                                     } catch (e) {
-                                        // Fallback if not JSON
                                         if (typeof rawEvidence === 'string' && rawEvidence.length > 0) {
                                             newEvidences[p] = [{ url: rawEvidence, name: 'Minh chứng', token: '' }];
                                         }
                                     }
+                                } else if (sharedEvidences.length > 0 && newTraffic[p as keyof TrafficData] && Number(newTraffic[p as keyof TrafficData]) > 0) {
+                                    // Fallback to shared evidences if platform-specific is missing but traffic > 0
+                                    newEvidences[p] = sharedEvidences.map((ev: any) => ({
+                                        url: typeof ev === 'string' ? ev : (ev.url || ''),
+                                        name: typeof ev === 'string' ? 'Minh chứng' : (ev.name || 'Minh chứng'),
+                                        token: typeof ev === 'string' ? '' : (ev.token || '')
+                                    }));
                                 }
                             });
 
@@ -595,14 +622,6 @@ const ChecklistContainer = ({
                 </div>
             )}
 
-            {isReadOnly && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in fade-in duration-500">
-                    <Check className="w-5 h-5 flex-shrink-0 text-blue-600" />
-                    <p className="text-sm font-bold uppercase tracking-tight">
-                        Bạn đang xem lại báo cáo ngày {reportDate.split('-').reverse().join('/')}. Chế độ chỉ xem, không thể chỉnh sửa.
-                    </p>
-                </div>
-            )}
 
             {!isReadOnly && showOnlyTraffic && (
                 <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
