@@ -327,9 +327,9 @@ const ActivityFilters = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 py-2 px-2">
             {canSeeTeamFilter && (
                 <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 mr-1">
-                        <Layers className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-1">
+                        <Layers className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-black text-slate-950 uppercase tracking-widest">
                             Nhóm Team
                         </span>
                     </div>
@@ -337,9 +337,9 @@ const ActivityFilters = ({
                     {/* ALL Button */}
                     <button
                         onClick={() => handleSelectTeam('All')}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isAllActive
-                            ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
-                            : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
+                        className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isAllActive
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                            : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-100/50'
                             }`}
                     >
                         ALL
@@ -349,12 +349,12 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('global')}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
-                                ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
-                                : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
+                            className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                                : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-100/50'
                                 }`}
                         >
-                            <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-gray-400'}`} />
+                            <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-blue-600'}`} />
                             {getGlobalLabel()}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
@@ -414,9 +414,9 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('vietnam')}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center gap-2 ${isVNActive
-                                ? 'bg-[#1e40af] text-white border-[#1e40af] shadow-lg shadow-blue-100'
-                                : 'bg-white text-gray-400 border-gray-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/30'
+                            className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isVNActive
+                                ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-200'
+                                : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-red-300 hover:text-red-500 hover:bg-red-50/80'
                                 }`}
                         >
                             <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
@@ -478,16 +478,16 @@ const ActivityFilters = ({
                     <button
                         onClick={() => toggleDropdown('timeSelector')}
                         className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || (timeType !== 'today')
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'bg-blue-50/60 border-blue-100/50 text-blue-600/70 hover:border-blue-300'
                             }`}
                     >
-                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-100' : 'text-blue-500'}`} />
                         <div className="flex flex-col items-start leading-tight">
-                            <span className={`text-[11px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'month' && timeType !== 'this_month') ? 'text-blue-200' : 'text-gray-400 group-hover:text-blue-500'}`}>
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-200' : 'text-blue-600 group-hover:text-blue-500'}`}>
                                 {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
                             </span>
-                            <span className="text-xs font-bold">
+                            <span className={`text-xs font-black ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-white' : 'text-slate-950'}`}>
                                 {filterMode === 'year' ? dateRange.start.getFullYear() :
                                     filterMode === 'month' ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}` :
                                         (timeType === 'custom' || filterMode === 'week' || filterMode === 'range')
@@ -622,21 +622,21 @@ const ActivityFilters = ({
                 {/* Name Filter - visible to all roles */}
                 {(true) && (
                     <div className="relative group">
-                        <div className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'border-blue-300 bg-blue-50/5' : 'border-gray-200'}`}>
-                            <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-blue-500' : 'text-gray-400'}`} />
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50/60 border-blue-100/50'}`}>
+                            <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-white' : 'text-blue-600'}`} />
                             <input
                                 type="text"
                                 placeholder="Tìm tên..."
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                className="bg-transparent border-none focus:outline-none text-xs font-bold text-gray-700 w-28 placeholder:text-gray-300 placeholder:font-normal"
+                                className={`bg-transparent border-none focus:outline-none text-xs font-black w-28 placeholder:font-normal ${searchName ? 'text-white placeholder:text-blue-200' : 'text-slate-950 placeholder:text-slate-400'}`}
                             />
                             {searchName && (
                                 <button
                                     onClick={() => setSearchName('')}
-                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                    className="p-1 hover:bg-white/20 rounded-full transition-colors"
                                 >
-                                    <X className="w-2.5 h-2.5 text-gray-400" />
+                                    <X className="w-2.5 h-2.5 text-white" />
                                 </button>
                             )}
                         </div>

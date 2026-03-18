@@ -545,10 +545,10 @@ const UserActivityPageContent = () => {
     }, [reportOutstandings, matchTeam, searchName]);
 
     return (
-        <div id="report-view-container" className="min-h-screen bg-white p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
+        <div id="report-view-container" className="min-h-screen bg-[#f8fafc] p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
             <div className="relative z-10 space-y-4">
                 {activeTab !== 'daily_report' && (
-                    <div className="relative z-30 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-xl shadow-slate-200/50">
+                    <div className="relative z-30 bg-blue-50/50 backdrop-blur-md p-3 rounded-[2rem] border border-blue-100/50 shadow-xl shadow-blue-500/5">
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}
