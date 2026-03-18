@@ -127,7 +127,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
 
                 <div className="text-center mb-4">
                     <h4 className="text-sm font-black text-slate-800 tracking-tight leading-tight mb-1 truncate max-w-[170px]">{data.name}</h4>
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
                         {data.position && (
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border shadow-xs ${['leader', 'lead', 'quản lý', 'tp ', 'trưởng'].some(key => data.position?.toLowerCase().includes(key))
                                 ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border-orange-200'

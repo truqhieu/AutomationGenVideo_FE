@@ -83,7 +83,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 min-h-[3.5rem] flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center justify-between gap-3 min-h-[3.5rem] flex-wrap xl:flex-nowrap">
                             {/* Left: Progress/Value Cluster */}
                             <div className="flex items-center gap-3">
                                 {kpi.groupKey !== 'channels' && (
@@ -129,7 +129,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             </div>
 
                             {/* Right: Breakdown integrated horizontally */}
-                            <div className="flex items-center gap-2 sm:gap-4 border-l border-slate-100 pl-2 sm:pl-4 ml-auto">
+                            <div className="flex items-center gap-2 sm:gap-4 xl:border-l xl:border-slate-100 xl:pl-4 mt-2 xl:mt-0 w-full xl:w-auto justify-between xl:justify-end">
                                 {/* Global Stats */}
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-baseline gap-1 leading-none mb-1">
