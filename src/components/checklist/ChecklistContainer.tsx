@@ -473,7 +473,7 @@ const ChecklistContainer = ({
     return (
         <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
             {/* Header with Date Picker */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-blue-100/30 shadow-xl shadow-blue-100/20">
+            <div className="relative z-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-blue-100/30 shadow-xl shadow-blue-100/20">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-400/30">
                         <Calendar className="w-6 h-6 text-white" />

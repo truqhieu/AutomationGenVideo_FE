@@ -339,7 +339,7 @@ const ActivityFilters = ({
                         onClick={() => handleSelectTeam('All')}
                         className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isAllActive
                             ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                            : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-100/50'
+                            : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                             }`}
                     >
                         ALL
@@ -351,7 +351,7 @@ const ActivityFilters = ({
                             onClick={() => toggleDropdown('global')}
                             className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                                : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-100/50'
+                                : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                                 }`}
                         >
                             <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-blue-600'}`} />
@@ -415,8 +415,8 @@ const ActivityFilters = ({
                         <button
                             onClick={() => toggleDropdown('vietnam')}
                             className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isVNActive
-                                ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-200'
-                                : 'bg-blue-50/60 text-slate-950 border-blue-100/50 hover:border-red-300 hover:text-red-500 hover:bg-red-50/80'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                                : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                                 }`}
                         >
                             <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
@@ -437,14 +437,14 @@ const ActivityFilters = ({
                                     {/* All VN option */}
                                     <button
                                         onClick={() => handleSelectTeam('All VN')}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-red-700 bg-red-50/50 hover:bg-red-100 transition-colors border-b border-red-100/50"
+                                        className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-blue-700 bg-blue-50/50 hover:bg-blue-100 transition-colors border-b border-blue-100/50"
                                     >
                                         <span className="flex items-center gap-2">
-                                            {activeTeam === 'All VN' && <div className="w-1.5 h-1.5 rounded-full bg-red-600" />}
+                                            {activeTeam === 'All VN' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
                                             <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
                                             Tất cả VN
                                         </span>
-                                        {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-red-600" />}
+                                        {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
                                     {vnTeams.map((team) => (
                                         <button
