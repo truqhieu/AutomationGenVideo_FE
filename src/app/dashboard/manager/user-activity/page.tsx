@@ -694,46 +694,46 @@ const UserActivityPageContent = () => {
                         </div>
                     ) : activeTab === 'daily_checklist' ? (
                         <div className="space-y-3">
-                            {/* Stats Summary */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between px-4">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                            <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
-                                            Vấn đề nổi bật & Video Win
-                                        </h3>
+                            {/* Stats Summary & Table - Only show if data exists */}
+                            {filteredChecklistReports.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-4">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                                <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
+                                                Vấn đề nổi bật & Video Win
+                                            </h3>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Outstanding Items Table */}
-                            <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
-                                <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
-                                    <table className="w-full border-collapse text-left">
-                                        <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
-                                            <tr>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Chức danh
-                                                </th>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Nhân viên
-                                                </th>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Phân loại
-                                                </th>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
-                                                    Nội dung
-                                                </th>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Duyệt
-                                                </th>
-                                                <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                    Người duyệt
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {filteredChecklistReports.length > 0 ? filteredChecklistReports.map((r, idx) => {
+                                    {/* Outstanding Items Table */}
+                                    <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-hidden">
+                                        <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+                                            <table className="w-full border-collapse text-left">
+                                                <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                            Chức danh
+                                                        </th>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                            Nhân viên
+                                                        </th>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                            Phân loại
+                                                        </th>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                            Nội dung
+                                                        </th>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                            Người duyệt
+                                                        </th>
+                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
+                                                            Duyệt
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
                                                         const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa'));
                                                         return (
@@ -748,6 +748,9 @@ const UserActivityPageContent = () => {
                                                                     <div className="text-xs text-slate-700 font-medium leading-relaxed max-w-[350px] whitespace-normal line-clamp-2 group-hover:line-clamp-none py-1.5 px-2 rounded-lg group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-100 transition-all duration-300">
                                                                         {r.content || 'Không có nội dung'}
                                                                     </div>
+                                                                </td>
+                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-center text-xs font-bold text-slate-500 italic">
+                                                                    {r.approved_by || '-'}
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
                                                                     {(isAdminUser || isLeaderUser) ? (
@@ -764,18 +767,15 @@ const UserActivityPageContent = () => {
                                                                         </span>
                                                                     )}
                                                                 </td>
-                                                                <td className="px-3 py-1.5 text-center text-xs font-bold text-slate-500 italic">
-                                                                    {r.approved_by || '-'}
-                                                                </td>
                                                             </tr>
                                                         );
-                                                    }) : (
-                                                <tr><td colSpan={6} className="py-20 text-center opacity-30 text-xs uppercase font-black">Chưa có dữ liệu</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Detailed Report Cards */}
                             <div className="space-y-4 mt-8">
