@@ -97,7 +97,7 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
                                 <ChevronLeft className="w-5 h-5" />
                             </button>
                             <div className="text-sm font-black text-white uppercase tracking-widest leading-none">
-                                Thang {currentMonth + 1} Năm {currentYear}
+                                Tháng {currentMonth + 1} Năm {currentYear}
                             </div>
                             <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors">
                                 <ChevronRight className="w-5 h-5" />
@@ -171,6 +171,8 @@ const ChecklistContainer = ({
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({});
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -180,7 +182,6 @@ const ChecklistContainer = ({
             try {
                 const apiBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
                 const base = apiBase.replace(/\/$/, '');
-                // Nếu apiBase đã chứa /api thì không cộng thêm /api nữa
                 const url = base.endsWith('/api')
                     ? `${base}/lark/user-permission?email=${encodeURIComponent(user.email)}`
                     : `${base}/api/lark/user-permission?email=${encodeURIComponent(user.email)}`;
@@ -200,7 +201,7 @@ const ChecklistContainer = ({
         fetchLarkRole();
     }, [user?.email]);
 
-    // Fetch reporting status
+    // Fetch reporting status (open/closed)
     useEffect(() => {
         const fetchStatus = async () => {
             if (!user?.email) return;
@@ -221,10 +222,104 @@ const ChecklistContainer = ({
         };
 
         fetchStatus();
-        // Refresh status every 5 minutes
         const interval = setInterval(fetchStatus, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [user?.email]);
+
+    // Fetch historical report for checking read-only status
+    useEffect(() => {
+        const fetchReportDetails = async () => {
+            if (!user?.email || !reportDate) return;
+
+            // Reset current form before fetching
+            setIsReadOnly(false);
+            setChecks(initialChecks());
+            setDetails(initialDetails());
+            setLeaderAnswers(initialLeaderAnswers());
+            setTraffic(initialTrafficData());
+            setTrafficChannels(initialTrafficChannels());
+            setHistoricalEvidences({});
+
+            try {
+                const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                const url = `${beBaseUrl}/lark/user-report-details?email=${encodeURIComponent(user.email)}&date=${reportDate}`;
+
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data && (data.report || data.traffic)) {
+                        setIsReadOnly(true);
+
+                        if (data.report) {
+                            if (data.report.checklist) setChecks(data.report.checklist);
+                            if (data.report.details) setDetails(data.report.details);
+                            if (data.report.leader_answers) setLeaderAnswers(data.report.leader_answers);
+                        }
+
+                        if (data.traffic) {
+                            const newTraffic = initialTrafficData();
+                            const newChannels = initialTrafficChannels();
+                            const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
+
+                            const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+                            platforms.forEach(p => {
+                                // Traffic values
+                                const trafficKey = `traffic_${p}` as keyof any;
+                                if (data.traffic[trafficKey] !== undefined && data.traffic[trafficKey] !== null) {
+                                    newTraffic[p as keyof TrafficData] = String(data.traffic[trafficKey]);
+                                }
+
+                                // Channel names
+                                const channelKey = `channel_${p}` as keyof any;
+                                if (data.traffic[channelKey] !== undefined && data.traffic[channelKey] !== null) {
+                                    newChannels[p as keyof TrafficData] = data.traffic[channelKey];
+                                }
+
+                                // Evidence URLs
+                                const evidenceKey = `evidence_${p}` as keyof any;
+                                const rawEvidence = data.traffic[evidenceKey];
+                                if (rawEvidence) {
+                                    try {
+                                        // Try parsing as JSON (could be a stringified array of objects or strings)
+                                        let evidenceData = [];
+                                        if (typeof rawEvidence === 'string' && (rawEvidence.startsWith('[') || rawEvidence.startsWith('{'))) {
+                                            evidenceData = JSON.parse(rawEvidence);
+                                        } else {
+                                            evidenceData = rawEvidence;
+                                        }
+
+                                        if (Array.isArray(evidenceData)) {
+                                            newEvidences[p] = evidenceData.map((ev: any) => ({
+                                                url: typeof ev === 'string' ? ev : (ev.url || ''),
+                                                name: typeof ev === 'string' ? 'Minh chứng' : (ev.name || 'Minh chứng'),
+                                                token: typeof ev === 'string' ? '' : (ev.token || '')
+                                            }));
+                                        } else if (typeof evidenceData === 'string' && evidenceData.length > 0) {
+                                            newEvidences[p] = [{ url: evidenceData, name: 'Minh chứng', token: '' }];
+                                        }
+                                    } catch (e) {
+                                        // Fallback if not JSON
+                                        if (typeof rawEvidence === 'string' && rawEvidence.length > 0) {
+                                            newEvidences[p] = [{ url: rawEvidence, name: 'Minh chứng', token: '' }];
+                                        }
+                                    }
+                                }
+                            });
+
+                            setTraffic(newTraffic);
+                            setTrafficChannels(newChannels);
+                            setHistoricalEvidences(newEvidences);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch report details:', err);
+            }
+        };
+
+        fetchReportDetails();
+    }, [user?.email, reportDate]);
 
     // Fetch user channels
     useEffect(() => {
@@ -262,36 +357,41 @@ const ChecklistContainer = ({
     const showForm3 = mode ? mode === 'leader' : (isAdmin || isLeader);
 
     const handleCheckChange = useCallback((index: number, checked: boolean) => {
+        if (isReadOnly) return;
         setChecks((prev) => {
             const next = [...prev];
             next[index] = checked;
             return next;
         });
-    }, []);
+    }, [isReadOnly]);
 
     const handleDetailChange = useCallback((index: number, value: string) => {
+        if (isReadOnly) return;
         setDetails((prev) => {
             const next = [...prev];
             next[index] = value;
             return next;
         });
-    }, []);
+    }, [isReadOnly]);
 
     const handleLeaderAnswerChange = useCallback((index: number, value: string) => {
+        if (isReadOnly) return;
         setLeaderAnswers((prev) => {
             const next = [...prev];
             next[index] = value;
             return next;
         });
-    }, []);
+    }, [isReadOnly]);
 
     const handleTrafficChange = useCallback((platformId: keyof TrafficData, value: string) => {
+        if (isReadOnly) return;
         setTraffic((prev) => ({ ...prev, [platformId]: value }));
-    }, []);
+    }, [isReadOnly]);
 
     const handleChannelChange = useCallback((platformId: keyof TrafficData, value: string) => {
+        if (isReadOnly) return;
         setTrafficChannels((prev) => ({ ...prev, [platformId]: value }));
-    }, []);
+    }, [isReadOnly]);
 
     const buildPayload = useCallback((): Record<string, boolean | string> => {
         const payload: Record<string, boolean | string> = {
@@ -495,7 +595,16 @@ const ChecklistContainer = ({
                 </div>
             )}
 
-            {showOnlyTraffic && (
+            {isReadOnly && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in fade-in duration-500">
+                    <Check className="w-5 h-5 flex-shrink-0 text-blue-600" />
+                    <p className="text-sm font-bold uppercase tracking-tight">
+                        Bạn đang xem lại báo cáo ngày {reportDate.split('-').reverse().join('/')}. Chế độ chỉ xem, không thể chỉnh sửa.
+                    </p>
+                </div>
+            )}
+
+            {!isReadOnly && showOnlyTraffic && (
                 <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
                     (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
                         ? 'bg-blue-50 border border-blue-200 text-blue-800'
@@ -514,7 +623,11 @@ const ChecklistContainer = ({
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
-                        <ChecklistSection values={checks} onChange={handleCheckChange} />
+                        <ChecklistSection 
+                            values={checks} 
+                            onChange={handleCheckChange} 
+                            readOnly={isReadOnly}
+                        />
                     </div>
                 )}
 
@@ -522,14 +635,22 @@ const ChecklistContainer = ({
                 {/* Show Detail Section for Member/Staff - Hide if only traffic */}
                 {showForm12 && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
-                        <DetailSection values={details} onChange={handleDetailChange} />
+                        <DetailSection 
+                            values={details} 
+                            onChange={handleDetailChange} 
+                            readOnly={isReadOnly}
+                        />
                     </div>
                 )}
 
                 {/* Leader Section - Show for Leader mode - Hide if only traffic */}
                 {showForm3 && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
-                        <LeaderEvaluationSection values={leaderAnswers} onChange={handleLeaderAnswerChange} />
+                        <LeaderEvaluationSection 
+                            values={leaderAnswers} 
+                            onChange={handleLeaderAnswerChange} 
+                            readOnly={isReadOnly}
+                        />
                     </div>
                 )}
                 
@@ -537,13 +658,15 @@ const ChecklistContainer = ({
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-purple-100/50 lg:col-span-2">
                         <TrafficReportSection 
-                            key={submitCount}
+                            key={`${submitCount}-${reportDate}`}
                             values={traffic} 
                             channels={trafficChannels}
                             availableChannels={availableChannels}
                             onChange={handleTrafficChange}
                             onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                            readOnly={isReadOnly}
+                            initialEvidences={historicalEvidences}
                         />
                     </div>
                 )}
@@ -561,13 +684,14 @@ const ChecklistContainer = ({
                     onClick={handleSubmit}
                     disabled={
                         loading || 
+                        isReadOnly ||
                         (!status.is_open && !showOnlyTraffic) ||
                         (showOnlyTraffic && !isAdmin && (new Date().getHours() < 17 || new Date().getHours() >= 18))
                     }
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     <Send className="w-4 h-4" />
-                    {loading ? 'Đang gửi...' : 'GỬI BÁO CÁO'}
+                    {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
                 </button>
             </div>
         </div>

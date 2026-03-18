@@ -17,9 +17,10 @@ export const DETAIL_ITEMS = [
 interface DetailSectionProps {
     values: string[];
     onChange: (index: number, value: string) => void;
+    readOnly?: boolean;
 }
 
-const DetailSection = ({ values, onChange }: DetailSectionProps) => {
+const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
@@ -34,23 +35,25 @@ const DetailSection = ({ values, onChange }: DetailSectionProps) => {
                     const isNumeric = index === 0;
 
                     return (
-                        <div key={index} className="space-y-3">
+                        <div key={index} className={`space-y-3 ${readOnly ? 'opacity-80 pointer-events-none' : ''}`}>
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-tight block">
                                 {item.question}
                             </label>
 
                             {!isNumeric && (
-                                <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+                                <div className={`flex bg-gray-100 p-1 rounded-xl w-fit ${readOnly ? 'opacity-50' : ''}`}>
                                     <button
                                         type="button"
-                                        onClick={() => onChange(index, "Không ạ")}
+                                        onClick={() => !readOnly && onChange(index, "Không ạ")}
+                                        disabled={readOnly}
                                         className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${isNo ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
                                     >
                                         Không ạ
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => { if (isNo || !values[index]) onChange(index, "") }}
+                                        onClick={() => { if (!readOnly && (isNo || !values[index])) onChange(index, "") }}
+                                        disabled={readOnly}
                                         className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${!isNo && values[index] !== undefined ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
                                     >
                                         Có
@@ -64,16 +67,20 @@ const DetailSection = ({ values, onChange }: DetailSectionProps) => {
                                         <input
                                             type="number"
                                             value={values[index] ?? ''}
-                                            onChange={(e) => onChange(index, e.target.value)}
+                                            onChange={(e) => !readOnly && onChange(index, e.target.value)}
                                             placeholder={item.placeholder}
-                                            className="w-full px-4 py-3 border border-gray-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20 bg-gray-50/30 text-sm font-bold text-gray-900 rounded-2xl outline-none transition-all"
+                                            disabled={readOnly}
+                                            readOnly={readOnly}
+                                            className={`w-full px-4 py-3 border border-gray-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20 bg-gray-50/30 text-sm font-bold text-gray-900 rounded-2xl outline-none transition-all ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                         />
                                     ) : (
                                         <Textarea
                                             value={values[index] ?? ''}
-                                            onChange={(e) => onChange(index, e.target.value)}
+                                            onChange={(e) => !readOnly && onChange(index, e.target.value)}
                                             placeholder={item.placeholder}
-                                            className="min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl"
+                                            disabled={readOnly}
+                                            readOnly={readOnly}
+                                            className={`min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                         />
                                     )}
                                 </div>

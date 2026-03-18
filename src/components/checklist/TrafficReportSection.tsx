@@ -52,6 +52,8 @@ interface TrafficReportSectionProps {
     onChange: (platformId: keyof TrafficData, value: string) => void;
     onChannelChange: (platformId: keyof TrafficData, value: string) => void;
     onPlatformEvidenceChange?: (platformEvidences: Record<string, string[]>) => void;
+    readOnly?: boolean;
+    initialEvidences?: Record<string, { url: string; name: string; token: string }[]>;
 }
 
 const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
@@ -60,15 +62,23 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     availableChannels = [],
     onChange, 
     onChannelChange,
-    onPlatformEvidenceChange 
+    onPlatformEvidenceChange,
+    readOnly,
+    initialEvidences
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
     const [activePlatform, setActivePlatform] = useState<string | null>(null);
     
     // Store evidence per platform: { platformId: [{ url, name, token }] }
-    const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({});
+    const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>(initialEvidences || {});
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+
+    React.useEffect(() => {
+        if (initialEvidences) {
+            setEvidences(initialEvidences);
+        }
+    }, [initialEvidences]);
     
     const isPlatformMatch = (platformId: string, channelPlatform: string | null | undefined): boolean => {
         if (!channelPlatform) return false;
@@ -190,8 +200,13 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {TRAFFIC_PLATFORMS.filter(platform => {
-                    // Only show platform if user has at least one channel for it
-                    return availableChannels.some(c => isPlatformMatch(platform.id, c.platform));
+                    const hasVal = values[platform.id as keyof TrafficData] && values[platform.id as keyof TrafficData] !== '';
+                    const hasEv = evidences[platform.id] && evidences[platform.id].length > 0;
+                    const hasAccess = availableChannels.some(c => isPlatformMatch(platform.id, c.platform));
+                    
+                    // In read-only mode, we always show platforms that were reported (hasVal or hasEv)
+                    // We also show platforms the user currently has access to, to maintain visual consistency
+                    return hasVal || hasEv || hasAccess;
                 }).map((platform) => (
                     <div key={platform.id} className="group flex flex-col gap-3 p-4 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300">
                         <div className="flex items-center justify-between px-1">
@@ -200,7 +215,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                             </label>
                             {uploadingPlatform === platform.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                            ) : (
+                            ) : !readOnly && (
                                 <button
                                     type="button"
                                     onClick={() => triggerUpload(platform.id)}
@@ -218,6 +233,8 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                 <input
                                     type="text"
                                     placeholder="Nhập số..."
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                     value={values[platform.id as keyof TrafficData] && !isNaN(Number(values[platform.id as keyof TrafficData])) 
                                         ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') 
                                         : ''}
@@ -225,16 +242,17 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                         const rawValue = e.target.value.replace(/\D/g, '');
                                         onChange(platform.id as keyof TrafficData, rawValue);
                                     }}
-                                    className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none placeholder:text-slate-300"
+                                    className={`w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none placeholder:text-slate-300 ${readOnly ? 'cursor-not-allowed bg-slate-50' : ''}`}
                                 />
                             </div>
 
                             <div className="relative">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh đăng</label>
                                 <select
+                                    disabled={readOnly}
                                     value={channels[platform.id as keyof TrafficData] || ''}
                                     onChange={(e) => onChannelChange(platform.id as keyof TrafficData, e.target.value)}
-                                    className="w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer"
+                                    className={`w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer ${readOnly ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <option value="">-- Chọn kênh --</option>
                                     {availableChannels
@@ -243,27 +261,36 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                             <option key={c.id || idx} value={c.name}>{c.name}</option>
                                         ))
                                     }
+                                    {readOnly && channels[platform.id as keyof TrafficData] && (
+                                        <option value={channels[platform.id as keyof TrafficData] || ''}>
+                                            {channels[platform.id as keyof TrafficData]}
+                                        </option>
+                                    )}
                                 </select>
-                                <div className="absolute right-3 top-[26px] pointer-events-none text-slate-400">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                {!readOnly && (
+                                    <div className="absolute right-3 top-[26px] pointer-events-none text-slate-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         {/* Platform specific Evidence Preview */}
                         <div className="min-h-[40px] flex flex-wrap gap-2 px-1">
                             {(evidences[platform.id] || []).map((img, idx) => (
-                                <div key={idx} className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm animate-in zoom-in duration-200">
-                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                                    <button
-                                        type="button"
-                                        onClick={() => removeImage(platform.id, idx)}
-                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
+                                <div key={idx} className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm animate-in zoom-in duration-200 cursor-pointer" onClick={() => window.open(img.url, '_blank')}>
+                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" title={img.name} />
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); removeImage(platform.id, idx); }}
+                                            className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                             {(!evidences[platform.id] || evidences[platform.id].length === 0) && !uploadingPlatform && (
@@ -281,7 +308,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 ))}
             </div>
 
-            {availableChannels.length === 0 && (
+            {availableChannels.length === 0 && !readOnly && (
                 <div className="flex flex-col items-center justify-center p-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
                     <div className="p-4 bg-white rounded-full shadow-sm mb-4">
                         <Activity className="w-8 h-8 text-slate-300" />
@@ -299,8 +326,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 className="hidden"
                 onChange={handleFileChange}
             />
-
-
         </div>
     );
 };

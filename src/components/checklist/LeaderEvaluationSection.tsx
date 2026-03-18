@@ -16,9 +16,10 @@ export const LEADER_QUESTIONS = [
 interface LeaderEvaluationSectionProps {
     values: string[];
     onChange: (index: number, value: string) => void;
+    readOnly?: boolean;
 }
 
-const LeaderEvaluationSection = ({ values, onChange }: LeaderEvaluationSectionProps) => {
+const LeaderEvaluationSection = ({ values, onChange, readOnly }: LeaderEvaluationSectionProps) => {
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
@@ -33,23 +34,25 @@ const LeaderEvaluationSection = ({ values, onChange }: LeaderEvaluationSectionPr
                     const isAlwaysVisible = index === 0 || index === 3;
 
                     return (
-                        <div key={index} className="space-y-3">
+                        <div key={index} className={`space-y-3 ${readOnly ? 'opacity-80 pointer-events-none' : ''}`}>
                             <label className="text-xs font-bold text-blue-700/70 uppercase tracking-tight block">
                                 {item.question}
                             </label>
 
                             {!isAlwaysVisible && (
-                                <div className="flex bg-blue-50/50 p-1 rounded-xl w-fit">
+                                <div className={`flex bg-blue-50/50 p-1 rounded-xl w-fit ${readOnly ? 'opacity-50' : ''}`}>
                                     <button
                                         type="button"
-                                        onClick={() => onChange(index, "Không ạ")}
+                                        onClick={() => !readOnly && onChange(index, "Không ạ")}
+                                        disabled={readOnly}
                                         className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${isNo ? "bg-white shadow-sm text-blue-600" : "text-blue-400 hover:text-blue-600"}`}
                                     >
                                         Không ạ
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => { if (isNo || !values[index]) onChange(index, "") }}
+                                        onClick={() => { if (!readOnly && (isNo || !values[index])) onChange(index, "") }}
+                                        disabled={readOnly}
                                         className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${!isNo && values[index] !== undefined ? "bg-white shadow-sm text-blue-600" : "text-blue-400 hover:text-blue-600"}`}
                                     >
                                         Có
@@ -61,9 +64,11 @@ const LeaderEvaluationSection = ({ values, onChange }: LeaderEvaluationSectionPr
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                     <Textarea
                                         value={values[index] ?? ''}
-                                        onChange={(e) => onChange(index, e.target.value)}
+                                        onChange={(e) => !readOnly && onChange(index, e.target.value)}
                                         placeholder={item.placeholder}
-                                        className="min-h-[100px] border-blue-100 focus:border-blue-400 focus:ring-blue-400/20 bg-blue-50/10 text-sm text-gray-900 resize-none rounded-2xl"
+                                        disabled={readOnly}
+                                        readOnly={readOnly}
+                                        className={`min-h-[100px] border-blue-100 focus:border-blue-400 focus:ring-blue-400/20 bg-blue-50/10 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                     />
                                 </div>
                             )}

@@ -21,9 +21,10 @@ export const CHECKLIST_ITEMS = [
 interface ChecklistSectionProps {
     values: boolean[];
     onChange: (index: number, checked: boolean) => void;
+    readOnly?: boolean;
 }
 
-const ChecklistSection = ({ values, onChange }: ChecklistSectionProps) => {
+const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps) => {
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
@@ -34,16 +35,17 @@ const ChecklistSection = ({ values, onChange }: ChecklistSectionProps) => {
             </CardHeader>
             <CardContent className="space-y-6 pt-4">
                 {CHECKLIST_ITEMS.map((item, index) => (
-                    <div key={index} className="flex items-start gap-3 group cursor-pointer">
+                    <div key={index} className={`flex items-start gap-3 group ${readOnly ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}>
                         <Checkbox
                             id={`check-${index}`}
                             checked={values[index] ?? false}
-                            onChange={(e) => onChange(index, e.target.checked)}
-                            className="mt-1 border-gray-300 w-6 h-6 rounded-md group-hover:border-blue-500 transition-colors cursor-pointer accent-blue-600"
+                            onChange={(e) => !readOnly && onChange(index, e.target.checked)}
+                            disabled={readOnly}
+                            className={`mt-1 border-gray-300 w-6 h-6 rounded-md transition-colors accent-blue-600 ${readOnly ? 'cursor-not-allowed' : 'group-hover:border-blue-500 cursor-pointer'}`}
                         />
                         <label
                             htmlFor={`check-${index}`}
-                            className="text-gray-700 font-medium leading-relaxed group-hover:text-blue-600 cursor-pointer transition-colors"
+                            className={`text-gray-700 font-medium leading-relaxed transition-colors ${readOnly ? 'cursor-not-allowed' : 'group-hover:text-blue-600 cursor-pointer'}`}
                         >
                             {item}
                         </label>
