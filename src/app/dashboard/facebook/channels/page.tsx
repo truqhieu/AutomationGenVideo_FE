@@ -15,7 +15,6 @@ import {
 } from '@/lib/global-hr-sync';
 import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
 import {
-  pollTrackedChannelsUntilStats,
   channelAwaitingStats,
 } from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
@@ -88,22 +87,24 @@ export default function FacebookChannelsPage() {
         }
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        let list = await loadFacebookChannels();
+        const list = await loadFacebookChannels();
         if (cancelled) return;
         setChannels(list);
-        if (
-          r &&
-          r.imported > 0 &&
-          list.length > 0 &&
-          list.some((c) => channelAwaitingStats(c))
-        ) {
-          setLongSyncHint(true);
-          list = await pollTrackedChannelsUntilStats(() => loadFacebookChannels());
-          if (!cancelled) setChannels(list);
-          setLongSyncHint(false);
-        }
         if (!cancelled && r && r.imported > 0) {
           toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+        }
+        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
+          let tries = 0;
+          const bgRefresh = async () => {
+            if (cancelled || tries >= 5) return;
+            tries++;
+            await new Promise((res) => setTimeout(res, 8000));
+            if (cancelled) return;
+            const updated = await loadFacebookChannels();
+            if (!cancelled) setChannels(updated);
+            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) bgRefresh();
+          };
+          bgRefresh();
         }
       } catch {
         /* ignore */

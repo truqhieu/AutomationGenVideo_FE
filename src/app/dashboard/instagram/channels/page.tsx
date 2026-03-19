@@ -14,7 +14,6 @@ import {
 } from '@/lib/global-hr-sync';
 import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
 import {
-  pollTrackedChannelsUntilStats,
   channelAwaitingStats,
 } from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
@@ -97,22 +96,28 @@ export default function InstagramChannelsPage() {
         }
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        let list = await loadInstagramChannels();
+        const list = await loadInstagramChannels();
         if (cancelled) return;
+        // Hiển thị ngay danh sách kênh — không block UI chờ enrich
         setChannels(list);
-        if (
-          r &&
-          r.imported > 0 &&
-          list.length > 0 &&
-          list.some((c) => channelAwaitingStats(c))
-        ) {
-          setLongSyncHint(true);
-          list = await pollTrackedChannelsUntilStats(() => loadInstagramChannels());
-          if (!cancelled) setChannels(list);
-          setLongSyncHint(false);
-        }
         if (!cancelled && r && r.imported > 0) {
           toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+        }
+        // Background refresh: nếu có kênh chưa có stats, refresh lại tối đa 5 lần (mỗi 8s)
+        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
+          let tries = 0;
+          const bgRefresh = async () => {
+            if (cancelled || tries >= 5) return;
+            tries++;
+            await new Promise((res) => setTimeout(res, 8000));
+            if (cancelled) return;
+            const updated = await loadInstagramChannels();
+            if (!cancelled) setChannels(updated);
+            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) {
+              bgRefresh();
+            }
+          };
+          bgRefresh();
         }
       } catch {
         /* ignore */
@@ -124,6 +129,7 @@ export default function InstagramChannelsPage() {
       cancelled = true;
     };
   }, []);
+
 
   const fetchTrackedChannels = async () => {
     try {
