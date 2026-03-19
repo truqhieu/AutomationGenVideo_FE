@@ -2,9 +2,22 @@
 // Force rebuild for UI update
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3 } from 'lucide-react';
+import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { syncFromLarkAssignmentIfStale } from '@/lib/sync-lark-tracked-channels';
+import {
+  subscribeGlobalHrSync,
+  runGlobalHrSync,
+  isGlobalHrSyncBusy,
+  waitUntilGlobalHrIdle,
+} from '@/lib/global-hr-sync';
+import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
+import {
+  pollTrackedChannelsUntilStats,
+  channelAwaitingStats,
+} from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
@@ -36,31 +49,78 @@ export default function FacebookChannelsPage() {
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
   const [searchChannelQuery, setSearchChannelQuery] = useState('');
   const [loadingChannelId, setLoadingChannelId] = useState<string | null>(null);
+  const [hrSyncing, setHrSyncing] = useState(false);
+  const [longSyncHint, setLongSyncHint] = useState(false);
+  const [globalHrBusy, setGlobalHrBusy] = useState(false);
 
-  // Fetch tracked channels on mount
+  const loadFacebookChannels = async (): Promise<ChannelProfile[]> => {
+    const token = localStorage.getItem('auth_token');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const response = await fetch(`${apiUrl}/tracked-channels/my-channels?platform=FACEBOOK`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || !response.ok) return [];
+    const data = await response.json();
+    return data.channels || [];
+  };
+
   useEffect(() => {
-    fetchTrackedChannels();
+    return subscribeGlobalHrSync((busy) => {
+      setGlobalHrBusy(busy);
+      if (!busy) {
+        loadFacebookChannels().then(setChannels);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingInitial(true);
+      try {
+        if (isGlobalHrSyncBusy()) {
+          setLongSyncHint(true);
+          await waitUntilGlobalHrIdle();
+          if (cancelled) return;
+          setChannels(await loadFacebookChannels());
+          setLongSyncHint(false);
+          return;
+        }
+        const r = await syncFromLarkAssignmentIfStale();
+        if (cancelled) return;
+        let list = await loadFacebookChannels();
+        if (cancelled) return;
+        setChannels(list);
+        if (
+          r &&
+          r.imported > 0 &&
+          list.length > 0 &&
+          list.some((c) => channelAwaitingStats(c))
+        ) {
+          setLongSyncHint(true);
+          list = await pollTrackedChannelsUntilStats(() => loadFacebookChannels());
+          if (!cancelled) setChannels(list);
+          setLongSyncHint(false);
+        }
+        if (!cancelled && r && r.imported > 0) {
+          toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setLoadingInitial(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const fetchTrackedChannels = async () => {
     try {
       setLoadingInitial(true);
-      const token = localStorage.getItem('auth_token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/tracked-channels/my-channels?platform=FACEBOOK`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.status === 401) {
-        return; // Handle auth redirect globally or here
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        setChannels(data.channels || []);
-      }
+      const list = await loadFacebookChannels();
+      setChannels(list);
     } catch (error) {
       console.error('Error fetching tracked channels:', error);
     } finally {
@@ -242,17 +302,20 @@ export default function FacebookChannelsPage() {
   const handleRefreshChannel = async (channel: ChannelProfile) => {
     setRefreshingIds(prev => new Set(prev).add(channel.username));
     try {
-      await fetchChannelProfile(channel.username);
+      if (channel.id) {
+        const r = await enrichTrackedChannelApify(channel.id);
+        await fetchTrackedChannels();
+        if (!r.success) toast.error(r.message || 'Không làm mới số liệu (Apify)');
+      } else {
+        await fetchChannelProfile(channel.username);
+      }
+    } catch {
+      toast.error('Làm mới thất bại');
+    } finally {
       setRefreshingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(channel.username);
-        return newSet;
-      });
-    } catch (error) {
-      setRefreshingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(channel.username);
-        return newSet;
+        const n = new Set(prev);
+        n.delete(channel.username);
+        return n;
       });
     }
   };
@@ -285,13 +348,43 @@ export default function FacebookChannelsPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Thêm Kênh Mới</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={hrSyncing || loadingInitial || globalHrBusy}
+                onClick={async () => {
+                  setHrSyncing(true);
+                  setLongSyncHint(true);
+                  try {
+                    const r = await runGlobalHrSync('FACEBOOK', loadFacebookChannels);
+                    setChannels(await loadFacebookChannels());
+                    if (r.imported > 0) {
+                      toast.success(
+                        `Đồng bộ ${r.imported} kênh (ưu tiên Facebook) — Apify đã cập nhật`,
+                        { duration: 5000 },
+                      );
+                    } else toast.success('Đã kiểm tra — không có kênh mới từ HR');
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Đồng bộ HR thất bại');
+                  } finally {
+                    setLongSyncHint(false);
+                    setHrSyncing(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all shadow-md disabled:opacity-60"
+                title="Kênh được phân công trên Lark"
+              >
+                {hrSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <DownloadCloud className="w-5 h-5" />}
+                <span className="hidden sm:inline">Đồng bộ HR</span>
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Thêm Kênh Mới</span>
+              </button>
+            </div>
           </div>
           <div className="mt-4">
             <ChannelsPlatformSwitcher />
@@ -303,15 +396,25 @@ export default function FacebookChannelsPage() {
       <div className="container mx-auto px-4 max-w-7xl pt-8">
 
         {/* Loading State */}
-        {loadingInitial && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-            <p className="text-slate-500 font-medium">Đang tải dữ liệu kênh...</p>
+        {(loadingInitial || globalHrBusy) && (
+          <div className="flex flex-col items-center justify-center py-24 px-4 min-h-[320px]">
+            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-6" />
+            <p className="text-slate-800 font-semibold text-lg text-center">
+              {longSyncHint || hrSyncing || globalHrBusy
+                ? 'Đang đồng bộ HR & lấy số liệu Apify…'
+                : 'Đang tải danh sách kênh…'}
+            </p>
+            {(longSyncHint || hrSyncing || globalHrBusy) && (
+              <p className="text-slate-500 text-sm mt-3 max-w-md text-center leading-relaxed">
+                Vui lòng đợi — có thể mất vài phút. Không đóng trang cho đến khi số followers / likes
+                hiển thị đầy đủ.
+              </p>
+            )}
           </div>
         )}
 
         {/* Empty State */}
-        {!loadingInitial && channels.length === 0 && (
+        {!loadingInitial && !globalHrBusy && channels.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -335,7 +438,7 @@ export default function FacebookChannelsPage() {
         )}
 
         {/* Channels Grid */}
-        {!loadingInitial && channels.length > 0 && (
+        {!loadingInitial && !globalHrBusy && channels.length > 0 && (
           <>
             {/* Stats Bar */}
             <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4">

@@ -64,7 +64,7 @@ export default function FacebookAnalyticsPage() {
     const [metricsError, setMetricsError] = useState('');
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'all' | 'video' | 'post' | 'insights'>(insightsOnly ? 'insights' : 'all');
+    const [activeTab, setActiveTab] = useState<'all' | 'video' | 'post'>('all');
     const [showAllContent, setShowAllContent] = useState(false);
     const [visibleCount, setVisibleCount] = useState(1000); // Default high to show all initially
 
@@ -418,7 +418,6 @@ export default function FacebookAnalyticsPage() {
     // Insights-only view: auto-run analysis once on enter.
     useEffect(() => {
         if (!insightsOnly) return;
-        setActiveTab('insights');
         const id = (profile?.username || username || '').toString().replace(/^@/, '').trim();
         if (!id) return;
         if (insightsAutoRunRef.current) return;
@@ -706,22 +705,6 @@ export default function FacebookAnalyticsPage() {
                                     <ImageIcon className="w-4 h-4" />
                                     Posts / Ảnh
                                 </button>
-                                <button
-                                    onClick={() => { setActiveTab('insights'); setShowAllContent(false); }}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all relative ${activeTab === 'insights'
-                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                                        }`}
-                                >
-                                    <FileText className="w-4 h-4" />
-                                    Phân tích kênh
-                                    {insightsLoading && (
-                                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse border-2 border-white" title="Đang phân tích..." />
-                                    )}
-                                    {!insightsLoading && hasRealInsights(insights) && (
-                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" title="Đã có kết quả" />
-                                    )}
-                                </button>
                             </div>
 
                             {/* Date Range Picker with Apply Button */}
@@ -939,7 +922,7 @@ export default function FacebookAnalyticsPage() {
                             <PostsAnalytics data={data} loading={loading} />
                         )}
 
-                        {(activeTab === 'insights' || insightsOnly) && (
+                        {insightsOnly && (
                             <div className="space-y-6 animate-in fade-in duration-300 w-full max-w-2xl">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
