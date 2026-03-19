@@ -1,10 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Video, RotateCcw } from 'lucide-react';
+import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Loader2, Video, RotateCcw, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/api-client';
+import toast from 'react-hot-toast';
+import { syncFromLarkAssignmentIfStale } from '@/lib/sync-lark-tracked-channels';
+import {
+    subscribeGlobalHrSync,
+    runGlobalHrSync,
+    isGlobalHrSyncBusy,
+    waitUntilGlobalHrIdle,
+} from '@/lib/global-hr-sync';
+import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
+import {
+    pollTrackedChannelsUntilStats,
+    channelAwaitingStats,
+} from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
@@ -34,19 +47,76 @@ export default function DouyinChannelsPage() {
     const [loading, setLoading] = useState(false);
     const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
     const [searchChannelQuery, setSearchChannelQuery] = useState('');
+    const [hrSyncing, setHrSyncing] = useState(false);
+    const [listLoading, setListLoading] = useState(true);
+    const [longSyncHint, setLongSyncHint] = useState(false);
+    const [globalHrBusy, setGlobalHrBusy] = useState(false);
 
-    // Fetch tracked channels on mount
+    const loadDouyinChannels = async (): Promise<ChannelProfile[]> => {
+        try {
+            const response = await apiClient.get(`/tracked-channels?platform=${platform.toUpperCase()}`);
+            return Array.isArray(response.data) ? response.data : [];
+        } catch {
+            return [];
+        }
+    };
+
     useEffect(() => {
-        fetchTrackedChannels();
+        return subscribeGlobalHrSync((busy) => {
+            setGlobalHrBusy(busy);
+            if (!busy) {
+                loadDouyinChannels().then(setChannels);
+            }
+        });
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setListLoading(true);
+            try {
+                if (isGlobalHrSyncBusy()) {
+                    setLongSyncHint(true);
+                    await waitUntilGlobalHrIdle();
+                    if (cancelled) return;
+                    setChannels(await loadDouyinChannels());
+                    setLongSyncHint(false);
+                    return;
+                }
+                const r = await syncFromLarkAssignmentIfStale();
+                if (cancelled) return;
+                let list = await loadDouyinChannels();
+                if (cancelled) return;
+                setChannels(list);
+                if (
+                    r &&
+                    r.imported > 0 &&
+                    list.length > 0 &&
+                    list.some((c) => channelAwaitingStats(c))
+                ) {
+                    setLongSyncHint(true);
+                    list = await pollTrackedChannelsUntilStats(() => loadDouyinChannels());
+                    if (!cancelled) setChannels(list);
+                    setLongSyncHint(false);
+                }
+                if (!cancelled && r && r.imported > 0) {
+                    toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+                }
+            } catch {
+                /* ignore */
+            } finally {
+                if (!cancelled) setListLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const fetchTrackedChannels = async () => {
         try {
-            const response = await apiClient.get(`/tracked-channels?platform=${platform.toUpperCase()}`);
-
-            if (response.data) {
-                setChannels(response.data);
-            }
+            const list = await loadDouyinChannels();
+            setChannels(list);
         } catch (error: any) {
             if (error.response?.status !== 401) {
                 console.error('Error fetching tracked channels:', error);
@@ -128,18 +198,20 @@ export default function DouyinChannelsPage() {
     const handleRefreshChannel = async (channel: ChannelProfile) => {
         setRefreshingIds(prev => new Set(prev).add(channel.username));
         try {
-            await fetchChannelProfile(channel.username);
+            if (channel.id) {
+                const r = await enrichTrackedChannelApify(channel.id);
+                await fetchTrackedChannels();
+                if (!r.success) toast.error(r.message || 'Không làm mới số liệu (Apify)');
+            } else {
+                await fetchChannelProfile(channel.username);
+            }
+        } catch {
+            toast.error('Làm mới thất bại');
+        } finally {
             setRefreshingIds(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(channel.username);
-                return newSet;
-            });
-        } catch (error) {
-            console.error("Refresh failed", error);
-            setRefreshingIds(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(channel.username);
-                return newSet;
+                const n = new Set(prev);
+                n.delete(channel.username);
+                return n;
             });
         }
     };
@@ -189,13 +261,43 @@ export default function DouyinChannelsPage() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all shadow-lg"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Add Channel
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                disabled={hrSyncing || listLoading || globalHrBusy}
+                                onClick={async () => {
+                                    setHrSyncing(true);
+                                    setLongSyncHint(true);
+                                    try {
+                                        const r = await runGlobalHrSync('DOUYIN', loadDouyinChannels);
+                                        setChannels(await loadDouyinChannels());
+                                        if (r.imported > 0) {
+                                            toast.success(
+                                                `Đồng bộ ${r.imported} kênh (ưu tiên Douyin) — Apify đã cập nhật`,
+                                                { duration: 5000 },
+                                            );
+                                        } else toast.success('Đã kiểm tra — không có kênh mới từ HR');
+                                    } catch (e: any) {
+                                        toast.error(e?.message || 'Đồng bộ HR thất bại');
+                                    } finally {
+                                        setLongSyncHint(false);
+                                        setHrSyncing(false);
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-all shadow-md disabled:opacity-60"
+                                title="Kênh được phân công trên Lark"
+                            >
+                                {hrSyncing ? <Loader className="w-5 h-5 animate-spin" /> : <DownloadCloud className="w-5 h-5" />}
+                                Đồng bộ HR
+                            </button>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all shadow-lg"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Add Channel
+                            </button>
+                        </div>
                     </div>
                     <div className="mt-4">
                         <ChannelsPlatformSwitcher />
@@ -205,6 +307,22 @@ export default function DouyinChannelsPage() {
 
             {/* Content */}
             <div className="container mx-auto px-4 max-w-7xl pt-8">
+                {listLoading || globalHrBusy ? (
+                    <div className="flex flex-col items-center justify-center py-24 px-4 min-h-[320px]">
+                        <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-6" />
+                        <p className="text-slate-800 font-semibold text-lg text-center">
+                            {longSyncHint || hrSyncing || globalHrBusy
+                                ? 'Đang đồng bộ HR & lấy số liệu Apify…'
+                                : 'Đang tải kênh Douyin…'}
+                        </p>
+                        {(longSyncHint || hrSyncing || globalHrBusy) && (
+                            <p className="text-slate-500 text-sm mt-3 max-w-md text-center">
+                                Có thể vài phút — không đóng trang cho đến khi số liệu hiển thị.
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <>
                 <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-slate-100">
                     <div className="flex items-center justify-between">
                         <div>
@@ -307,6 +425,8 @@ export default function DouyinChannelsPage() {
                             </motion.div>
                         ))}
                     </div>
+                )}
+                    </>
                 )}
             </div>
 
