@@ -275,7 +275,14 @@ const UserActivityPageContent = () => {
     );
 
     React.useEffect(() => {
-        fetchReports();
+        fetchReports(true);
+
+        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 30 giây
+        const intervalId = setInterval(() => {
+            fetchReports(false);
+        }, 30000);
+
+        return () => clearInterval(intervalId);
     }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // fetchHistory only re-runs when tab or user changes, NOT on every searchName keystroke.
@@ -304,9 +311,9 @@ const UserActivityPageContent = () => {
         }
     };
 
-    const fetchReports = async () => {
+    const fetchReports = async (showLoading: boolean = true) => {
         if (!user?.email) return;
-        setLoading(true);
+        if (showLoading) setLoading(true);
         try {
             // Build query params for the new API
             const params = new URLSearchParams();
@@ -440,7 +447,7 @@ const UserActivityPageContent = () => {
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
