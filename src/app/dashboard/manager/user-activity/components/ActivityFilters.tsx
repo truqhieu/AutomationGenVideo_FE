@@ -3,6 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '@/store/auth-store';
+import { UserRole } from '@/types/auth';
 
 interface ActivityFiltersProps {
     activeTeam: string;
@@ -63,14 +65,17 @@ const ActivityFilters = ({
     const dropdownRef = useRef<HTMLDivElement>(null);
     const timeFilterRef = useRef<HTMLDivElement>(null);
 
-    const isAdmin = userRole === 'admin';
-    const isLeader = userRole === 'leader';
+    const { user } = useAuthStore();
+    const sysRoles = user?.roles || [];
+    const isAdmin = sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager';
+    const isLeader = sysRoles.includes(UserRole.LEADER) || userRole === 'leader';
+    
     const isRankingTab = activeTab === 'ranking';
     const isPersonalTab = activeTab === 'personal';
     const isPerformanceTab = activeTab === 'performance';
 
-    // Team filter: visible to all roles
-    const canSeeTeamFilter = true;
+    // Team filter: only visible to Admin/Manager roles, NOT member or leader
+    const canSeeTeamFilter = isAdmin;
 
     // Team label: no longer needed since filter is always visible
     const showTeamLabel = false;
