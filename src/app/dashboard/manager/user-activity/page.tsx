@@ -208,7 +208,26 @@ const UserActivityPageContent = () => {
         return () => observer.disconnect();
     }, [reports.length]);
 
-    // Categorize teams dynamically based on teamContributions data
+    // Maintain a persistent list of teams so filtering doesn't clear the dropdowns
+    const [allKnownTeams, setAllKnownTeams] = React.useState<string[]>([]);
+
+    React.useEffect(() => {
+        if (!teamContributions || teamContributions.length === 0) return;
+        setAllKnownTeams(prev => {
+            const next = new Set(prev);
+            let changed = false;
+            teamContributions.forEach(item => {
+                const t = item.team;
+                if (t && t !== 'Khác' && !next.has(t)) {
+                    next.add(t);
+                    changed = true;
+                }
+            });
+            return changed ? Array.from(next) : prev;
+        });
+    }, [teamContributions]);
+
+    // Categorize teams dynamically based on all known teams
     const { globalTeams, vnTeams } = React.useMemo(() => {
         const globals: string[] = [];
         const vns: string[] = [];
@@ -216,10 +235,7 @@ const UserActivityPageContent = () => {
         // Common keywords for Global teams
         const globalKeywords = ['global', 'jp', 'thái lan', 'đài loan', 'indo'];
 
-        teamContributions.forEach(item => {
-            const teamName = item.team || 'Khác';
-            if (teamName === 'Khác') return;
-
+        allKnownTeams.forEach(teamName => {
             const isGlobal = globalKeywords.some(kw => teamName.toLowerCase().includes(kw));
 
             if (isGlobal && !globals.includes(teamName)) {
@@ -233,7 +249,7 @@ const UserActivityPageContent = () => {
             globalTeams: globals.sort(),
             vnTeams: vns.sort()
         };
-    }, [teamContributions]);
+    }, [allKnownTeams]);
 
     const matchTeam = React.useCallback((teamName: string | null | undefined): boolean => {
         if (activeTeam === 'All') return true;
