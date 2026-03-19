@@ -626,7 +626,7 @@ const ChecklistContainer = ({
             )}
 
 
-            {!isReadOnly && showOnlyTraffic && (
+            {!isReadOnly && showOnlyTraffic && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (
                 <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
                     (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
                         ? 'bg-blue-50 border border-blue-200 text-blue-800'
@@ -708,7 +708,7 @@ const ChecklistContainer = ({
                         loading || 
                         isReadOnly ||
                         (!status.is_open && !showOnlyTraffic) ||
-                        (showOnlyTraffic && !isAdmin && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                        (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
                     }
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
