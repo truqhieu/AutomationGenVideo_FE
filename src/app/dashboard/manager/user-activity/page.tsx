@@ -277,10 +277,10 @@ const UserActivityPageContent = () => {
     React.useEffect(() => {
         fetchReports(true);
 
-        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 30 giây
+        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 10 giây
         const intervalId = setInterval(() => {
             fetchReports(false);
-        }, 30000);
+        }, 10000);
 
         return () => clearInterval(intervalId);
     }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
