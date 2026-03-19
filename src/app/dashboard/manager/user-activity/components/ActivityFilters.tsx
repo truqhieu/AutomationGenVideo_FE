@@ -648,20 +648,7 @@ const ActivityFilters = ({
                     </div>
                 )}
 
-                {/* Clear Filters Button - Prominent Style */}
-                {(activeTeam !== 'All' || searchName !== '' || (timeType !== 'today')) && (
-                    <button
-                        onClick={() => {
-                            setActiveTeam('All');
-                            setSearchName('');
-                            handleSelectTimeType('today');
-                        }}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all duration-300 hover:shadow-lg shadow-red-200/50 active:scale-95 group"
-                    >
-                        <X className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
-                        <span className="text-xs font-black uppercase tracking-tight">Tắt lọc</span>
-                    </button>
-                )}
+
 
                 {/* Screenshot Button */}
                 {onCapture && (
