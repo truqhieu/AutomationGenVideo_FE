@@ -626,6 +626,7 @@ const ChecklistContainer = ({
             )}
 
 
+            {/* Tạm ẩn báo cáo khung giờ 
             {!isReadOnly && showOnlyTraffic && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (
                 <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
                     (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
@@ -640,6 +641,7 @@ const ChecklistContainer = ({
                     </p>
                 </div>
             )}
+            */}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
@@ -707,8 +709,9 @@ const ChecklistContainer = ({
                     disabled={
                         loading || 
                         isReadOnly ||
-                        (!status.is_open && !showOnlyTraffic) ||
-                        (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                        (!status.is_open && !showOnlyTraffic) 
+                        // Tạm tắt rule chặn thời gian báo cáo Traffic
+                        // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
                     }
                     className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
