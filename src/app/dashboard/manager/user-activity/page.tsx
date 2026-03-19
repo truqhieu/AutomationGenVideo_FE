@@ -28,7 +28,8 @@ import {
     ShieldCheck,
     Calendar,
     BarChart3,
-    Check
+    Check,
+    Clock
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -174,6 +175,7 @@ const UserActivityPageContent = () => {
     const [showTabMenu, setShowTabMenu] = React.useState(false);
     const [visibleCount, setVisibleCount] = React.useState(CARDS_PER_BATCH);
     const [checklistPage, setChecklistPage] = React.useState(1);
+    const [checklistRoleFilter, setChecklistRoleFilter] = React.useState<'all' | 'member' | 'leader'>('all');
     const CHECKLIST_PAGE_SIZE = 6;
     const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
@@ -573,6 +575,16 @@ const UserActivityPageContent = () => {
         return reportOutstandings.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()));
     }, [reportOutstandings, matchTeam, searchName]);
 
+    const checklistFilteredReports = React.useMemo(() => {
+        return filteredPerformanceReports.filter(r => {
+            if (checklistRoleFilter === 'all') return true;
+            const pos = (r.position || '').toLowerCase();
+            const isReportLeader = pos === 'leader' || pos.includes('leader') || pos.includes('trưởng nhóm');
+            if (checklistRoleFilter === 'leader') return isReportLeader;
+            return !isReportLeader; // 'member'
+        });
+    }, [filteredPerformanceReports, checklistRoleFilter]);
+
     return (
         <div id="report-view-container" className="min-h-screen bg-[#f8fafc] p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
             <div className="relative z-10 space-y-4">
@@ -759,7 +771,9 @@ const UserActivityPageContent = () => {
                                                 <tbody className="divide-y divide-slate-100">
                                                     {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
-                                                        const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa'));
+                                                        const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
+                                                        const isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
+                                                        const isPending = !isApproved && !isRejected;
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-xs uppercase">{r.role || 'Member'}</td>
@@ -777,29 +791,49 @@ const UserActivityPageContent = () => {
                                                                     {r.approved_by || '-'}
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
-                                                                    <div className="flex justify-center">
-                                                                        {(isAdminUser || isLeaderUser) ? (
-                                                                            <button
-                                                                                onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa Duyệt' : 'Đã Duyệt')}
-                                                                                title={isApproved ? "Đã duyệt - Nhấn để hủy" : "Chưa duyệt - Nhấn để duyệt"}
-                                                                                className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
-                                                                                    isApproved 
-                                                                                    ? 'bg-green-50/50 text-green-500 border-green-500/30 hover:bg-green-100 hover:text-green-600 hover:border-green-500' 
-                                                                                    : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-500/50'
-                                                                                }`}
-                                                                            >
-                                                                                {isApproved ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <X className="w-3.5 h-3.5" strokeWidth={2} />}
-                                                                            </button>
+                                                                    <div className="flex justify-center flex-wrap gap-1">
+                                                                        {isAdminUser ? (
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <button
+                                                                                    onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
+                                                                                    title={isApproved ? "Đã duyệt - Nhấn để chuyển về Đang chờ" : "Duyệt báo cáo này"}
+                                                                                    className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
+                                                                                        isApproved 
+                                                                                        ? 'bg-green-500 text-white border-green-500 shadow-md shadow-green-200' 
+                                                                                        : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-green-50 hover:text-green-500 hover:border-green-500/50'
+                                                                                    }`}
+                                                                                >
+                                                                                    <Check className="w-3.5 h-3.5" strokeWidth={isApproved ? 4 : 3} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
+                                                                                    title={isRejected ? "Từ chối - Nhấn để chuyển về Đang chờ" : "Từ chối báo cáo này"}
+                                                                                    className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
+                                                                                        isRejected 
+                                                                                        ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-200' 
+                                                                                        : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-500/50'
+                                                                                    }`}
+                                                                                >
+                                                                                    <X className="w-3.5 h-3.5" strokeWidth={isRejected ? 4 : 3} />
+                                                                                </button>
+                                                                            </div>
                                                                         ) : (
-                                                                            <div
-                                                                                title={isApproved ? "Đã duyệt" : "Chưa duyệt"}
-                                                                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                                                                                    isApproved 
-                                                                                    ? 'bg-green-50/50 text-green-500 border-green-500/30' 
-                                                                                    : 'bg-slate-50 text-slate-300 border-slate-200'
-                                                                                }`}
-                                                                            >
-                                                                                {isApproved ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <X className="w-3.5 h-3.5" strokeWidth={2} />}
+                                                                            <div className="flex items-center justify-center">
+                                                                                {isApproved && (
+                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
+                                                                                        <Check className="w-3 h-3" strokeWidth={3} /> Đã duyệt
+                                                                                    </span>
+                                                                                )}
+                                                                                {isRejected && (
+                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
+                                                                                        <X className="w-3 h-3" strokeWidth={3} /> Từ chối
+                                                                                    </span>
+                                                                                )}
+                                                                                {isPending && (
+                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1 tracking-wider">
+                                                                                        <Clock className="w-3 h-3" strokeWidth={3} /> Đang chờ
+                                                                                    </span>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -820,6 +854,26 @@ const UserActivityPageContent = () => {
                                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
                                         <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
                                     </h3>
+                                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => { setChecklistRoleFilter('all'); setChecklistPage(1); }}
+                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Tất cả
+                                        </button>
+                                        <button
+                                            onClick={() => { setChecklistRoleFilter('leader'); setChecklistPage(1); }}
+                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'leader' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Leader
+                                        </button>
+                                        <button
+                                            onClick={() => { setChecklistRoleFilter('member'); setChecklistPage(1); }}
+                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'member' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Member
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {loading ? (
@@ -832,9 +886,9 @@ const UserActivityPageContent = () => {
                                                 <div className="space-y-2"><div className="h-3 w-full bg-slate-100 rounded" /><div className="h-3 w-3/4 bg-slate-100 rounded" /></div>
                                             </div>
                                         ))
-                                    ) : filteredPerformanceReports.length > 0 ? (
+                                    ) : checklistFilteredReports.length > 0 ? (
                                         <>
-                                            {filteredPerformanceReports.slice((checklistPage - 1) * CHECKLIST_PAGE_SIZE, checklistPage * CHECKLIST_PAGE_SIZE).map((report, idx) => (
+                                            {checklistFilteredReports.slice((checklistPage - 1) * CHECKLIST_PAGE_SIZE, checklistPage * CHECKLIST_PAGE_SIZE).map((report, idx) => (
                                                 <div key={report.id || idx} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                                                     <ReportCard report={report} />
                                                 </div>
@@ -846,7 +900,7 @@ const UserActivityPageContent = () => {
                                 </div>
 
                                 {/* Pagination for Checklist */}
-                                {!loading && filteredPerformanceReports.length > CHECKLIST_PAGE_SIZE && (
+                                {!loading && checklistFilteredReports.length > CHECKLIST_PAGE_SIZE && (
                                     <div className="flex items-center justify-center gap-2 mt-8 pb-4">
                                         <button
                                             onClick={() => setChecklistPage(p => Math.max(1, p - 1))}
@@ -857,11 +911,11 @@ const UserActivityPageContent = () => {
                                         </button>
 
                                         <div className="flex items-center gap-1">
-                                            {Array.from({ length: Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE) }).map((_, i) => {
+                                            {Array.from({ length: Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE) }).map((_, i) => {
                                                 const pageNum = i + 1;
                                                 const isCurrent = pageNum === checklistPage;
                                                 // Only show current, first, last, and neighbors
-                                                const totalPages = Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE);
+                                                const totalPages = Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE);
                                                 if (pageNum === 1 || pageNum === totalPages || (pageNum >= checklistPage - 1 && pageNum <= checklistPage + 1)) {
                                                     return (
                                                         <button
@@ -880,9 +934,9 @@ const UserActivityPageContent = () => {
                                         </div>
 
                                         <button
-                                            onClick={() => setChecklistPage(p => Math.min(Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE), p + 1))}
-                                            disabled={checklistPage === Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE)}
-                                            className={`p-2 rounded-xl border transition-all ${checklistPage === Math.ceil(filteredPerformanceReports.length / CHECKLIST_PAGE_SIZE) ? 'opacity-30 cursor-not-allowed bg-slate-50 text-slate-400 border-slate-100' : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50/50 hover:border-blue-200'}`}
+                                            onClick={() => setChecklistPage(p => Math.min(Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE), p + 1))}
+                                            disabled={checklistPage === Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE)}
+                                            className={`p-2 rounded-xl border transition-all ${checklistPage === Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE) ? 'opacity-30 cursor-not-allowed bg-slate-50 text-slate-400 border-slate-100' : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50/50 hover:border-blue-200'}`}
                                         >
                                             <ChevronRight className="w-5 h-5" />
                                         </button>
