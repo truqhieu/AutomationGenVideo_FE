@@ -27,7 +27,8 @@ import {
     X,
     ShieldCheck,
     Calendar,
-    BarChart3
+    BarChart3,
+    Check
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -275,7 +276,14 @@ const UserActivityPageContent = () => {
     );
 
     React.useEffect(() => {
-        fetchReports();
+        fetchReports(true);
+
+        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 10 giây
+        const intervalId = setInterval(() => {
+            fetchReports(false);
+        }, 10000);
+
+        return () => clearInterval(intervalId);
     }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // fetchHistory only re-runs when tab or user changes, NOT on every searchName keystroke.
@@ -304,9 +312,9 @@ const UserActivityPageContent = () => {
         }
     };
 
-    const fetchReports = async () => {
+    const fetchReports = async (showLoading: boolean = true) => {
         if (!user?.email) return;
-        setLoading(true);
+        if (showLoading) setLoading(true);
         try {
             // Build query params for the new API
             const params = new URLSearchParams();
@@ -440,7 +448,7 @@ const UserActivityPageContent = () => {
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -769,19 +777,32 @@ const UserActivityPageContent = () => {
                                                                     {r.approved_by || '-'}
                                                                 </td>
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 text-center">
-                                                                    {(isAdminUser || isLeaderUser) ? (
-                                                                        <button
-                                                                            onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa Duyệt' : 'Đã Duyệt')}
-                                                                            title="Nhấn để thay đổi trạng thái"
-                                                                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${isApproved ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200'}`}
-                                                                        >
-                                                                            {r.approval_status || 'Chưa duyệt'}
-                                                                        </button>
-                                                                    ) : (
-                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isApproved ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
-                                                                            {r.approval_status || 'Chưa duyệt'}
-                                                                        </span>
-                                                                    )}
+                                                                    <div className="flex justify-center">
+                                                                        {(isAdminUser || isLeaderUser) ? (
+                                                                            <button
+                                                                                onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa Duyệt' : 'Đã Duyệt')}
+                                                                                title={isApproved ? "Đã duyệt - Nhấn để hủy" : "Chưa duyệt - Nhấn để duyệt"}
+                                                                                className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
+                                                                                    isApproved 
+                                                                                    ? 'bg-green-50/50 text-green-500 border-green-500/30 hover:bg-green-100 hover:text-green-600 hover:border-green-500' 
+                                                                                    : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-500/50'
+                                                                                }`}
+                                                                            >
+                                                                                {isApproved ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <X className="w-3.5 h-3.5" strokeWidth={2} />}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <div
+                                                                                title={isApproved ? "Đã duyệt" : "Chưa duyệt"}
+                                                                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                                                                    isApproved 
+                                                                                    ? 'bg-green-50/50 text-green-500 border-green-500/30' 
+                                                                                    : 'bg-slate-50 text-slate-300 border-slate-200'
+                                                                                }`}
+                                                                            >
+                                                                                {isApproved ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <X className="w-3.5 h-3.5" strokeWidth={2} />}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         );
