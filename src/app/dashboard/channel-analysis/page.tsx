@@ -307,10 +307,9 @@ export default function ChannelAnalysisHubPage() {
     setShowInsightsModal(true);
   }, []);
 
-  const runGenericInsights = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runGenericInsights = useCallback(async (targetRow: Row, maxPosts: number, forceRefresh = false) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -323,10 +322,11 @@ export default function ChannelAnalysisHubPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: row.platform.toLowerCase(),
+          platform: targetRow.platform.toLowerCase(),
           username,
-          max_posts: insightsMaxPosts,
+          max_posts: maxPosts,
           language: 'vi',
+          force_refresh: forceRefresh,
         }),
       });
       let json: any = {};
@@ -343,8 +343,8 @@ export default function ChannelAnalysisHubPage() {
 
       try {
         localStorage.setItem(
-          getAnalysisKey(row.platform, username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts: insightsMaxPosts }),
+          getAnalysisKey(targetRow.platform, username),
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts }),
         );
       } catch (_) {}
       setStorageTick((x) => x + 1);
@@ -354,12 +354,11 @@ export default function ChannelAnalysisHubPage() {
     } finally {
       setInsightsLoading(false);
     }
-  }, [fetchAll, insightsMaxPosts, insightsRow]);
+  }, [fetchAll]);
 
-  const runGenericMetrics = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runGenericMetrics = useCallback(async (targetRow: Row, maxPosts: number, forceRefresh = false) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -372,9 +371,10 @@ export default function ChannelAnalysisHubPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: row.platform.toLowerCase(),
+          platform: targetRow.platform.toLowerCase(),
           username,
-          max_posts: Math.max(30, insightsMaxPosts),
+          max_posts: Math.max(30, maxPosts),
+          force_refresh: forceRefresh,
         }),
       });
       let json: any = {};
@@ -392,7 +392,7 @@ export default function ChannelAnalysisHubPage() {
     } finally {
       setMetricsLoading(false);
     }
-  }, [insightsMaxPosts, insightsRow]);
+  }, []);
 
   const openMaxPostsChooser = useCallback((row: Row, mode: 'open' | 'rerun') => {
     setPendingRow(row);
@@ -407,10 +407,9 @@ export default function ChannelAnalysisHubPage() {
     setShowMaxPostsModal(true);
   }, [buildMaxPostsOptions]);
 
-  const runFacebookInsights = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runFacebookInsights = useCallback(async (targetRow: Row, maxPosts: number, forceRefresh = false) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -423,7 +422,7 @@ export default function ChannelAnalysisHubPage() {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, max_posts: insightsMaxPosts, language: 'vi' }),
+        body: JSON.stringify({ url, max_posts: maxPosts, language: 'vi', force_refresh: forceRefresh }),
       });
       let json: any = {};
       try {
@@ -445,7 +444,7 @@ export default function ChannelAnalysisHubPage() {
       try {
         localStorage.setItem(
           getAnalysisKey('FACEBOOK', username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts: insightsMaxPosts })
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts })
         );
       } catch (_) {}
       setStorageTick((x) => x + 1);
@@ -456,12 +455,11 @@ export default function ChannelAnalysisHubPage() {
     } finally {
       setInsightsLoading(false);
     }
-  }, [fetchAll, insightsMaxPosts, insightsRow]);
+  }, [fetchAll]);
 
-  const runFacebookMetrics = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runFacebookMetrics = useCallback(async (targetRow: Row, maxPosts: number, forceRefresh = false) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -474,7 +472,7 @@ export default function ChannelAnalysisHubPage() {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, max_posts: Math.max(30, insightsMaxPosts) }),
+        body: JSON.stringify({ url, max_posts: Math.max(30, maxPosts), force_refresh: forceRefresh }),
       });
       let json: any = {};
       try {
@@ -491,23 +489,27 @@ export default function ChannelAnalysisHubPage() {
     } finally {
       setMetricsLoading(false);
     }
-  }, [insightsMaxPosts, insightsRow]);
+  }, []);
 
-  // Auto-run once when popup opens (Facebook)
-  useEffect(() => {
-    if (!showInsightsModal) return;
-    if (!insightsRow) return;
-    // If already has real insights, don't auto rerun
-    if (hasRealInsights(insights)) return;
-    if (insightsRow.platform === 'FACEBOOK') {
-      runFacebookInsights();
-      runFacebookMetrics();
-    } else {
-      runGenericInsights();
-      runGenericMetrics();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInsightsModal, insightsRow]);
+  // Xóa Auto-run useEffect, để fetch cache / refresh rõ ràng
+  const onView = useCallback((row: Row) => {
+    openFacebookInsightsPopup(row);
+    
+    // get actual stored or default maxPosts to pass locally
+    let max = 30;
+    try {
+      const stored = getStoredMaxPosts(row.platform, row.username);
+      if (stored) max = stored;
+    } catch (_) {}
+    
+    setTimeout(() => {
+      if (row.platform === 'FACEBOOK') {
+        void Promise.all([runFacebookInsights(row, max, false), runFacebookMetrics(row, max, false)]);
+      } else {
+        void Promise.all([runGenericInsights(row, max, false), runGenericMetrics(row, max, false)]);
+      }
+    }, 0);
+  }, [openFacebookInsightsPopup, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
 
   useEffect(() => {
     let alive = true;
@@ -832,7 +834,8 @@ export default function ChannelAnalysisHubPage() {
     try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) {}
 
     // All platforms: open popup flow (no navigation)
-    openMaxPostsChooser(row, 'open');
+    // Nếu status là completed -> rerun. Ngược lại -> open
+    openMaxPostsChooser(row, row.status === 'completed' ? 'rerun' : 'open');
   };
 
   const confirmMaxPostsAndRun = useCallback(() => {
@@ -851,16 +854,15 @@ export default function ChannelAnalysisHubPage() {
     setShowMaxPostsModal(false);
 
     // All platforms: open popup + run analysis (no navigation)
-    if (pendingMode === 'open') {
-      openFacebookInsightsPopup(row);
-    }
+    openFacebookInsightsPopup(row);
 
     // Defer network calls so UI updates instantly (smooth click)
     setTimeout(() => {
+      const isRerun = pendingMode === 'rerun';
       if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(), runFacebookMetrics()]);
+        void Promise.all([runFacebookInsights(row, insightsMaxPosts, isRerun), runFacebookMetrics(row, insightsMaxPosts, isRerun)]);
       } else {
-        void Promise.all([runGenericInsights(), runGenericMetrics()]);
+        void Promise.all([runGenericInsights(row, insightsMaxPosts, isRerun), runGenericMetrics(row, insightsMaxPosts, isRerun)]);
       }
     }, 0);
   }, [insightsMaxPosts, openFacebookInsightsPopup, pendingMode, pendingRow, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
@@ -1085,6 +1087,16 @@ export default function ChannelAnalysisHubPage() {
                             title="Ẩn kênh khỏi danh sách"
                           >
                             <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {r.status === 'completed' && (
+                          <button
+                            onClick={() => onView(r)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-all"
+                            title="Xem lại lịch sử phân tích"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Xem
                           </button>
                         )}
                         <button
