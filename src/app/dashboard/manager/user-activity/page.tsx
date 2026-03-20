@@ -793,6 +793,10 @@ const UserActivityPageContent = () => {
                                                             }
                                                         }
 
+                                                        if (!isAdminUser && isRejected) {
+                                                            return null;
+                                                        }
+
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-xs uppercase">{r.role || 'Member'}</td>
