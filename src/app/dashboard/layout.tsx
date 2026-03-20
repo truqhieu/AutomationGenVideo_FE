@@ -109,7 +109,7 @@ export default function DashboardLayout({
             <div className="flex-1 flex items-center">
               <div id="navbar-portal-root" className="w-full"></div>
             </div>
-            <div className="flex items-center gap-4 ml-4">
+            <div className="flex items-center gap-8 ml-8">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 leading-tight">{user.full_name}</p>
                 <p className="text-[11px] font-bold text-blue-600 uppercase tracking-tighter">{user.roles?.join(' • ')}</p>

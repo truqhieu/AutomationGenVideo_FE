@@ -331,10 +331,10 @@ const ActivityFilters = ({
     };
 
     return (
-        <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 ${isNavbar ? 'py-1 px-1' : 'py-2 px-2'}`}>
+        <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-12 ${isNavbar ? 'py-1 px-1' : 'py-2 px-2'}`}>
             {canSeeTeamFilter && (
-                <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-1">
+                <div className="flex flex-wrap items-center gap-4" ref={dropdownRef}>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-4">
                         <Layers className="w-5 h-5 text-blue-500" />
                         <span className="text-[14px] font-black text-slate-950 uppercase tracking-widest">
                             Nhóm Team
@@ -479,7 +479,7 @@ const ActivityFilters = ({
                 </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto lg:ml-auto" ref={timeFilterRef}>
+            <div className="flex flex-wrap items-center gap-4 self-end lg:self-auto lg:ml-auto" ref={timeFilterRef}>
                 {/* Unified Time Filter */}
                 <div className="relative group/time">
                     <button
