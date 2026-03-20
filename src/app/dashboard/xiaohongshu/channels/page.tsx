@@ -93,9 +93,9 @@ export default function XiaohongshuChannelsPage() {
                 if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
                     let tries = 0;
                     const bgRefresh = async () => {
-                        if (cancelled || tries >= 5) return;
+                        if (cancelled || tries >= 30) return;
                         tries++;
-                        await new Promise((res) => setTimeout(res, 8000));
+                        await new Promise((res) => setTimeout(res, 15000));
                         if (cancelled) return;
                         const updated = await loadXhsChannels();
                         if (!cancelled) setChannels(updated);
@@ -417,22 +417,30 @@ export default function XiaohongshuChannelsPage() {
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 mb-5">
-                                    <div className="bg-slate-50 rounded-lg p-3">
-                                        <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Followers</span>
-                                        <p className="text-lg font-bold text-slate-900">{formatNumber(channel.total_followers || 0)}</p>
-                                    </div>
-                                    <div className="bg-slate-50 rounded-lg p-3">
-                                        <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Likes</span>
-                                        <p className="text-lg font-bold text-slate-900">{formatNumber(Number(channel.total_likes) || 0)}</p>
-                                    </div>
-                                    <div className="bg-slate-50 rounded-lg p-3">
-                                        <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Notes</span>
-                                        <p className="text-lg font-bold text-slate-900">{channel.total_videos || 0}</p>
-                                    </div>
-                                    <div className="bg-slate-50 rounded-lg p-3">
-                                        <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Engagement</span>
-                                        <p className="text-lg font-bold text-slate-900">{channel.engagement_rate?.toFixed(2) || '0.00'}%</p>
+                                <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-5">
+                                    {channelAwaitingStats(channel) && (
+                                        <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
+                                            <Loader2 className="w-7 h-7 text-red-500 animate-spin mb-2" />
+                                            <span className="text-[10px] font-bold text-red-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-red-200">AI đang quét số liệu...</span>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Followers</span>
+                                            <p className="text-lg font-bold text-slate-900">{formatNumber(channel.total_followers || 0)}</p>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Likes</span>
+                                            <p className="text-lg font-bold text-slate-900">{formatNumber(Number(channel.total_likes) || 0)}</p>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Notes</span>
+                                            <p className="text-lg font-bold text-slate-900">{channel.total_videos || 0}</p>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <span className="block text-xs font-medium text-slate-400 uppercase mb-1">Engagement</span>
+                                            <p className="text-lg font-bold text-slate-900">{channel.engagement_rate?.toFixed(2) || '0.00'}%</p>
+                                        </div>
                                     </div>
                                 </div>
 

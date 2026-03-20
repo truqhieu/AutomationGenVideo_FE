@@ -96,9 +96,9 @@ export default function FacebookChannelsPage() {
         if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
           let tries = 0;
           const bgRefresh = async () => {
-            if (cancelled || tries >= 5) return;
+            if (cancelled || tries >= 30) return;
             tries++;
-            await new Promise((res) => setTimeout(res, 8000));
+            await new Promise((res) => setTimeout(res, 15000));
             if (cancelled) return;
             const updated = await loadFacebookChannels();
             if (!cancelled) setChannels(updated);
@@ -508,13 +508,22 @@ export default function FacebookChannelsPage() {
                     </div>
                   </div>
 
-                  {/* Stats Grid - Show Followers only */}
-                  <div className="grid grid-cols-1 gap-3 mb-6 mt-auto">
-                    <div className="bg-blue-50 rounded-2xl p-3 border border-blue-100 flex flex-col items-center justify-center text-center">
-                      <span className="text-xs text-blue-500 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
-                      <span className="text-blue-900 font-black text-lg">
-                        {formatNumber(channel.total_followers || 0)}
-                      </span>
+                  {/* Stats Wrapper */}
+                  <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-4">
+                    {channelAwaitingStats(channel) && (
+                      <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
+                        <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
+                        <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-100">AI đang quét số liệu...</span>
+                      </div>
+                    )}
+                    {/* Stats Grid - Show Followers only */}
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="bg-blue-50 rounded-2xl p-3 border border-blue-100 flex flex-col items-center justify-center text-center">
+                        <span className="text-xs text-blue-500 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
+                        <span className="text-blue-900 font-black text-lg">
+                          {formatNumber(channel.total_followers || 0)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
