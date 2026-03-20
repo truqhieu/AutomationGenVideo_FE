@@ -36,9 +36,18 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
     const currentMonth = viewDate.getMonth();
     const currentYear = viewDate.getFullYear();
 
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
+
     const changeMonth = (offset: number) => {
         const newDate = new Date(viewDate);
         newDate.setMonth(newDate.getMonth() + offset);
+        // Không cho navigate sang tháng tương lai
+        if (newDate.getFullYear() > todayYear || (newDate.getFullYear() === todayYear && newDate.getMonth() > todayMonth)) {
+            return;
+        }
         setViewDate(newDate);
     };
 
@@ -58,7 +67,15 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
         return date.getDate() === day && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     };
 
+    const isFutureDay = (day: number) => {
+        if (currentYear > todayYear) return true;
+        if (currentYear === todayYear && currentMonth > todayMonth) return true;
+        if (currentYear === todayYear && currentMonth === todayMonth && day > todayDay) return true;
+        return false;
+    };
+
     const handleDateSelect = (day: number) => {
+        if (isFutureDay(day)) return; // Block future dates
         const year = currentYear;
         const month = String(currentMonth + 1).padStart(2, '0');
         const d = String(day).padStart(2, '0');
@@ -102,7 +119,7 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
                             <div className="text-sm font-black text-white uppercase tracking-widest leading-none">
                                 Tháng {currentMonth + 1} Năm {currentYear}
                             </div>
-                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors">
+                            <button onClick={() => changeMonth(1)} disabled={currentYear === todayYear && currentMonth === todayMonth} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <ChevronRight className="w-5 h-5" />
                             </button>
                         </div>
@@ -119,13 +136,16 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
                                     {day ? (
                                         <button
                                             type="button"
+                                            disabled={isFutureDay(day)}
                                             onClick={() => handleDateSelect(day)}
                                             className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-xl transition-all
-                                                ${isSelected(day)
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                                                    : isToday(day)
-                                                        ? 'bg-slate-800 text-blue-400 ring-1 ring-blue-500/30'
-                                                        : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                                                ${isFutureDay(day)
+                                                    ? 'text-slate-700 cursor-not-allowed'
+                                                    : isSelected(day)
+                                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                                        : isToday(day)
+                                                            ? 'bg-slate-800 text-blue-400 ring-1 ring-blue-500/30'
+                                                            : 'hover:bg-slate-800 text-slate-400 hover:text-white'
                                                 }`}
                                         >
                                             {day}
