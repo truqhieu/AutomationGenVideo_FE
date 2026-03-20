@@ -33,7 +33,7 @@ const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps)
                     I. TIẾN ĐỘ CHECKLIST
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 pt-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 pt-4">
                 {CHECKLIST_ITEMS.map((item, index) => (
                     <div key={index} className={`flex items-start gap-3 group ${readOnly ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}>
                         <Checkbox

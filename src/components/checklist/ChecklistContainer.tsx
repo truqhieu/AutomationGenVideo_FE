@@ -643,7 +643,7 @@ const ChecklistContainer = ({
             )}
             */}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            <div className="grid grid-cols-1 gap-8 items-stretch">
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
