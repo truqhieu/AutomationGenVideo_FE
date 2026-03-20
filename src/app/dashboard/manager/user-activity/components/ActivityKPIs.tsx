@@ -83,7 +83,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 min-h-[3.5rem] flex-wrap xl:flex-nowrap">
+                        <div className="flex items-center justify-between gap-2 min-h-[4rem] flex-wrap xl:flex-nowrap">
                             {/* Left: Progress/Value Cluster */}
                             <div className="flex items-center gap-3">
                                 {kpi.groupKey !== 'channels' && (
@@ -118,7 +118,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 )}
 
                                 <div className="flex flex-col justify-center">
-                                    <div className="text-2xl font-black text-slate-900 leading-none mb-1 tracking-tighter truncate drop-shadow-sm">
+                                    <div className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 leading-none mb-1 tracking-tighter drop-shadow-sm whitespace-nowrap">
                                         {kpi.value}
                                     </div>
                                     <div className={`text-[10px] font-black uppercase flex items-center gap-1 ${kpi.groupKey === 'channels' ? 'invisible h-0' : 'text-blue-600/70'}`}>
@@ -133,9 +133,9 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 {/* Global Stats */}
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-baseline gap-1 leading-none mb-1">
-                                        <span className="text-base sm:text-lg font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
+                                        <span className="text-sm sm:text-base font-black text-slate-800">{formatNumber(groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] || 0)}</span>
                                         {kpi.groupKey !== 'channels' && (
-                                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-500">
+                                            <span className="text-[9px] sm:text-[10px] font-bold text-amber-500">
                                                 {groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] || 0}%
                                             </span>
                                         )}
@@ -152,11 +152,11 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-baseline gap-1 leading-none mb-1">
                                         {kpi.groupKey !== 'channels' && (
-                                            <span className="text-[11px] font-bold text-blue-600">
+                                            <span className="text-[9px] sm:text-[10px] font-bold text-blue-600">
                                                 {groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] || 0}%
                                             </span>
                                         )}
-                                        <span className="text-base sm:text-lg font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
+                                        <span className="text-sm sm:text-base font-black text-slate-800">{formatNumber(groupContributions?.vn?.[kpi.groupKey as keyof typeof groupContributions.vn] || 0)}</span>
                                     </div>
                                     <div className="text-[10px] font-black text-blue-600/70 uppercase flex items-center gap-1">
                                         VN <img src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" />
