@@ -99,13 +99,13 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     <span className="absolute text-[9px] font-black text-slate-900">{kpi.percentage}%</span>
                                 </div>
                             )}
-                            <div className="flex flex-col justify-center min-w-0">
-                                <div className="text-xl font-black text-slate-900 leading-none mb-1 tracking-tighter truncate">
+                            <div className="flex flex-col justify-center">
+                                <div className="text-[17px] sm:text-[19px] lg:text-[21px] font-black text-slate-900 leading-none mb-1 tracking-tighter whitespace-nowrap">
                                     {kpi.value}
                                 </div>
                                 <div className={`text-[10px] font-bold flex items-center gap-1 ${kpi.groupKey === 'channels' ? 'invisible' : 'text-blue-600/70'}`}>
                                     <span className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0"></span>
-                                    MT: <span className="text-blue-700 truncate">{kpi.total}</span>
+                                    MT: <span className="text-blue-700">{kpi.total}</span>
                                 </div>
                             </div>
                         </div>
