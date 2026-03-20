@@ -1,6 +1,7 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ActivityKPIs from './components/ActivityKPIs';
 import DashboardAnalytics from './components/DashboardAnalytics';
 import ActivityFilters from './components/ActivityFilters';
@@ -594,7 +595,7 @@ const UserActivityPageContent = () => {
         <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
             <div className="relative z-10 space-y-2">
                 {activeTab !== 'daily_report' && (
-                    <div className="relative z-30 bg-white/80 backdrop-blur-xl p-3 rounded-[2rem] border-2 border-blue-100 shadow-2xl shadow-blue-500/10">
+                    <FilterPortal>
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}
@@ -612,8 +613,9 @@ const UserActivityPageContent = () => {
                             timeType={timeType}
                             setTimeType={setTimeType}
                             onCapture={handleCaptureFullPage}
+                            isNavbar={true}
                         />
-                    </div>
+                    </FilterPortal>
                 )}
 
                 {/* KPI Cards section */}
@@ -1185,6 +1187,23 @@ const UserActivityPageContent = () => {
             </div>
         </div>
     );
+};
+
+const FilterPortal = ({ children }: { children: React.ReactNode }) => {
+    const [mounted, setMounted] = useState(false);
+    const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+    useEffect(() => {
+        const root = document.getElementById('navbar-portal-root');
+        if (root) {
+            setPortalRoot(root);
+            setMounted(true);
+        }
+    }, []);
+
+    if (!mounted || !portalRoot) return null;
+
+    return createPortal(children, portalRoot);
 };
 
 const UserActivityPage = () => {

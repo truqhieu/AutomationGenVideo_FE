@@ -16,13 +16,14 @@ interface ActivityFiltersProps {
     userRole?: string | null;
     userTeam?: string | null;
     activeTab?: string;
-    globalTeams?: string[]; // New
-    vnTeams?: string[];     // New
+    globalTeams?: string[]; 
+    vnTeams?: string[];     
     dateRange: { start: Date; end: Date };
     setDateRange: (range: { start: Date; end: Date }) => void;
     timeType: string;
     setTimeType: (type: string) => void;
     onCapture?: () => void;
+    isNavbar?: boolean;
 }
 
 const ActivityFilters = ({
@@ -41,7 +42,8 @@ const ActivityFilters = ({
     setDateRange,
     timeType,
     setTimeType,
-    onCapture
+    onCapture,
+    isNavbar = false
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -329,7 +331,7 @@ const ActivityFilters = ({
     };
 
     return (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 py-2 px-2">
+        <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 ${isNavbar ? 'py-1 px-1' : 'py-2 px-2'}`}>
             {canSeeTeamFilter && (
                 <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-1">
@@ -385,7 +387,7 @@ const ActivityFilters = ({
                                         </span>
                                         {activeTeam === 'All Global' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
-                                    {globalTeams.map((team) => (
+                                    {globalTeams.map((team: string) => (
                                         <button
                                             key={team}
                                             onClick={() => handleSelectTeam(team)}
@@ -451,7 +453,7 @@ const ActivityFilters = ({
                                         </span>
                                         {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
-                                    {vnTeams.map((team) => (
+                                    {vnTeams.map((team: string) => (
                                         <button
                                             key={team}
                                             onClick={() => handleSelectTeam(team)}
