@@ -586,8 +586,8 @@ const UserActivityPageContent = () => {
     }, [filteredPerformanceReports, checklistRoleFilter]);
 
     return (
-        <div id="report-view-container" className="min-h-screen bg-[#f8fafc] p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
-            <div className="relative z-10 space-y-4">
+        <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
+            <div className="relative z-10 space-y-2">
                 {activeTab !== 'daily_report' && (
                     <div className="relative z-30 bg-blue-50/50 backdrop-blur-md p-3 rounded-[2rem] border border-blue-100/50 shadow-xl shadow-blue-500/5">
                         <ActivityFilters

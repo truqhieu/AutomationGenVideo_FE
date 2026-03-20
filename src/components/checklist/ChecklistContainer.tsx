@@ -601,9 +601,9 @@ const ChecklistContainer = ({
     };
 
     return (
-        <div className="max-w-[1400px] mx-auto space-y-8 pb-20">
+        <div className="max-w-[1400px] mx-auto space-y-3 pb-6">
             {/* Header with Date Picker */}
-            <div className="relative z-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-blue-50/40 backdrop-blur-xl p-6 rounded-[2.5rem] border border-blue-100/30 shadow-xl shadow-blue-100/20">
+            <div className="relative z-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-blue-50/80 backdrop-blur-xl p-3 rounded-2xl border border-blue-100/30 shadow-lg shadow-blue-100/10">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-400/30">
                         <Calendar className="w-6 h-6 text-white" />
@@ -643,10 +643,10 @@ const ChecklistContainer = ({
             )}
             */}
 
-            <div className="grid grid-cols-1 gap-8 items-stretch">
+            <div className="grid grid-cols-1 gap-4 items-stretch">
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
-                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-pink-100/50">
+                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-inner border border-slate-200/50">
                         <ChecklistSection 
                             values={checks} 
                             onChange={handleCheckChange} 
@@ -658,7 +658,7 @@ const ChecklistContainer = ({
 
                 {/* Show Detail Section for Member/Staff - Hide if only traffic */}
                 {showForm12 && !showOnlyTraffic && (
-                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
+                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-inner border border-slate-200/50">
                         <DetailSection 
                             values={details} 
                             onChange={handleDetailChange} 
@@ -669,7 +669,7 @@ const ChecklistContainer = ({
 
                 {/* Leader Section - Show for Leader mode - Hide if only traffic */}
                 {showForm3 && !showOnlyTraffic && (
-                    <div className="bg-white rounded-3xl p-4 shadow-sm border border-blue-100/50">
+                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-inner border border-slate-200/50">
                         <LeaderEvaluationSection 
                             values={leaderAnswers} 
                             onChange={handleLeaderAnswerChange} 
