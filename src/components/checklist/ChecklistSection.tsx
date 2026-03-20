@@ -28,7 +28,7 @@ const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps)
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
-                <CardTitle className="text-blue-600 flex items-center gap-2 text-lg uppercase font-bold">
+                <CardTitle className="text-blue-700 flex items-center gap-2 text-xl uppercase font-black tracking-tight">
                     <ClipboardCheck className="w-5 h-5" />
                     I. TIẾN ĐỘ CHECKLIST
                 </CardTitle>
@@ -45,7 +45,7 @@ const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps)
                         />
                         <label
                             htmlFor={`check-${index}`}
-                            className={`text-gray-700 font-medium leading-relaxed transition-colors ${readOnly ? 'cursor-not-allowed' : 'group-hover:text-blue-600 cursor-pointer'}`}
+                            className={`text-slate-900 font-bold text-sm leading-tight transition-colors ${readOnly ? 'cursor-not-allowed' : 'group-hover:text-blue-600 cursor-pointer'}`}
                         >
                             {item}
                         </label>

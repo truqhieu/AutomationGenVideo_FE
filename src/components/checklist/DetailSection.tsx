@@ -37,7 +37,7 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                     return (
                         <div key={index} className={`space-y-3 ${readOnly ? 'opacity-80 pointer-events-none' : ''}`}>
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-tight sm:w-2/3 leading-relaxed">
+                                <label className="text-sm font-black text-slate-900 uppercase tracking-tight sm:w-2/3 leading-relaxed">
                                     {item.question}
                                 </label>
 
@@ -82,7 +82,7 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                                             placeholder={item.placeholder}
                                             disabled={readOnly}
                                             readOnly={readOnly}
-                                            className={`min-h-[45px] py-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                            className={`min-h-[45px] py-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-base font-medium text-slate-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                         />
                                     )}
                                 </div>
