@@ -770,11 +770,13 @@ const UserActivityPageContent = () => {
                                                         <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Nội dung
                                                         </th>
+                                                        {isAdminUser && (
+                                                            <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                                Người duyệt
+                                                            </th>
+                                                        )}
                                                         <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
-                                                            Người duyệt
-                                                        </th>
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
-                                                            Thao tác
+                                                            {isAdminUser ? 'Thao tác' : 'Trạng thái'}
                                                         </th>
                                                     </tr>
                                                 </thead>
@@ -832,12 +834,14 @@ const UserActivityPageContent = () => {
                                                                         {r.content || 'Không có nội dung'}
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-4 py-3 border-r border-slate-50 text-center">
-                                                                    <div className="flex flex-col items-center gap-1">
-                                                                        <span className="text-xs font-bold text-slate-700">{r.approved_by || '-'}</span>
-                                                                        {r.approved_by && <span className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Approved by</span>}
-                                                                    </div>
-                                                                </td>
+                                                                {isAdminUser && (
+                                                                    <td className="px-4 py-3 border-r border-slate-50 text-center">
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <span className="text-xs font-bold text-slate-700">{r.approved_by || '-'}</span>
+                                                                            {r.approved_by && <span className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Approved by</span>}
+                                                                        </div>
+                                                                    </td>
+                                                                )}
                                                                 <td className="px-4 py-3 text-center">
                                                                     <div className="flex justify-center flex-wrap gap-2">
                                                                         {isAdminUser ? (
