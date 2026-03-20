@@ -29,7 +29,9 @@ import {
     Calendar,
     BarChart3,
     Check,
-    Clock
+    Clock,
+    AlertCircle,
+    CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useSearchParams } from 'next/navigation';
@@ -91,7 +93,7 @@ const UserActivityPageContent = () => {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = React.useState<'dashboard' | 'performance' | 'ranking' | 'personal' | 'daily_checklist' | 'daily_report'>('performance');
+    const [activeTab, setActiveTab] = React.useState<'dashboard' | 'performance' | 'ranking' | 'personal' | 'daily_checklist' | 'daily_report' | 'daily_outstanding'>('performance');
     const [reportType, setReportType] = React.useState<'select' | 'daily' | 'monthly'>('select');
     const [dailySubtype, setDailySubtype] = React.useState<'select' | 'traffic' | 'work'>('select');
     const [reportMode, setReportMode] = React.useState<'select' | 'member' | 'leader'>('select');
@@ -135,7 +137,9 @@ const UserActivityPageContent = () => {
                         'activity_ranking': 'ranking',
                         'activity_personal': 'personal',
                         'activity_checklist': 'daily_checklist',
-                        'activity_report': 'daily_report'
+                        'activity_report': 'daily_report',
+                        'activity_outstanding': 'daily_outstanding',
+                        'daily_outstanding': 'daily_outstanding'
                     };
 
                     // Priority 1: Use tab from URL if valid
@@ -523,7 +527,8 @@ const UserActivityPageContent = () => {
         { id: 'ranking', label: 'Bảng xếp hạng', icon: Layout },
         { id: 'personal', label: 'Tiến độ', icon: User },
         { id: 'daily_report', label: 'Báo cáo', icon: FileText },
-        { id: 'daily_checklist', label: 'Checklist', icon: ClipboardList }
+        { id: 'daily_outstanding', label: 'Vấn đề & Win', icon: ClipboardList },
+        { id: 'daily_checklist', label: 'Checklist', icon: CheckSquare }
     ], []);
 
     const visibleTabs = React.useMemo(() => {
@@ -586,10 +591,10 @@ const UserActivityPageContent = () => {
     }, [filteredPerformanceReports, checklistRoleFilter]);
 
     return (
-        <div id="report-view-container" className="min-h-screen bg-[#f8fafc] p-2 sm:p-4 space-y-4 selection:bg-blue-500/30">
-            <div className="relative z-10 space-y-4">
+        <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
+            <div className="relative z-10 space-y-2">
                 {activeTab !== 'daily_report' && (
-                    <div className="relative z-30 bg-blue-50/50 backdrop-blur-md p-3 rounded-[2rem] border border-blue-100/50 shadow-xl shadow-blue-500/5">
+                    <div className="relative z-30 bg-white/80 backdrop-blur-xl p-3 rounded-[2rem] border-2 border-blue-100 shadow-2xl shadow-blue-500/10">
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}
@@ -612,7 +617,7 @@ const UserActivityPageContent = () => {
                 )}
 
                 {/* KPI Cards section */}
-                {activeTab !== 'personal' && activeTab !== 'daily_report' && activeTab !== 'daily_checklist' && (
+                {activeTab !== 'personal' && activeTab !== 'daily_report' && activeTab !== 'daily_checklist' && activeTab !== 'daily_outstanding' && (
                     <div className="relative z-10 transition-all duration-500 space-y-2">
                         {kpiMeta && kpiMeta.kpiTotalInDb === 0 && (
                             <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
@@ -726,130 +731,168 @@ const UserActivityPageContent = () => {
                                 currentUserName={user?.full_name}
                                 currentUserEmail={user?.email}
                             />
-
                         </div>
-                    ) : activeTab === 'daily_checklist' ? (
-                        <div className="space-y-3">
+                    ) : activeTab === 'daily_outstanding' ? (
+                        <div className="space-y-4 w-full max-w-[2420px] px-3 pb-6 mx-auto">
                             {/* Stats Summary & Table - Only show if data exists */}
-                            {filteredChecklistReports.length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between px-4">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                                <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
-                                                Vấn đề nổi bật & Video Win
-                                            </h3>
+                            {filteredChecklistReports.length > 0 ? (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between px-8 mt-2">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-400/20">
+                                                <ClipboardList className="w-7 h-7 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                                                    Vấn đề nổi bật & Video Win
+                                                </h3>
+                                                <p className="text-base text-slate-500 font-bold italic">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Outstanding Items Table */}
-                                    <div className="bg-white rounded-[1rem] border border-slate-200 shadow-lg overflow-x-auto">
-                                        <div className="max-h-[280px] overflow-y-auto scrollbar-thin min-w-[1000px]">
+                                    <div className="bg-white rounded-[2.5rem] border-2 border-slate-200 shadow-2xl shadow-blue-500/5 overflow-hidden">
+                                        <div className="max-h-[800px] overflow-y-auto scrollbar-thin">
                                             <table className="w-full border-collapse text-left">
-                                                <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 shadow-md">
+                                                <thead className="sticky top-0 z-20 bg-gradient-to-r from-blue-700 to-indigo-800 shadow-lg">
                                                     <tr>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             Chức danh
                                                         </th>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
                                                             Nhân viên
                                                         </th>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             Phân loại
                                                         </th>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60">
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
                                                             Nội dung
                                                         </th>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                            Người duyệt
-                                                        </th>
-                                                        <th className="px-3 py-2 text-xs font-black uppercase border-b border-orange-200/70 text-orange-700 tracking-widest bg-orange-50/60 text-center">
-                                                            Duyệt
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                            {isAdminUser ? 'Thao tác' : 'Trạng thái'}
                                                         </th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-100">
+                                                <tbody className="divide-y divide-slate-100 bg-white">
                                                     {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
-                                                        const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
-                                                        const isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
-                                                        const isPending = !isApproved && !isRejected;
-                                                        return (
-                                                            <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-xs uppercase">{r.role || 'Member'}</td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50">
-                                                                    <div className="font-bold text-slate-700 text-xs">{r.name}</div>
-                                                                    <div className="text-[10px] text-blue-500 font-black italic">{r.team} - {r.date}</div>
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 font-black text-amber-600 text-xs uppercase">{r.category || '-'}</td>
-                                                                <td className="px-3 py-1 border-r border-slate-50 cursor-pointer group hover:bg-slate-50/50 transition-colors">
-                                                                    <div className="text-xs text-slate-700 font-medium leading-relaxed max-w-[350px] whitespace-normal line-clamp-2 group-hover:line-clamp-none py-1.5 px-2 rounded-lg group-hover:bg-white group-hover:shadow-sm border border-transparent group-hover:border-slate-100 transition-all duration-300">
-                                                                        {r.content || 'Không có nội dung'}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-center text-xs font-bold text-slate-500 italic">
-                                                                    {r.approved_by || '-'}
-                                                                </td>
-                                                                <td className="px-3 py-1.5 border-r border-slate-50 text-center">
-                                                                    <div className="flex justify-center flex-wrap gap-1">
-                                                                        {isAdminUser ? (
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <button
-                                                                                    onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
-                                                                                    title={isApproved ? "Đã duyệt - Nhấn để chuyển về Đang chờ" : "Duyệt báo cáo này"}
-                                                                                    className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
-                                                                                        isApproved 
-                                                                                        ? 'bg-green-500 text-white border-green-500 shadow-md shadow-green-200' 
-                                                                                        : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-green-50 hover:text-green-500 hover:border-green-500/50'
-                                                                                    }`}
-                                                                                >
-                                                                                    <Check className="w-3.5 h-3.5" strokeWidth={isApproved ? 4 : 3} />
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
-                                                                                    title={isRejected ? "Từ chối - Nhấn để chuyển về Đang chờ" : "Từ chối báo cáo này"}
-                                                                                    className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
-                                                                                        isRejected 
-                                                                                        ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-200' 
-                                                                                        : 'bg-slate-50 text-slate-300 border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-500/50'
-                                                                                    }`}
-                                                                                >
-                                                                                    <X className="w-3.5 h-3.5" strokeWidth={isRejected ? 4 : 3} />
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="flex items-center justify-center">
-                                                                                {isApproved && (
-                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-green-100 text-green-700 border border-green-200 flex items-center gap-1">
-                                                                                        <Check className="w-3 h-3" strokeWidth={3} /> Đã duyệt
-                                                                                    </span>
-                                                                                )}
-                                                                                {isRejected && (
-                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
-                                                                                        <X className="w-3 h-3" strokeWidth={3} /> Từ chối
-                                                                                    </span>
-                                                                                )}
-                                                                                {isPending && (
-                                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1 tracking-wider">
-                                                                                        <Clock className="w-3 h-3" strokeWidth={3} /> Đang chờ
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                                                        let isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
+                                                        let isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
+                                                        let isPending = !isApproved && !isRejected;
 
+                                                        if (isPending && r.date) {
+                                                            let rDateObj = new Date(r.date);
+                                                            if (r.date.includes('/')) {
+                                                                  const parts = r.date.split('/');
+                                                                  if (parts.length === 3) {
+                                                                      rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                                                                  }
+                                                              }
+                                                              if (!isNaN(rDateObj.getTime())) {
+                                                                  const msDiff = new Date().getTime() - rDateObj.getTime();
+                                                                  if (msDiff > 2592000000) {
+                                                                      isPending = false;
+                                                                      isRejected = true;
+                                                                  }
+                                                              }
+                                                          }
+
+                                                          if (!isAdminUser && isRejected) return null;
+
+                                                          return (
+                                                              <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
+                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
+                                                                      <span className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-black uppercase tracking-widest shadow-sm">
+                                                                          {r.role || 'Member'}
+                                                                      </span>
+                                                                  </td>
+                                                                  <td className="px-8 py-3 border-r border-slate-50">
+                                                                      <div className="font-black text-slate-900 text-[18px] mb-1">{r.name}</div>
+                                                                      <div className="flex items-center gap-2 text-[12px] text-blue-700 font-bold">
+                                                                          <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
+                                                                          <span className="text-slate-400 font-medium italic">{r.date}</span>
+                                                                      </div>
+                                                                  </td>
+                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
+                                                                      <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${
+                                                                          r.category?.toLowerCase().includes('win') 
+                                                                          ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100' 
+                                                                          : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
+                                                                      }`}>
+                                                                          {r.category || '-'}
+                                                                      </span>
+                                                                  </td>
+                                                                  <td className="px-8 py-3 border-r border-slate-50">
+                                                                      <div className="text-[17px] text-slate-900 font-bold leading-relaxed max-w-[800px]">
+                                                                          {r.content || 'Không có nội dung'}
+                                                                      </div>
+                                                                  </td>
+                                                                  <td className="px-6 py-3.5 text-center">
+                                                                      <div className="flex justify-center flex-wrap gap-3">
+                                                                          {isAdminUser ? (
+                                                                              <div className="flex items-center gap-3">
+                                                                                  {(isPending || isApproved) && (
+                                                                                      <button
+                                                                                          onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
+                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-emerald-600 text-white shadow-emerald-200/50`}
+                                                                                      >
+                                                                                          <Check className="w-4 h-4" strokeWidth={4} />
+                                                                                          {isApproved ? 'Đã duyệt' : 'Duyệt'}
+                                                                                      </button>
+                                                                                  )}
+                                                                                  {(isPending || isRejected) && (
+                                                                                      <button
+                                                                                          onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
+                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-red-600 text-white shadow-red-200/50`}
+                                                                                      >
+                                                                                          <X className="w-4 h-4" strokeWidth={4} />
+                                                                                          {isRejected ? 'Đã từ chối' : 'Từ chối'}
+                                                                                      </button>
+                                                                                  )}
+                                                                              </div>
+                                                                          ) : (
+                                                                              <div className="flex items-center justify-center">
+                                                                                  {isApproved && (
+                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-2">
+                                                                                          <CheckCircle2 className="w-4 h-4" /> Đã duyệt
+                                                                                      </span>
+                                                                                  )}
+                                                                                  {isRejected && (
+                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-2">
+                                                                                          <AlertCircle className="w-4 h-4" /> Từ chối
+                                                                                      </span>
+                                                                                  )}
+                                                                                  {isPending && (
+                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-2 tracking-wider">
+                                                                                          <Clock className="w-4 h-4" /> Đang xem xét
+                                                                                      </span>
+                                                                                  )}
+                                                                              </div>
+                                                                          )}
+                                                                      </div>
+                                                                  </td>
+                                                              </tr>
+                                                          );
+                                                      })}
+                                                  </tbody>
+                                              </table>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ) : (
+                                  <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-inner">
+                                      <div className="p-4 bg-slate-50 rounded-full mb-4">
+                                          <ClipboardList className="w-8 h-8 text-slate-300" />
+                                      </div>
+                                      <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Không có vấn đề nổi bật nào trong ngày</p>
+                                  </div>
+                              )}
+                          </div>
+                    ) : activeTab === 'daily_checklist' ? (
+                        <div className="space-y-4">
                             {/* Detailed Report Cards */}
-                            <div className="space-y-4 mt-8">
+                            <div className="space-y-4">
                                 <div className="flex items-center justify-between px-4">
                                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
                                         <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
