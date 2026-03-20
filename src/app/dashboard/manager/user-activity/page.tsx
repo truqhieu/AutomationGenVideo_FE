@@ -769,11 +769,6 @@ const UserActivityPageContent = () => {
                                                         <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Nội dung
                                                         </th>
-                                                        {isAdminUser && (
-                                                            <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
-                                                                Người duyệt
-                                                            </th>
-                                                        )}
                                                         <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             {isAdminUser ? 'Thao tác' : 'Trạng thái'}
                                                         </th>
@@ -833,14 +828,6 @@ const UserActivityPageContent = () => {
                                                                         {r.content || 'Không có nội dung'}
                                                                     </div>
                                                                 </td>
-                                                                {isAdminUser && (
-                                                                    <td className="px-6 py-4 border-r border-slate-50 text-center">
-                                                                        <div className="flex flex-col items-center gap-1">
-                                                                            <span className="text-sm font-black text-slate-800">{r.approved_by || '-'}</span>
-                                                                            {r.approved_by && <span className="text-[10px] text-slate-400 font-bold italic uppercase tracking-tighter">Approved by</span>}
-                                                                        </div>
-                                                                    </td>
-                                                                )}
                                                                 <td className="px-6 py-4 text-center">
                                                                     <div className="flex justify-center flex-wrap gap-2">
                                                                         {isAdminUser ? (
