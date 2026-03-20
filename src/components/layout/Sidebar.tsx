@@ -151,6 +151,7 @@ function SidebarContent({
               ] : []),
               { label: 'Bảng xếp hạng', href: '/dashboard/manager/user-activity?tab=ranking', icon: Layout },
               { label: 'Tiến độ', href: '/dashboard/manager/user-activity?tab=personal', icon: User },
+              { label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText },
               { label: 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: CheckSquare },
               { label: 'Vấn đề & Win', href: '/dashboard/manager/user-activity?tab=daily_outstanding', icon: ClipboardList },
               ...(isManagement ? [
