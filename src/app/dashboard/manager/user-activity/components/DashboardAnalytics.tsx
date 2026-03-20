@@ -201,10 +201,11 @@ const DashboardAnalytics = ({ dateRange, activeTeam }: DashboardAnalyticsProps) 
                                 <span className="text-5xl font-black text-slate-900 tracking-tighter tabular-nums">
                                     {summary.totalVideos}
                                 </span>
-                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-black uppercase ${diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {/* Temporarily removed percentage change as requested */}
+                                {/* <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-black uppercase ${diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                                     {diff >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                     {Math.abs(pctChange)}%
-                                </div>
+                                </div> */}
                             </div>
                         </div>
 
