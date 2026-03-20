@@ -28,7 +28,7 @@ const LeaderEvaluationSection = ({ values, onChange, readOnly }: LeaderEvaluatio
                     III. ĐÁNH GIÁ (DÀNH CHO LEADER)
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8 pt-4">
+            <CardContent className="space-y-4 pt-4">
                 {LEADER_QUESTIONS.map((item, index) => {
                     const isNo = values[index] === "Không ạ";
                     const isAlwaysVisible = index === 0 || index === 3;
@@ -70,7 +70,7 @@ const LeaderEvaluationSection = ({ values, onChange, readOnly }: LeaderEvaluatio
                                         placeholder={item.placeholder}
                                         disabled={readOnly}
                                         readOnly={readOnly}
-                                        className={`min-h-[100px] border-blue-100 focus:border-blue-400 focus:ring-blue-400/20 bg-blue-50/10 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                        className={`min-h-[45px] py-2 border-blue-100 focus:border-blue-400 focus:ring-blue-400/20 bg-blue-50/10 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                     />
                                 </div>
                             )}

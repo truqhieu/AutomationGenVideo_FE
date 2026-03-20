@@ -29,7 +29,7 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                     II. CHI TIẾT
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8 pt-4">
+            <CardContent className="space-y-4 pt-4">
                 {DETAIL_ITEMS.map((item, index) => {
                     const isNo = values[index] === "Không ạ";
                     const isNumeric = index === 0;
@@ -82,7 +82,7 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                                             placeholder={item.placeholder}
                                             disabled={readOnly}
                                             readOnly={readOnly}
-                                            className={`min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                            className={`min-h-[45px] py-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                         />
                                     )}
                                 </div>
