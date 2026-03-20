@@ -28,12 +28,12 @@ const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps)
     return (
         <Card className="h-full border-none shadow-none">
             <CardHeader className="pb-4">
-                <CardTitle className="text-blue-600 flex items-center gap-2 text-lg uppercase font-bold">
+                <CardTitle className="text-blue-700 flex items-center gap-2 text-xl uppercase font-black tracking-tight">
                     <ClipboardCheck className="w-5 h-5" />
                     I. TIẾN ĐỘ CHECKLIST
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 pt-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 pt-4">
                 {CHECKLIST_ITEMS.map((item, index) => (
                     <div key={index} className={`flex items-start gap-3 group ${readOnly ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}>
                         <Checkbox
@@ -45,7 +45,7 @@ const ChecklistSection = ({ values, onChange, readOnly }: ChecklistSectionProps)
                         />
                         <label
                             htmlFor={`check-${index}`}
-                            className={`text-gray-700 font-medium leading-relaxed transition-colors ${readOnly ? 'cursor-not-allowed' : 'group-hover:text-blue-600 cursor-pointer'}`}
+                            className={`text-slate-900 font-bold text-sm leading-tight transition-colors ${readOnly ? 'cursor-not-allowed' : 'group-hover:text-blue-600 cursor-pointer'}`}
                         >
                             {item}
                         </label>

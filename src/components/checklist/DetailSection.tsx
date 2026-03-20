@@ -29,37 +29,39 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                     II. CHI TIẾT
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8 pt-4">
+            <CardContent className="space-y-4 pt-4">
                 {DETAIL_ITEMS.map((item, index) => {
                     const isNo = values[index] === "Không ạ";
                     const isNumeric = index === 0;
 
                     return (
                         <div key={index} className={`space-y-3 ${readOnly ? 'opacity-80 pointer-events-none' : ''}`}>
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-tight block">
-                                {item.question}
-                            </label>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <label className="text-sm font-black text-slate-900 uppercase tracking-tight sm:w-2/3 leading-relaxed">
+                                    {item.question}
+                                </label>
 
-                            {!isNumeric && (
-                                <div className={`flex bg-gray-100 p-1 rounded-xl w-fit ${readOnly ? 'opacity-50' : ''}`}>
-                                    <button
-                                        type="button"
-                                        onClick={() => !readOnly && onChange(index, "Không ạ")}
-                                        disabled={readOnly}
-                                        className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${isNo ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
-                                    >
-                                        Không ạ
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => { if (!readOnly && (isNo || !values[index])) onChange(index, "") }}
-                                        disabled={readOnly}
-                                        className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${!isNo && values[index] !== undefined ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
-                                    >
-                                        Có
-                                    </button>
-                                </div>
-                            )}
+                                {!isNumeric && (
+                                    <div className={`flex bg-gray-100 p-1 rounded-xl shrink-0 w-fit ${readOnly ? 'opacity-50' : ''}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => !readOnly && onChange(index, "Không ạ")}
+                                            disabled={readOnly}
+                                            className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${isNo ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
+                                        >
+                                            Không ạ
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { if (!readOnly && (isNo || !values[index])) onChange(index, "") }}
+                                            disabled={readOnly}
+                                            className={`px-6 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${!isNo && values[index] !== undefined ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"}`}
+                                        >
+                                            Có
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {(isNumeric || !isNo) && (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -80,7 +82,7 @@ const DetailSection = ({ values, onChange, readOnly }: DetailSectionProps) => {
                                             placeholder={item.placeholder}
                                             disabled={readOnly}
                                             readOnly={readOnly}
-                                            className={`min-h-[100px] border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-sm text-gray-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                            className={`min-h-[45px] py-2 border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-gray-50/30 text-base font-medium text-slate-900 resize-none rounded-2xl ${readOnly ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                         />
                                     )}
                                 </div>
