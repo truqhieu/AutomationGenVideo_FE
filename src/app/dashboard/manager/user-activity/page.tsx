@@ -731,51 +731,50 @@ const UserActivityPageContent = () => {
                                 currentUserName={user?.full_name}
                                 currentUserEmail={user?.email}
                             />
-
                         </div>
                     ) : activeTab === 'daily_outstanding' ? (
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-w-7xl mx-auto pb-8">
                             {/* Stats Summary & Table - Only show if data exists */}
                             {filteredChecklistReports.length > 0 ? (
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between px-4">
+                                    <div className="flex items-center justify-between px-4 mt-2">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-400/20">
-                                                <ClipboardList className="w-5 h-5 text-white" />
+                                            <div className="p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-400/20">
+                                                <ClipboardList className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                                                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
                                                     Vấn đề nổi bật & Video Win
                                                 </h3>
-                                                <p className="text-xs text-slate-500 font-medium">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
+                                                <p className="text-sm text-slate-500 font-bold italic">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Outstanding Items Table */}
-                                    <div className="bg-white rounded-3xl border-2 border-blue-500/20 shadow-xl shadow-blue-500/5 overflow-hidden">
-                                        <div className="max-h-[600px] overflow-y-auto scrollbar-thin">
+                                    <div className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-xl shadow-blue-500/5 overflow-hidden">
+                                        <div className="max-h-[700px] overflow-y-auto scrollbar-thin">
                                             <table className="w-full border-collapse text-left">
-                                                <thead className="sticky top-0 z-20 bg-gradient-to-r from-blue-600 to-indigo-700 shadow-md">
+                                                <thead className="sticky top-0 z-20 bg-gradient-to-r from-blue-700 to-indigo-800 shadow-lg">
                                                     <tr>
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Chức danh
                                                         </th>
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Nhân viên
                                                         </th>
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Phân loại
                                                         </th>
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
                                                             Nội dung
                                                         </th>
                                                         {isAdminUser && (
-                                                            <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                            <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                                 Người duyệt
                                                             </th>
                                                         )}
-                                                        <th className="px-4 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                        <th className="px-6 py-4 text-[11px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             {isAdminUser ? 'Thao tác' : 'Trạng thái'}
                                                         </th>
                                                     </tr>
@@ -807,42 +806,42 @@ const UserActivityPageContent = () => {
                                                         if (!isAdminUser && isRejected) return null;
 
                                                         return (
-                                                            <tr key={r.id || idx} className="hover:bg-blue-50/30 transition-all group">
-                                                                <td className="px-4 py-3 border-r border-slate-50">
-                                                                    <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
+                                                            <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
+                                                                <td className="px-6 py-4 border-r border-slate-50">
+                                                                    <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-black uppercase tracking-widest shadow-sm">
                                                                         {r.role || 'Member'}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 border-r border-slate-50">
-                                                                    <div className="font-black text-slate-700 text-sm mb-0.5">{r.name}</div>
-                                                                    <div className="flex items-center gap-1.5 text-[10px] text-blue-600 font-bold">
+                                                                <td className="px-6 py-4 border-r border-slate-50">
+                                                                    <div className="font-black text-slate-900 text-[16px] mb-1">{r.name}</div>
+                                                                    <div className="flex items-center gap-1.5 text-[11px] text-blue-700 font-bold">
                                                                         <span className="px-1.5 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
                                                                         <span className="text-slate-400 font-medium italic">{r.date}</span>
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-4 py-3 border-r border-slate-50">
-                                                                    <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight ${
+                                                                <td className="px-6 py-4 border-r border-slate-50">
+                                                                    <span className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-tight ${
                                                                         r.category?.toLowerCase().includes('win') 
-                                                                        ? 'bg-purple-100 text-purple-700 border border-purple-200 shadow-sm shadow-purple-100' 
-                                                                        : 'bg-amber-100 text-amber-700 border border-amber-200'
+                                                                        ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100' 
+                                                                        : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
                                                                     }`}>
                                                                         {r.category || '-'}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 border-r border-slate-50">
-                                                                    <div className="text-sm text-slate-600 font-medium leading-relaxed max-w-[400px]">
+                                                                <td className="px-6 py-4 border-r border-slate-50">
+                                                                    <div className="text-[15px] text-slate-900 font-bold leading-relaxed max-w-[450px]">
                                                                         {r.content || 'Không có nội dung'}
                                                                     </div>
                                                                 </td>
                                                                 {isAdminUser && (
-                                                                    <td className="px-4 py-3 border-r border-slate-50 text-center">
+                                                                    <td className="px-6 py-4 border-r border-slate-50 text-center">
                                                                         <div className="flex flex-col items-center gap-1">
-                                                                            <span className="text-xs font-bold text-slate-700">{r.approved_by || '-'}</span>
-                                                                            {r.approved_by && <span className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Approved by</span>}
+                                                                            <span className="text-sm font-black text-slate-800">{r.approved_by || '-'}</span>
+                                                                            {r.approved_by && <span className="text-[10px] text-slate-400 font-bold italic uppercase tracking-tighter">Approved by</span>}
                                                                         </div>
                                                                     </td>
                                                                 )}
-                                                                <td className="px-4 py-3 text-center">
+                                                                <td className="px-6 py-4 text-center">
                                                                     <div className="flex justify-center flex-wrap gap-2">
                                                                         {isAdminUser ? (
                                                                             <div className="flex items-center gap-2">
