@@ -594,7 +594,7 @@ const UserActivityPageContent = () => {
         <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
             <div className="relative z-10 space-y-2">
                 {activeTab !== 'daily_report' && (
-                    <div className="relative z-30 bg-blue-50/50 backdrop-blur-md p-3 rounded-[2rem] border border-blue-100/50 shadow-xl shadow-blue-500/5">
+                    <div className="relative z-30 bg-white/80 backdrop-blur-xl p-3 rounded-[2rem] border-2 border-blue-100 shadow-2xl shadow-blue-500/10">
                         <ActivityFilters
                             activeTeam={activeTeam}
                             setActiveTeam={setActiveTeam}
@@ -733,7 +733,7 @@ const UserActivityPageContent = () => {
                             />
                         </div>
                     ) : activeTab === 'daily_outstanding' ? (
-                        <div className="space-y-6 w-full max-w-[2420px] px-3 pb-8 mx-auto">
+                        <div className="space-y-4 w-full max-w-[2420px] px-3 pb-6 mx-auto">
                             {/* Stats Summary & Table - Only show if data exists */}
                             {filteredChecklistReports.length > 0 ? (
                                 <div className="space-y-6">
@@ -757,19 +757,19 @@ const UserActivityPageContent = () => {
                                             <table className="w-full border-collapse text-left">
                                                 <thead className="sticky top-0 z-20 bg-gradient-to-r from-blue-700 to-indigo-800 shadow-lg">
                                                     <tr>
-                                                        <th className="px-8 py-5 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             Chức danh
                                                         </th>
-                                                        <th className="px-8 py-5 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
                                                             Nhân viên
                                                         </th>
-                                                        <th className="px-8 py-5 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             Phân loại
                                                         </th>
-                                                        <th className="px-8 py-5 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10">
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
                                                             Nội dung
                                                         </th>
-                                                        <th className="px-8 py-5 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             {isAdminUser ? 'Thao tác' : 'Trạng thái'}
                                                         </th>
                                                     </tr>
@@ -802,19 +802,19 @@ const UserActivityPageContent = () => {
 
                                                           return (
                                                               <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
-                                                                  <td className="px-8 py-5 border-r border-slate-50">
+                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
                                                                       <span className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-black uppercase tracking-widest shadow-sm">
                                                                           {r.role || 'Member'}
                                                                       </span>
                                                                   </td>
-                                                                  <td className="px-8 py-5 border-r border-slate-50">
+                                                                  <td className="px-8 py-3 border-r border-slate-50">
                                                                       <div className="font-black text-slate-900 text-[18px] mb-1">{r.name}</div>
                                                                       <div className="flex items-center gap-2 text-[12px] text-blue-700 font-bold">
                                                                           <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
                                                                           <span className="text-slate-400 font-medium italic">{r.date}</span>
                                                                       </div>
                                                                   </td>
-                                                                  <td className="px-8 py-5 border-r border-slate-50">
+                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
                                                                       <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${
                                                                           r.category?.toLowerCase().includes('win') 
                                                                           ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100' 
@@ -823,12 +823,12 @@ const UserActivityPageContent = () => {
                                                                           {r.category || '-'}
                                                                       </span>
                                                                   </td>
-                                                                  <td className="px-8 py-5 border-r border-slate-50">
+                                                                  <td className="px-8 py-3 border-r border-slate-50">
                                                                       <div className="text-[17px] text-slate-900 font-bold leading-relaxed max-w-[800px]">
                                                                           {r.content || 'Không có nội dung'}
                                                                       </div>
                                                                   </td>
-                                                                  <td className="px-8 py-5 text-center">
+                                                                  <td className="px-6 py-3.5 text-center">
                                                                       <div className="flex justify-center flex-wrap gap-3">
                                                                           {isAdminUser ? (
                                                                               <div className="flex items-center gap-3">

@@ -74,8 +74,8 @@ const ActivityFilters = ({
     const isPersonalTab = activeTab === 'personal';
     const isPerformanceTab = activeTab === 'performance';
 
-    // Team filter: only visible to Admin/Manager roles, NOT member or leader
-    const canSeeTeamFilter = isAdmin;
+    // Team filter: visible to everyone as requested
+    const canSeeTeamFilter = true;
 
     // Team label: no longer needed since filter is always visible
     const showTeamLabel = false;
