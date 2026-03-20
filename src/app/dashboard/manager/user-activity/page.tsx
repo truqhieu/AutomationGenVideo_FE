@@ -771,9 +771,28 @@ const UserActivityPageContent = () => {
                                                 <tbody className="divide-y divide-slate-100">
                                                     {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
-                                                        const isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
-                                                        const isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
-                                                        const isPending = !isApproved && !isRejected;
+                                                        let isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
+                                                        let isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
+                                                        let isPending = !isApproved && !isRejected;
+
+                                                        if (isPending && r.date) {
+                                                            let rDateObj = new Date(r.date);
+                                                            if (r.date.includes('/')) {
+                                                                const parts = r.date.split('/');
+                                                                if (parts.length === 3) {
+                                                                    rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                                                                }
+                                                            }
+                                                            if (!isNaN(rDateObj.getTime())) {
+                                                                const msDiff = new Date().getTime() - rDateObj.getTime();
+                                                                // 30 days in milliseconds: 30 * 24 * 60 * 60 * 1000 = 2592000000
+                                                                if (msDiff > 2592000000) {
+                                                                    isPending = false;
+                                                                    isRejected = true;
+                                                                }
+                                                            }
+                                                        }
+
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-slate-50/80 transition-all">
                                                                 <td className="px-3 py-1.5 border-r border-slate-50 font-bold text-slate-500 text-xs uppercase">{r.role || 'Member'}</td>
@@ -796,7 +815,7 @@ const UserActivityPageContent = () => {
                                                                             <div className="flex items-center gap-1.5">
                                                                                 <button
                                                                                     onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
-                                                                                    title={isApproved ? "Đã duyệt - Nhấn để chuyển về Đang chờ" : "Duyệt báo cáo này"}
+                                                                                    title={isApproved ? "Đã duyệt - Nhấn để chuyển về Đang xem xét" : "Duyệt báo cáo này"}
                                                                                     className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
                                                                                         isApproved 
                                                                                         ? 'bg-green-500 text-white border-green-500 shadow-md shadow-green-200' 
@@ -807,7 +826,7 @@ const UserActivityPageContent = () => {
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
-                                                                                    title={isRejected ? "Từ chối - Nhấn để chuyển về Đang chờ" : "Từ chối báo cáo này"}
+                                                                                    title={isRejected ? "Từ chối - Nhấn để chuyển về Đang xem xét" : "Từ chối báo cáo này"}
                                                                                     className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${
                                                                                         isRejected 
                                                                                         ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-200' 
@@ -831,7 +850,7 @@ const UserActivityPageContent = () => {
                                                                                 )}
                                                                                 {isPending && (
                                                                                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1 tracking-wider">
-                                                                                        <Clock className="w-3 h-3" strokeWidth={3} /> Đang chờ
+                                                                                        <Clock className="w-3 h-3" strokeWidth={3} /> Đang xem xét
                                                                                     </span>
                                                                                 )}
                                                                             </div>
