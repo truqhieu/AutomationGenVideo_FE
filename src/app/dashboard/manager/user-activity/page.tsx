@@ -832,28 +832,24 @@ const UserActivityPageContent = () => {
                                                                       <div className="flex justify-center flex-wrap gap-3">
                                                                           {isAdminUser ? (
                                                                               <div className="flex items-center gap-3">
-                                                                                  <button
-                                                                                      onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
-                                                                                      className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 transition-all shadow-sm ${
-                                                                                          isApproved 
-                                                                                          ? 'bg-emerald-600 text-white shadow-emerald-200 hover:scale-105 active:scale-95' 
-                                                                                          : 'bg-white text-slate-400 border border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
-                                                                                      }`}
-                                                                                  >
-                                                                                      <Check className="w-4 h-4" strokeWidth={isApproved ? 4 : 3} />
-                                                                                      {isApproved ? 'Đã duyệt' : 'Duyệt'}
-                                                                                  </button>
-                                                                                  <button
-                                                                                      onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
-                                                                                      className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase flex items-center gap-2 transition-all shadow-sm ${
-                                                                                          isRejected 
-                                                                                          ? 'bg-red-600 text-white shadow-red-200 hover:scale-105 active:scale-95' 
-                                                                                          : 'bg-white text-slate-400 border border-slate-200 hover:border-red-500 hover:text-red-600'
-                                                                                      }`}
-                                                                                  >
-                                                                                      <X className="w-4 h-4" strokeWidth={isRejected ? 4 : 3} />
-                                                                                      {isRejected ? 'Đã từ chối' : 'Từ chối'}
-                                                                                  </button>
+                                                                                  {(isPending || isApproved) && (
+                                                                                      <button
+                                                                                          onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
+                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-emerald-600 text-white shadow-emerald-200/50`}
+                                                                                      >
+                                                                                          <Check className="w-4 h-4" strokeWidth={4} />
+                                                                                          {isApproved ? 'Đã duyệt' : 'Duyệt'}
+                                                                                      </button>
+                                                                                  )}
+                                                                                  {(isPending || isRejected) && (
+                                                                                      <button
+                                                                                          onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
+                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-red-600 text-white shadow-red-200/50`}
+                                                                                      >
+                                                                                          <X className="w-4 h-4" strokeWidth={4} />
+                                                                                          {isRejected ? 'Đã từ chối' : 'Từ chối'}
+                                                                                      </button>
+                                                                                  )}
                                                                               </div>
                                                                           ) : (
                                                                               <div className="flex items-center justify-center">
