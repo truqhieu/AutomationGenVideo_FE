@@ -229,7 +229,17 @@ export default function GlobalSearchPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#07090F] text-white p-6 md:p-10 selection:bg-blue-500/30">
+        <div className="min-h-[calc(100vh-73px)] bg-[#07090F] text-white p-6 md:p-10 -m-6 selection:bg-blue-500/30">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                header { background-color: #07090F !important; border-bottom-color: #151820 !important; }
+                header p { color: #f8fafc !important; }
+                header { background-color: #07090F !important; border-bottom-color: #151820 !important; }
+                header p { color: #f8fafc !important; }
+                body { background-color: #07090F !important; }
+                main { background-color: #07090F !important; }
+                .bg-gray-50 { background-color: #07090F !important; }
+            `}} />
             {/* Decorative localized glow */}
             <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-10" />
             <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none -z-10" />

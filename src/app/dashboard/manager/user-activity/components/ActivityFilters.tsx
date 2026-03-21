@@ -16,13 +16,14 @@ interface ActivityFiltersProps {
     userRole?: string | null;
     userTeam?: string | null;
     activeTab?: string;
-    globalTeams?: string[]; // New
-    vnTeams?: string[];     // New
+    globalTeams?: string[]; 
+    vnTeams?: string[];     
     dateRange: { start: Date; end: Date };
     setDateRange: (range: { start: Date; end: Date }) => void;
     timeType: string;
     setTimeType: (type: string) => void;
     onCapture?: () => void;
+    isNavbar?: boolean;
 }
 
 const ActivityFilters = ({
@@ -41,7 +42,8 @@ const ActivityFilters = ({
     setDateRange,
     timeType,
     setTimeType,
-    onCapture
+    onCapture,
+    isNavbar = false
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -74,8 +76,8 @@ const ActivityFilters = ({
     const isPersonalTab = activeTab === 'personal';
     const isPerformanceTab = activeTab === 'performance';
 
-    // Team filter: only visible to Admin/Manager roles, NOT member or leader
-    const canSeeTeamFilter = isAdmin;
+    // Team filter: visible to everyone as requested
+    const canSeeTeamFilter = true;
 
     // Team label: no longer needed since filter is always visible
     const showTeamLabel = false;
@@ -329,12 +331,12 @@ const ActivityFilters = ({
     };
 
     return (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-4 py-2 px-2">
+        <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-12 ${isNavbar ? 'py-1 px-1' : 'py-2 px-2'}`}>
             {canSeeTeamFilter && (
-                <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-1">
-                        <Layers className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="text-xs font-black text-slate-950 uppercase tracking-widest">
+                <div className="flex flex-wrap items-center gap-4" ref={dropdownRef}>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-4">
+                        <Layers className="w-5 h-5 text-blue-500" />
+                        <span className="text-[14px] font-black text-slate-950 uppercase tracking-widest">
                             Nhóm Team
                         </span>
                     </div>
@@ -342,7 +344,7 @@ const ActivityFilters = ({
                     {/* ALL Button */}
                     <button
                         onClick={() => handleSelectTeam('All')}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isAllActive
+                        className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isAllActive
                             ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
                             : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                             }`}
@@ -354,14 +356,14 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('global')}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
+                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
                                 : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                                 }`}
                         >
-                            <Globe className={`w-3.5 h-3.5 ${isGlobalActive ? 'text-blue-200' : 'text-blue-600'}`} />
+                            <Globe className={`w-5 h-5 ${isGlobalActive ? 'text-blue-200' : 'text-blue-600'}`} />
                             {getGlobalLabel()}
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
+                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
 
                         <AnimatePresence>
@@ -385,7 +387,7 @@ const ActivityFilters = ({
                                         </span>
                                         {activeTeam === 'All Global' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
-                                    {globalTeams.map((team) => (
+                                    {globalTeams.map((team: string) => (
                                         <button
                                             key={team}
                                             onClick={() => handleSelectTeam(team)}
@@ -419,14 +421,14 @@ const ActivityFilters = ({
                     <div className="relative">
                         <button
                             onClick={() => toggleDropdown('vietnam')}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-300 border flex items-center gap-2 ${isVNActive
+                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isVNActive
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
                                 : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
                                 }`}
                         >
-                            <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
+                            <img src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm shadow-sm" />
                             {getVNLabel()}
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
+                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
                         </button>
 
                         <AnimatePresence>
@@ -451,7 +453,7 @@ const ActivityFilters = ({
                                         </span>
                                         {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
-                                    {vnTeams.map((team) => (
+                                    {vnTeams.map((team: string) => (
                                         <button
                                             key={team}
                                             onClick={() => handleSelectTeam(team)}
@@ -477,22 +479,22 @@ const ActivityFilters = ({
                 </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto lg:ml-auto" ref={timeFilterRef}>
+            <div className="flex flex-wrap items-center gap-4 self-end lg:self-auto lg:ml-auto" ref={timeFilterRef}>
                 {/* Unified Time Filter */}
                 <div className="relative group/time">
                     <button
                         onClick={() => toggleDropdown('timeSelector')}
-                        className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || (timeType !== 'today')
+                        className={`flex items-center gap-4 px-6 py-3 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || (timeType !== 'today')
                             ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
                             : 'bg-blue-50/60 border-blue-100/50 text-blue-600/70 hover:border-blue-300'
                             }`}
                     >
-                        <Calendar className={`w-3.5 h-3.5 ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <Calendar className={`w-5 h-5 ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-100' : 'text-blue-500'}`} />
                         <div className="flex flex-col items-start leading-tight">
-                            <span className={`text-[11px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-200' : 'text-blue-600 group-hover:text-blue-500'}`}>
+                            <span className={`text-[13px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-200' : 'text-blue-600 group-hover:text-blue-500'}`}>
                                 {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
                             </span>
-                            <span className={`text-xs font-black ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-white' : 'text-slate-950'}`}>
+                            <span className={`text-[16px] font-black ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-white' : 'text-slate-950'}`}>
                                 {filterMode === 'year' ? dateRange.start.getFullYear() :
                                     filterMode === 'month' ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}` :
                                         (timeType === 'custom' || filterMode === 'week' || filterMode === 'range')
@@ -501,7 +503,7 @@ const ActivityFilters = ({
                                 }
                             </span>
                         </div>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'timeSelector' ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'timeSelector' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Quick Clear Time Filter Button - Top Right Edge */}
@@ -627,21 +629,21 @@ const ActivityFilters = ({
                 {/* Name Filter - visible to all roles */}
                 {(true) && (
                     <div className="relative group">
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50/60 border-blue-100/50'}`}>
-                            <Search className={`w-3.5 h-3.5 transition-colors ${searchName ? 'text-white' : 'text-blue-600'}`} />
+                        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50/60 border-blue-100/50'}`}>
+                            <Search className={`w-5 h-5 transition-colors ${searchName ? 'text-white' : 'text-blue-600'}`} />
                             <input
                                 type="text"
                                 placeholder="Tìm tên..."
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                className={`bg-transparent border-none focus:outline-none text-xs font-black w-28 placeholder:font-normal ${searchName ? 'text-white placeholder:text-blue-200' : 'text-slate-950 placeholder:text-slate-400'}`}
+                                className={`bg-transparent border-none focus:outline-none text-[16px] font-black w-36 placeholder:font-normal ${searchName ? 'text-white placeholder:text-blue-200' : 'text-slate-950 placeholder:text-slate-400'}`}
                             />
                             {searchName && (
                                 <button
                                     onClick={() => setSearchName('')}
                                     className="p-1 hover:bg-white/20 rounded-full transition-colors"
                                 >
-                                    <X className="w-2.5 h-2.5 text-white" />
+                                    <X className="w-4 h-4 text-white" />
                                 </button>
                             )}
                         </div>
@@ -655,10 +657,10 @@ const ActivityFilters = ({
                     <button
                         type="button"
                         onClick={onCapture}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest
+                        className="inline-flex items-center gap-3 px-5 py-2.5 rounded-xl text-[14px] font-black uppercase tracking-widest
                                    bg-slate-900 text-white hover:bg-black transition-all shadow-sm hover:shadow-md ml-1"
                     >
-                        <Camera className="w-3.5 h-3.5" />
+                        <Camera className="w-5 h-5" />
                         Chụp
                     </button>
                 )}
