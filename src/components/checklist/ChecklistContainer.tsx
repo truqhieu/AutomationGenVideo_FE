@@ -401,7 +401,7 @@ const ChecklistContainer = ({
     const roles = user?.roles || [];
     const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
     const isLeader = roles.includes(UserRole.LEADER) || larkRole?.toLowerCase() === 'leader';
-    const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT);
+    const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT) || roles.includes(UserRole.MEMBER);
 
     const showForm12 = mode ? mode === 'member' : (isAdmin || isStaff);
     const showForm3 = mode ? mode === 'leader' : (isAdmin || isLeader);
