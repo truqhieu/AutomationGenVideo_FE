@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuthStore } from '@/store/auth-store';
-import { Facebook, Hammer, Construction } from 'lucide-react';
+import { Facebook, Construction } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();

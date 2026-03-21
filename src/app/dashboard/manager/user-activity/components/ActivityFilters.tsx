@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X, Camera } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuthStore } from '@/store/auth-store';
-import { UserRole } from '@/types/auth';
+import React, { useState, useRef, useEffect } from "react";
+import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X, Camera } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuthStore } from "@/store/auth-store";
+import { UserRole } from "@/types/auth";
 
 interface ActivityFiltersProps {
     activeTeam: string;
@@ -16,8 +16,8 @@ interface ActivityFiltersProps {
     userRole?: string | null;
     userTeam?: string | null;
     activeTab?: string;
-    globalTeams?: string[]; 
-    vnTeams?: string[];     
+    globalTeams?: string[];
+    vnTeams?: string[];
     dateRange: { start: Date; end: Date };
     setDateRange: (range: { start: Date; end: Date }) => void;
     timeType: string;
@@ -37,31 +37,31 @@ const ActivityFilters = ({
     userTeam,
     activeTab,
     globalTeams = [], // Fallback
-    vnTeams = [],      // Fallback
+    vnTeams = [], // Fallback
     dateRange,
     setDateRange,
     timeType,
     setTimeType,
     onCapture,
-    isNavbar = false
+    isNavbar = false,
 }: ActivityFiltersProps) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-    const [filterMode, setFilterMode] = useState<'day' | 'week' | 'month' | 'year' | 'range'>(() => {
-        if (timeType === 'month' || timeType === 'this_month' || timeType === 'last_month') return 'month';
-        if (timeType === 'this_week' || timeType === 'last_week') return 'week';
-        if (timeType === 'this_year') return 'year';
-        if (timeType === 'custom') return 'range';
-        return 'day';
+    const [filterMode, setFilterMode] = useState<"day" | "week" | "month" | "year" | "range">(() => {
+        if (timeType === "month" || timeType === "this_month" || timeType === "last_month") return "month";
+        if (timeType === "this_week" || timeType === "last_week") return "week";
+        if (timeType === "this_year") return "year";
+        if (timeType === "custom") return "range";
+        return "day";
     });
 
     // Sync filterMode when timeType changes from outside
     useEffect(() => {
-        if (timeType === 'month' || timeType === 'this_month' || timeType === 'last_month') setFilterMode('month');
-        else if (timeType === 'this_week' || timeType === 'last_week') setFilterMode('week');
-        else if (timeType === 'this_year') setFilterMode('year');
-        else if (timeType === 'custom') setFilterMode('range');
-        else setFilterMode('day');
+        if (timeType === "month" || timeType === "this_month" || timeType === "last_month") setFilterMode("month");
+        else if (timeType === "this_week" || timeType === "last_week") setFilterMode("week");
+        else if (timeType === "this_year") setFilterMode("year");
+        else if (timeType === "custom") setFilterMode("range");
+        else setFilterMode("day");
     }, [timeType]);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -69,12 +69,16 @@ const ActivityFilters = ({
 
     const { user } = useAuthStore();
     const sysRoles = user?.roles || [];
-    const isAdmin = sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager';
-    const isLeader = sysRoles.includes(UserRole.LEADER) || userRole === 'leader';
-    
-    const isRankingTab = activeTab === 'ranking';
-    const isPersonalTab = activeTab === 'personal';
-    const isPerformanceTab = activeTab === 'performance';
+    const isAdmin =
+        sysRoles.includes(UserRole.ADMIN) ||
+        sysRoles.includes(UserRole.MANAGER) ||
+        userRole === "admin" ||
+        userRole === "manager";
+    const isLeader = sysRoles.includes(UserRole.LEADER) || userRole === "leader";
+
+    const isRankingTab = activeTab === "ranking";
+    const isPersonalTab = activeTab === "personal";
+    const isPerformanceTab = activeTab === "performance";
 
     // Team filter: visible to everyone as requested
     const canSeeTeamFilter = true;
@@ -82,23 +86,21 @@ const ActivityFilters = ({
     // Team label: no longer needed since filter is always visible
     const showTeamLabel = false;
 
-
-
-    const isAllGlobal = activeTeam === 'All Global';
-    const isAllVN = activeTeam === 'All VN';
+    const isAllGlobal = activeTeam === "All Global";
+    const isAllVN = activeTeam === "All VN";
     const isGlobalActive = isAllGlobal || globalTeams.includes(activeTeam);
     const isVNActive = isAllVN || vnTeams.includes(activeTeam);
-    const isAllActive = activeTeam === 'All' || (!isGlobalActive && !isVNActive && activeTeam !== 'All');
+    const isAllActive = activeTeam === "All" || (!isGlobalActive && !isVNActive && activeTeam !== "All");
 
     const timeOptions = [
-        { id: 'today', label: 'Hôm nay' },
-        { id: 'yesterday', label: 'Hôm qua' },
-        { id: 'this_week', label: 'Tuần này' },
-        { id: 'last_week', label: 'Tuần trước' },
-        { id: 'this_month', label: 'Tháng này' },
-        { id: 'last_month', label: 'Tháng trước' },
-        { id: 'this_year', label: 'Năm nay' },
-        { id: 'custom', label: 'Chọn ngày' },
+        { id: "today", label: "Hôm nay" },
+        { id: "yesterday", label: "Hôm qua" },
+        { id: "this_week", label: "Tuần này" },
+        { id: "last_week", label: "Tuần trước" },
+        { id: "this_month", label: "Tháng này" },
+        { id: "last_month", label: "Tháng trước" },
+        { id: "this_year", label: "Năm nay" },
+        { id: "custom", label: "Chọn ngày" },
     ];
 
     useEffect(() => {
@@ -109,13 +111,13 @@ const ActivityFilters = ({
                 }
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     const formatDate = (date: Date) => {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     };
@@ -137,19 +139,19 @@ const ActivityFilters = ({
         end.setHours(23, 59, 59, 999);
 
         switch (typeId) {
-            case 'today':
-                setFilterMode('day');
+            case "today":
+                setFilterMode("day");
                 break;
-            case 'yesterday':
-                setFilterMode('day');
+            case "yesterday":
+                setFilterMode("day");
                 start.setDate(today.getDate() - 1);
                 end = new Date(start);
                 end.setHours(23, 59, 59, 999);
                 break;
-            case 'this_week':
-            case 'last_week':
-                setFilterMode('week');
-                const targetDay = typeId === 'this_week' ? today : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            case "this_week":
+            case "last_week":
+                setFilterMode("week");
+                const targetDay = typeId === "this_week" ? today : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
                 const dayOfWeek = targetDay.getDay();
                 const diff = targetDay.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
                 start = new Date(targetDay);
@@ -159,30 +161,30 @@ const ActivityFilters = ({
                 end.setDate(start.getDate() + 6);
                 end.setHours(23, 59, 59, 999);
                 break;
-            case 'this_month':
-                setFilterMode('month');
+            case "this_month":
+                setFilterMode("month");
                 start = new Date(today.getFullYear(), today.getMonth(), 1);
                 end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
                 break;
-            case 'last_month':
-                setFilterMode('month');
+            case "last_month":
+                setFilterMode("month");
                 start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
                 break;
-            case 'this_year':
-                setFilterMode('year');
+            case "this_year":
+                setFilterMode("year");
                 start = new Date(today.getFullYear(), 0, 1);
                 end = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
                 break;
-            case 'custom':
-                setFilterMode('range');
+            case "custom":
+                setFilterMode("range");
                 setShowDatePicker(true);
                 break;
         }
 
         setTimeType(typeId);
         setDateRange({ start, end });
-        if (typeId !== 'custom') {
+        if (typeId !== "custom") {
             setSelectedDate(start);
             setOpenDropdown(null);
         }
@@ -191,7 +193,7 @@ const ActivityFilters = ({
     const dropdownVariants = {
         hidden: { opacity: 0, y: -10, scale: 0.95 },
         visible: { opacity: 1, y: 0, scale: 1 },
-        exit: { opacity: 0, y: -10, scale: 0.95 }
+        exit: { opacity: 0, y: -10, scale: 0.95 },
     };
 
     // --- Custom Calendar Logic ---
@@ -239,11 +241,11 @@ const ActivityFilters = ({
     const handleDateSelect = (day: number) => {
         const newDate = new Date(currentYear, currentMonth, day);
 
-        if (filterMode === 'day') {
+        if (filterMode === "day") {
             setSelectedDate(newDate);
             setDateRange({ start: newDate, end: new Date(newDate.setHours(23, 59, 59, 999)) });
             setOpenDropdown(null);
-        } else if (filterMode === 'week') {
+        } else if (filterMode === "week") {
             const dayOfWeek = newDate.getDay();
             const diff = newDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
             const start = new Date(newDate);
@@ -254,7 +256,7 @@ const ActivityFilters = ({
             end.setHours(23, 59, 59, 999);
             setDateRange({ start, end });
             setOpenDropdown(null);
-        } else if (filterMode === 'range') {
+        } else if (filterMode === "range") {
             if (dateRange.start.getTime() === dateRange.end.getTime()) {
                 if (newDate < dateRange.start) {
                     setDateRange({ start: newDate, end: dateRange.start });
@@ -287,17 +289,17 @@ const ActivityFilters = ({
     const [inputValue, setInputValue] = useState(formatDate(selectedDate));
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let val = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        let val = e.target.value.replace(/\D/g, ""); // Remove non-digits
         if (val.length > 8) val = val.slice(0, 8);
 
         // Format as DD/MM/YYYY
-        let formatted = '';
+        let formatted = "";
         if (val.length > 0) {
             formatted = val.slice(0, 2);
             if (val.length > 2) {
-                formatted += '/' + val.slice(2, 4);
+                formatted += "/" + val.slice(2, 4);
                 if (val.length > 4) {
-                    formatted += '/' + val.slice(4, 8);
+                    formatted += "/" + val.slice(4, 8);
                 }
             }
         }
@@ -319,19 +321,21 @@ const ActivityFilters = ({
 
     // Get display label for dropdown buttons
     const getGlobalLabel = () => {
-        if (isAllGlobal) return 'Tất cả Global';
+        if (isAllGlobal) return "Tất cả Global";
         if (globalTeams.includes(activeTeam)) return activeTeam;
-        return 'Global';
+        return "Global";
     };
 
     const getVNLabel = () => {
-        if (isAllVN) return 'Tất cả VN';
+        if (isAllVN) return "Tất cả VN";
         if (vnTeams.includes(activeTeam)) return activeTeam;
-        return 'Việt Nam';
+        return "Việt Nam";
     };
 
     return (
-        <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-12 ${isNavbar ? 'py-1 px-1' : 'py-2 px-2'}`}>
+        <div
+            className={`flex flex-col lg:flex-row lg:items-center justify-between gap-y-3 gap-x-12 ${isNavbar ? "py-1 px-1" : "py-2 px-2"}`}
+        >
             {canSeeTeamFilter && (
                 <div className="flex flex-wrap items-center gap-4" ref={dropdownRef}>
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50 mr-4">
@@ -343,11 +347,12 @@ const ActivityFilters = ({
 
                     {/* ALL Button */}
                     <button
-                        onClick={() => handleSelectTeam('All')}
-                        className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isAllActive
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                            : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
-                            }`}
+                        onClick={() => handleSelectTeam("All")}
+                        className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${
+                            isAllActive
+                                ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
+                                : "bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
+                        }`}
                     >
                         ALL
                     </button>
@@ -355,19 +360,22 @@ const ActivityFilters = ({
                     {/* Global Dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => toggleDropdown('global')}
-                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isGlobalActive
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                                : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
-                                }`}
+                            onClick={() => toggleDropdown("global")}
+                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${
+                                isGlobalActive
+                                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
+                                    : "bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
+                            }`}
                         >
-                            <Globe className={`w-5 h-5 ${isGlobalActive ? 'text-blue-200' : 'text-blue-600'}`} />
+                            <Globe className={`w-5 h-5 ${isGlobalActive ? "text-blue-200" : "text-blue-600"}`} />
                             {getGlobalLabel()}
-                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'global' ? 'rotate-180 text-blue-400' : ''}`} />
+                            <ChevronDown
+                                className={`w-5 h-5 transition-transform duration-300 ${openDropdown === "global" ? "rotate-180 text-blue-400" : ""}`}
+                            />
                         </button>
 
                         <AnimatePresence>
-                            {openDropdown === 'global' && (
+                            {openDropdown === "global" && (
                                 <motion.div
                                     variants={dropdownVariants}
                                     initial="hidden"
@@ -378,14 +386,16 @@ const ActivityFilters = ({
                                 >
                                     {/* All Global option */}
                                     <button
-                                        onClick={() => handleSelectTeam('All Global')}
+                                        onClick={() => handleSelectTeam("All Global")}
                                         className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-blue-700 bg-blue-50/50 hover:bg-blue-100 transition-colors border-b border-blue-100/50"
                                     >
                                         <span className="flex items-center gap-2">
-                                            {activeTeam === 'All Global' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                            {activeTeam === "All Global" && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                            )}
                                             🌏 Tất cả Global
                                         </span>
-                                        {activeTeam === 'All Global' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                        {activeTeam === "All Global" && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
                                     {globalTeams.map((team: string) => (
                                         <button
@@ -394,18 +404,37 @@ const ActivityFilters = ({
                                             className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                                         >
                                             <span className="flex items-center gap-2">
-                                                {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-                                                {team.toLowerCase().includes('global - indo') && (
-                                                    <img src="/indo-flag.png" alt="INDO" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                {activeTeam === team && (
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                                                 )}
-                                                {team.toLowerCase().includes('global thái lan') && (
-                                                    <img src="/thailand-flag.png" alt="TH" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                {team.toLowerCase().includes("global - indo") && (
+                                                    <img
+                                                        src="/indo-flag.png"
+                                                        alt="INDO"
+                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                    />
                                                 )}
-                                                {(team.toLowerCase().includes('jp') || team.toLowerCase().includes('nhật bản')) && (
-                                                    <img src="/japan-flag.png" alt="JP" className="w-5 h-3.5 object-contain rounded-sm border border-gray-100" />
+                                                {team.toLowerCase().includes("global thái lan") && (
+                                                    <img
+                                                        src="/thailand-flag.png"
+                                                        alt="TH"
+                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                    />
                                                 )}
-                                                {team.toLowerCase().includes('đài loan') && (
-                                                    <img src="/taiwan-flag.png" alt="TW" className="w-5 h-3.5 object-contain rounded-sm" />
+                                                {(team.toLowerCase().includes("jp") ||
+                                                    team.toLowerCase().includes("nhật bản")) && (
+                                                    <img
+                                                        src="/japan-flag.png"
+                                                        alt="JP"
+                                                        className="w-5 h-3.5 object-contain rounded-sm border border-gray-100"
+                                                    />
+                                                )}
+                                                {team.toLowerCase().includes("đài loan") && (
+                                                    <img
+                                                        src="/taiwan-flag.png"
+                                                        alt="TW"
+                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                    />
                                                 )}
                                                 {team}
                                             </span>
@@ -420,19 +449,22 @@ const ActivityFilters = ({
                     {/* Việt Nam Dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => toggleDropdown('vietnam')}
-                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${isVNActive
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                                : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100'
-                                }`}
+                            onClick={() => toggleDropdown("vietnam")}
+                            className={`px-6 py-2 rounded-xl text-[16px] font-black transition-all duration-300 border flex items-center gap-2 ${
+                                isVNActive
+                                    ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
+                                    : "bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
+                            }`}
                         >
                             <img src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm shadow-sm" />
                             {getVNLabel()}
-                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'vietnam' ? 'rotate-180 text-blue-400' : ''}`} />
+                            <ChevronDown
+                                className={`w-5 h-5 transition-transform duration-300 ${openDropdown === "vietnam" ? "rotate-180 text-blue-400" : ""}`}
+                            />
                         </button>
 
                         <AnimatePresence>
-                            {openDropdown === 'vietnam' && (
+                            {openDropdown === "vietnam" && (
                                 <motion.div
                                     variants={dropdownVariants}
                                     initial="hidden"
@@ -443,15 +475,21 @@ const ActivityFilters = ({
                                 >
                                     {/* All VN option */}
                                     <button
-                                        onClick={() => handleSelectTeam('All VN')}
+                                        onClick={() => handleSelectTeam("All VN")}
                                         className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-bold text-blue-700 bg-blue-50/50 hover:bg-blue-100 transition-colors border-b border-blue-100/50"
                                     >
                                         <span className="flex items-center gap-2">
-                                            {activeTeam === 'All VN' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-                                            <img src="/vn-flag.png" alt="VN" className="w-6 h-4 object-contain rounded-sm shadow-sm" />
+                                            {activeTeam === "All VN" && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                            )}
+                                            <img
+                                                src="/vn-flag.png"
+                                                alt="VN"
+                                                className="w-6 h-4 object-contain rounded-sm shadow-sm"
+                                            />
                                             Tất cả VN
                                         </span>
-                                        {activeTeam === 'All VN' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                        {activeTeam === "All VN" && <Check className="w-3.5 h-3.5 text-blue-600" />}
                                     </button>
                                     {vnTeams.map((team: string) => (
                                         <button
@@ -460,7 +498,9 @@ const ActivityFilters = ({
                                             className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                                         >
                                             <span className="flex items-center gap-2">
-                                                {activeTeam === team && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                {activeTeam === team && (
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                                )}
                                                 {team}
                                             </span>
                                             {activeTeam === team && <Check className="w-3.5 h-3.5 text-blue-600" />}
@@ -483,31 +523,47 @@ const ActivityFilters = ({
                 {/* Unified Time Filter */}
                 <div className="relative group/time">
                     <button
-                        onClick={() => toggleDropdown('timeSelector')}
-                        className={`flex items-center gap-4 px-6 py-3 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${openDropdown === 'timeSelector' || (timeType !== 'today')
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                            : 'bg-blue-50/60 border-blue-100/50 text-blue-600/70 hover:border-blue-300'
-                            }`}
+                        onClick={() => toggleDropdown("timeSelector")}
+                        className={`flex items-center gap-4 px-6 py-3 rounded-xl border transition-all duration-300 shadow-sm hover:shadow-md group ${
+                            openDropdown === "timeSelector" || timeType !== "today"
+                                ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+                                : "bg-blue-50/60 border-blue-100/50 text-blue-600/70 hover:border-blue-300"
+                        }`}
                     >
-                        <Calendar className={`w-5 h-5 ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-100' : 'text-blue-500'}`} />
+                        <Calendar
+                            className={`w-5 h-5 ${openDropdown === "timeSelector" || timeType !== "today" ? "text-blue-100" : "text-blue-500"}`}
+                        />
                         <div className="flex flex-col items-start leading-tight">
-                            <span className={`text-[13px] font-bold uppercase tracking-wider ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-blue-200' : 'text-blue-600 group-hover:text-blue-500'}`}>
-                                {timeType === 'custom' ? 'Khoảng thời gian' : (filterMode === 'month' ? 'Tháng' : filterMode === 'year' ? 'Năm' : (timeOptions.find(opt => opt.id === timeType)?.label || 'Thời gian'))}
+                            <span
+                                className={`text-[11px] font-bold uppercase tracking-wider ${openDropdown === "timeSelector" || timeType !== "today" ? "text-blue-200" : "text-blue-500 group-hover:text-blue-400"}`}
+                            >
+                                {timeType === "custom"
+                                    ? "Khoảng thời gian"
+                                    : filterMode === "month"
+                                      ? "Tháng"
+                                      : filterMode === "year"
+                                        ? "Năm"
+                                        : timeOptions.find((opt) => opt.id === timeType)?.label || "Thời gian"}
                             </span>
-                            <span className={`text-[16px] font-black ${openDropdown === 'timeSelector' || (timeType !== 'today') ? 'text-white' : 'text-slate-950'}`}>
-                                {filterMode === 'year' ? dateRange.start.getFullYear() :
-                                    filterMode === 'month' ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}` :
-                                        (timeType === 'custom' || filterMode === 'week' || filterMode === 'range')
-                                            ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
-                                            : formatDate(selectedDate)
-                                }
+                            <span
+                                className={`text-[15px] font-black leading-none ${openDropdown === "timeSelector" || timeType !== "today" ? "text-white" : "text-slate-900"}`}
+                            >
+                                {filterMode === "year"
+                                    ? dateRange.start.getFullYear()
+                                    : filterMode === "month"
+                                      ? `Tháng ${dateRange.start.getMonth() + 1}/${dateRange.start.getFullYear()}`
+                                      : timeType === "custom" || filterMode === "week" || filterMode === "range"
+                                        ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
+                                        : formatDate(selectedDate)}
                             </span>
                         </div>
-                        <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${openDropdown === 'timeSelector' ? 'rotate-180' : ''}`} />
+                        <ChevronDown
+                            className={`w-5 h-5 transition-transform duration-300 ${openDropdown === "timeSelector" ? "rotate-180" : ""}`}
+                        />
                     </button>
 
                     {/* Quick Clear Time Filter Button - Top Right Edge */}
-                    {timeType !== 'today' && (
+                    {timeType !== "today" && (
                         <motion.button
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -515,7 +571,7 @@ const ActivityFilters = ({
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleSelectTimeType('today');
+                                handleSelectTimeType("today");
                             }}
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors z-10 border-2 border-white"
                             title="Tắt bộ lọc thời gian"
@@ -525,100 +581,184 @@ const ActivityFilters = ({
                     )}
 
                     <AnimatePresence>
-                        {openDropdown === 'timeSelector' && (
+                        {openDropdown === "timeSelector" && (
                             <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                initial={{ opacity: 0, y: 8, scale: 0.97 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute top-full mt-2 right-0 w-[300px] bg-slate-900 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-slate-800 p-6 z-[80]"
+                                exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                                transition={{ duration: 0.18, ease: "easeOut" }}
+                                className="absolute top-full mt-2 right-0 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[80] overflow-hidden"
+                                style={{ width: filterMode === "range" ? 560 : 460 }}
                             >
-                                {/* Tabbed Picker */}
-                                <div className="flex flex-col">
-                                    {/* Tabs */}
-                                    <div className="flex items-center gap-1 p-1 bg-slate-800/50 rounded-2xl mb-6">
-                                        {(['day', 'week', 'month', 'year', 'range'] as const).map(mode => (
-                                            <button
-                                                key={mode}
-                                                onClick={() => setFilterMode(mode)}
-                                                className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${filterMode === mode ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                                            >
-                                                {mode === 'day' ? 'Ngày' : mode === 'week' ? 'Tuần' : mode === 'month' ? 'Tháng' : mode === 'year' ? 'Năm' : 'Khoảng'}
-                                            </button>
-                                        ))}
+                                <div className="flex">
+                                    {/* Left: Quick Presets */}
+                                    <div className="w-44 bg-gray-50 border-r border-gray-100 p-3 flex flex-col gap-1">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Nhanh</p>
+                                        {timeOptions.map((opt) => {
+                                            const isActive = timeType === opt.id;
+                                            return (
+                                                <button
+                                                    key={opt.id}
+                                                    onClick={() => handleSelectTimeType(opt.id)}
+                                                    className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-semibold transition-all flex items-center gap-2 ${
+                                                        isActive
+                                                            ? "bg-blue-600 text-white shadow-sm"
+                                                            : "text-gray-600 hover:bg-white hover:text-blue-700 hover:shadow-sm"
+                                                    }`}
+                                                >
+                                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-200 shrink-0" />}
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
 
-                                    {filterMode === 'month' ? (
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {Array.from({ length: 12 }).map((_, i) => (
+                                    {/* Right: Calendar / Month / Year picker */}
+                                    <div className="flex-1 p-4 flex flex-col">
+                                        {/* Mode tabs */}
+                                        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl mb-4">
+                                            {(["day", "week", "month", "year", "range"] as const).map((mode) => (
                                                 <button
-                                                    key={i}
-                                                    onClick={() => handleMonthSelect(i)}
-                                                    className={`py-4 rounded-2xl text-xs font-bold border transition-all ${dateRange.start.getMonth() === i && dateRange.start.getFullYear() === viewDate.getFullYear()
-                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg'
-                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-blue-500/50 hover:text-white'
-                                                        }`}
+                                                    key={mode}
+                                                    onClick={() => setFilterMode(mode)}
+                                                    className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-wide rounded-lg transition-all ${
+                                                        filterMode === mode
+                                                            ? "bg-white text-blue-600 shadow-sm"
+                                                            : "text-gray-400 hover:text-gray-700"
+                                                    }`}
                                                 >
-                                                    Tháng {i + 1}
+                                                    {mode === "day" ? "Ngày" : mode === "week" ? "Tuần" : mode === "month" ? "Tháng" : mode === "year" ? "Năm" : "Khoảng"}
                                                 </button>
                                             ))}
                                         </div>
-                                    ) : filterMode === 'year' ? (
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {[2024, 2025, 2026, 2027].map(yr => (
-                                                <button
-                                                    key={yr}
-                                                    onClick={() => handleYearSelect(yr)}
-                                                    className={`py-8 rounded-3xl text-lg font-black border transition-all ${dateRange.start.getFullYear() === yr
-                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg'
-                                                        : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-blue-500/50 hover:text-white'
-                                                        }`}
-                                                >
-                                                    {yr}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {/* Calendar Header */}
-                                            <div className="flex items-center justify-between mb-4">
-                                                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 rotate-90" /></button>
-                                                <div className="text-xs font-black text-white uppercase tracking-widest">{viewDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}</div>
-                                                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white"><ChevronDown className="w-4 h-4 -rotate-90" /></button>
-                                            </div>
 
-                                            {/* Calendar Grid */}
-                                            <div className="grid grid-cols-7 gap-1 mb-2">
-                                                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
-                                                    <div key={day} className="text-center text-[10px] font-black text-slate-500">{day}</div>
-                                                ))}
-                                            </div>
-                                            <div className="grid grid-cols-7 gap-1">
-                                                {days.map((day, idx) => (
-                                                    <div key={idx} className="aspect-square flex items-center justify-center">
-                                                        {day ? (
+                                        {filterMode === "month" ? (
+                                            <>
+                                                {/* Year navigator for month picker */}
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <button onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() - 1); setViewDate(d); }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                        <ChevronDown className="w-4 h-4 rotate-90" />
+                                                    </button>
+                                                    <span className="text-sm font-black text-gray-800">{viewDate.getFullYear()}</span>
+                                                    <button onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() + 1); setViewDate(d); }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                        <ChevronDown className="w-4 h-4 -rotate-90" />
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {Array.from({ length: 12 }).map((_, i) => {
+                                                        const isActiveMon = dateRange.start.getMonth() === i && dateRange.start.getFullYear() === viewDate.getFullYear();
+                                                        const isCurrentMon = new Date().getMonth() === i && new Date().getFullYear() === viewDate.getFullYear();
+                                                        return (
                                                             <button
-                                                                onClick={() => handleDateSelect(day)}
-                                                                className={`w-full h-full flex items-center justify-center text-[11px] font-bold rounded-lg transition-all
-                                                                    ${isSelected(day) || (filterMode === 'week' && isInRange(day))
-                                                                        ? 'bg-blue-600 text-white shadow-lg'
-                                                                        : isInRange(day)
-                                                                            ? 'bg-blue-500/20 text-blue-200'
-                                                                            : isToday(day)
-                                                                                ? 'bg-blue-900/40 text-blue-400 ring-1 ring-blue-500/30'
-                                                                                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
-                                                                    }`}
+                                                                key={i}
+                                                                onClick={() => handleMonthSelect(i)}
+                                                                className={`py-3 rounded-xl text-xs font-bold border transition-all ${
+                                                                    isActiveMon
+                                                                        ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                                                                        : isCurrentMon
+                                                                          ? "border-blue-300 text-blue-600 bg-blue-50"
+                                                                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
+                                                                }`}
                                                             >
-                                                                {day}
+                                                                Th.{i + 1}
                                                             </button>
-                                                        ) : <div className="w-full h-full" />}
-                                                    </div>
-                                                ))}
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        ) : filterMode === "year" ? (
+                                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                                {[2023, 2024, 2025, 2026, 2027, 2028].map((yr) => {
+                                                    const isActiveYr = dateRange.start.getFullYear() === yr;
+                                                    const isCurrentYr = new Date().getFullYear() === yr;
+                                                    return (
+                                                        <button
+                                                            key={yr}
+                                                            onClick={() => handleYearSelect(yr)}
+                                                            className={`py-6 rounded-2xl text-xl font-black border transition-all ${
+                                                                isActiveYr
+                                                                    ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                                                                    : isCurrentYr
+                                                                      ? "border-blue-300 text-blue-600 bg-blue-50"
+                                                                      : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
+                                                            }`}
+                                                        >
+                                                            {yr}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
-                                        </>
-                                    )}
+                                        ) : (
+                                            <>
+                                                {/* Calendar Header */}
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                        <ChevronDown className="w-4 h-4 rotate-90" />
+                                                    </button>
+                                                    <span className="text-sm font-black text-gray-800 capitalize">
+                                                        {viewDate.toLocaleString("vi-VN", { month: "long", year: "numeric" })}
+                                                    </span>
+                                                    <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                        <ChevronDown className="w-4 h-4 -rotate-90" />
+                                                    </button>
+                                                </div>
 
-                                    <div className="mt-auto pt-6 flex justify-end">
-                                        <button onClick={() => setOpenDropdown(null)} className="px-6 py-2 text-xs font-black text-white bg-slate-800 rounded-xl hover:bg-slate-700 transition-all uppercase tracking-widest">Hoàn tất</button>
+                                                {/* Day headers */}
+                                                <div className="grid grid-cols-7 gap-1 mb-1">
+                                                    {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((d) => (
+                                                        <div key={d} className="text-center text-[10px] font-black text-gray-400 py-1">{d}</div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Day grid */}
+                                                <div className="grid grid-cols-7 gap-1">
+                                                    {days.map((day, idx) => (
+                                                        <div key={idx} className="aspect-square flex items-center justify-center">
+                                                            {day ? (
+                                                                <button
+                                                                    onClick={() => handleDateSelect(day)}
+                                                                    className={`w-full h-full flex items-center justify-center text-[12px] font-semibold rounded-lg transition-all
+                                                                        ${
+                                                                            isSelected(day) || (filterMode === "week" && isInRange(day))
+                                                                                ? "bg-blue-600 text-white shadow-sm font-bold"
+                                                                                : isInRange(day)
+                                                                                  ? "bg-blue-100 text-blue-700"
+                                                                                  : isToday(day)
+                                                                                    ? "bg-blue-50 text-blue-600 ring-2 ring-blue-400 ring-offset-1 font-bold"
+                                                                                    : "hover:bg-gray-100 text-gray-700 hover:text-blue-700"
+                                                                        }`}
+                                                                >
+                                                                    {day}
+                                                                </button>
+                                                            ) : (
+                                                                <div className="w-full h-full" />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Range hint */}
+                                                {filterMode === "range" && (
+                                                    <div className="mt-3 px-2 py-2 bg-blue-50 rounded-xl flex items-center gap-2">
+                                                        <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                                        <span className="text-[11px] text-blue-700 font-semibold">
+                                                            {dateRange.start.getTime() === dateRange.end.getTime()
+                                                                ? `Chọn ngày kết thúc`
+                                                                : `${formatDate(dateRange.start)} → ${formatDate(dateRange.end)}`}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        <div className="mt-4 flex justify-end">
+                                            <button
+                                                onClick={() => setOpenDropdown(null)}
+                                                className="px-5 py-2 text-[12px] font-black text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all uppercase tracking-widest shadow-sm"
+                                            >
+                                                Xong
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -627,20 +767,24 @@ const ActivityFilters = ({
                 </div>
 
                 {/* Name Filter - visible to all roles */}
-                {(true) && (
+                {true && (
                     <div className="relative group">
-                        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50/60 border-blue-100/50'}`}>
-                            <Search className={`w-5 h-5 transition-colors ${searchName ? 'text-white' : 'text-blue-600'}`} />
+                        <div
+                            className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all duration-300 shadow-sm focus-within:shadow-md focus-within:border-blue-400 group-hover:border-blue-200 ${searchName ? "bg-blue-600 border-blue-600 text-white" : "bg-blue-50/60 border-blue-100/50"}`}
+                        >
+                            <Search
+                                className={`w-5 h-5 transition-colors ${searchName ? "text-white" : "text-blue-600"}`}
+                            />
                             <input
                                 type="text"
                                 placeholder="Tìm tên..."
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                className={`bg-transparent border-none focus:outline-none text-[16px] font-black w-36 placeholder:font-normal ${searchName ? 'text-white placeholder:text-blue-200' : 'text-slate-950 placeholder:text-slate-400'}`}
+                                className={`bg-transparent border-none focus:outline-none text-[16px] font-black w-36 placeholder:font-normal ${searchName ? "text-white placeholder:text-blue-200" : "text-slate-950 placeholder:text-slate-400"}`}
                             />
                             {searchName && (
                                 <button
-                                    onClick={() => setSearchName('')}
+                                    onClick={() => setSearchName("")}
                                     className="p-1 hover:bg-white/20 rounded-full transition-colors"
                                 >
                                     <X className="w-4 h-4 text-white" />
@@ -649,8 +793,6 @@ const ActivityFilters = ({
                         </div>
                     </div>
                 )}
-
-
 
                 {/* Screenshot Button */}
                 {onCapture && (
