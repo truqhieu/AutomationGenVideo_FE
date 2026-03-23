@@ -90,6 +90,8 @@ const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: s
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
+    const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
     if (!trafficToday.details || trafficToday.details.length === 0) return null;
 
     const platformTotals = Object.entries(PLATFORM_STYLES)
@@ -100,6 +102,10 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
         }))
         .filter(p => p.value > 0)
         .sort((a, b) => b.value - a.value);
+
+    // Get active data if any
+    const activeData = activeIndex !== null ? trafficToday.details[activeIndex] : null;
+    const totalTraffic = trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0);
 
     return (
         <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
@@ -127,7 +133,8 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                     paddingAngle={4}
                                     dataKey="value"
                                     animationDuration={1500}
-                                    animationBegin={200}
+                                    onMouseEnter={(_, index) => setActiveIndex(index)}
+                                    onMouseLeave={() => setActiveIndex(null)}
                                 >
                                     {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
                                         const platformStyle = PLATFORM_STYLES[entry.platform || ''];
@@ -136,40 +143,38 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                                 key={`cell-${idx}`} 
                                                 fill={platformStyle?.bgColor || '#8b5cf6'} 
                                                 stroke="#fff"
-                                                strokeWidth={3}
-                                                className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                                                strokeWidth={activeIndex === idx ? 5 : 3}
+                                                className="hover:opacity-80 transition-all cursor-pointer outline-none"
                                             />
                                         );
                                     })}
                                 </Pie>
-                                <Tooltip 
-                                    content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                            const data = payload[0].payload;
-                                            return (
-                                                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-2xl shadow-xl animate-in fade-in zoom-in duration-200">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill }} />
-                                                        <span className="text-[10px] font-black text-slate-800 uppercase">{data.name}</span>
-                                                    </div>
-                                                    <p className="text-xs font-black text-purple-600">
-                                                        {formatTrafficNumber(data.value)} Traffic
-                                                    </p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }}
-                                />
+                                <Tooltip content={<></>} />
                             </PieChart>
                         </ResponsiveContainer>
                         
-                        {/* Central Summary */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">Tổng kênh</span>
-                            <span className="text-2xl font-black text-slate-800 leading-none">
-                                {formatTrafficNumber(trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0))}
-                            </span>
+                        {/* Central Summary - Interactive (No more overlap!) */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 text-center px-4 animate-in fade-in duration-300">
+                            {activeData ? (
+                                <>
+                                    <span 
+                                        className="text-[10px] font-black uppercase tracking-widest mb-1 truncate w-full"
+                                        style={{ color: PLATFORM_STYLES[activeData.platform || '']?.color }}
+                                    >
+                                        {activeData.channel}
+                                    </span>
+                                    <span className="text-xl font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(Number(activeData.value || 0))}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                                    <span className="text-2xl font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(totalTraffic)}
+                                    </span>
+                                </>
+                            )}
                         </div>
                     </div>
 
