@@ -23,24 +23,14 @@ export default function DashboardLayout({
   }, [router]);
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated && !user && !isLoggingOut) {
-      const storedToken = localStorage.getItem('auth_token');
-      if (!storedToken) {
-        router.push('/');
-      } else {
-        console.log('Dashboard: Token found but state empty, attempting to restore session...');
-      }
+    if (!isHydrated || isAuthenticated || user || isLoggingOut) return;
+    const storedToken = localStorage.getItem('auth_token');
+    if (!storedToken) {
+      router.push('/');
+    } else if (!useAuthStore.getState().isLoading) {
+      useAuthStore.getState().loadUser();
     }
   }, [isHydrated, isAuthenticated, user, router, isLoggingOut]);
-
-  useEffect(() => {
-    if (isHydrated && !isAuthenticated && !user && !isLoggingOut) {
-      const storedToken = localStorage.getItem('auth_token');
-      if (storedToken && !useAuthStore.getState().isLoading) {
-        useAuthStore.getState().loadUser();
-      }
-    }
-  }, [isHydrated, isAuthenticated, user, isLoggingOut]);
 
   // Fetch dynamic sidebar/header permissions
   useEffect(() => {

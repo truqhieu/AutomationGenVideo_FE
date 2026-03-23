@@ -808,7 +808,7 @@ function StatsCard({ icon, label, value, change, isNumberString = false, subLabe
             <span className="text-[10px] text-slate-400 font-medium">vs previous</span>
           </>
         )}
-        {subLabel && <span className="text-[10px] text-emerald-600 font-medium">{subLabel}</span>}
+        {subLabel != null && subLabel !== '' && <span className="text-[10px] text-emerald-600 font-medium">{subLabel}</span>}
       </div>
 
     </div>

@@ -122,7 +122,7 @@ export default function LoginPage() {
                     placeholder="name@example.com"
                   />
                 </div>
-                {errors.email && <p className="text-xs text-red-400 ml-1">{errors.email.message}</p>}
+                {errors.email?.message && <p className="text-xs text-red-400 ml-1">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -139,7 +139,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                   />
                 </div>
-                {errors.password && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
+                {errors.password?.message && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
               </div>
 
               <button

@@ -114,7 +114,7 @@ export default function RegisterPage() {
                     placeholder="Nguyễn Văn A"
                   />
                 </div>
-                {errors.full_name && <p className="text-xs text-red-400 ml-1">{errors.full_name.message}</p>}
+                {errors.full_name?.message && <p className="text-xs text-red-400 ml-1">{errors.full_name.message}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -128,7 +128,7 @@ export default function RegisterPage() {
                     placeholder="name@example.com"
                   />
                 </div>
-                {errors.email && <p className="text-xs text-red-400 ml-1">{errors.email.message}</p>}
+                {errors.email?.message && <p className="text-xs text-red-400 ml-1">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -142,7 +142,7 @@ export default function RegisterPage() {
                     placeholder="••••••••"
                   />
                 </div>
-                {errors.password && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
+                {errors.password?.message && <p className="text-xs text-red-400 ml-1">{errors.password.message}</p>}
               </div>
 
 

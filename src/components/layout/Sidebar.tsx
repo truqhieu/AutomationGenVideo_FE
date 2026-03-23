@@ -96,14 +96,12 @@ function SidebarContent({
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const isManagement = useMemo(() => 
-    user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER, UserRole.LEADER].includes(r)),
-    [user?.roles]
+  const isManagement = user?.roles?.some((r: any) =>
+    [UserRole.ADMIN, UserRole.MANAGER, UserRole.LEADER].includes(r)
   );
 
-  const isManagerOrAdmin = useMemo(() => 
-    user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r)),
-    [user?.roles]
+  const isManagerOrAdmin = user?.roles?.some((r: any) =>
+    [UserRole.ADMIN, UserRole.MANAGER].includes(r)
   );
 
   // Cleanup hover timeout on unmount
