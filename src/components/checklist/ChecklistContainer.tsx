@@ -604,7 +604,16 @@ const ChecklistContainer = ({
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
                         trafficDetails: {
-                            breakdown: entryDetails,
+                            breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
+                                acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
+                                    ...entry,
+                                    evidences: (entry.evidences || []).map((ev: any) => ({
+                                        url: ev.url,
+                                        name: ev.name
+                                    }))
+                                }));
+                                return acc;
+                            }, {} as Record<string, any>),
                             evidences: platformEvidences
                         },
                         reportDate: reportDate, // Send custom date

@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Activity, ImagePlus, X, CheckCircle, Loader2 } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Activity, ImagePlus, X, Loader2 } from 'lucide-react';
 
 export const TRAFFIC_PLATFORMS = [
     { id: 'fb', label: 'Traffic FB' },
@@ -45,6 +45,13 @@ export const initialTrafficChannels = (): TrafficData => ({
     twitter: '',
 });
 
+interface TrafficEntry {
+    id: string;
+    value: string;
+    channel: string;
+    evidences?: { url: string; name: string; token: string }[];
+}
+
 interface TrafficReportSectionProps {
     values: TrafficData;
     channels: TrafficData;
@@ -57,15 +64,6 @@ interface TrafficReportSectionProps {
     initialEvidences?: Record<string, { url: string; name: string; token: string }[]>;
     initialEntries?: Record<string, TrafficEntry[]>;
 }
-
-
-interface TrafficEntry {
-    id: string;
-    value: string;
-    channel: string;
-    evidences?: { url: string; name: string; token: string }[];
-}
-
 
 const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
     values, 
@@ -82,13 +80,9 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
     const [activeTarget, setActiveTarget] = useState<{ platformId: string; entryId: string } | null>(null);
-    
-    // Store evidence per platform for compatibility: { platformId: [{ url, name, token }] }
-    const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>(initialEvidences || {});
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
 
     // Internal state to track multiple entries per platform
-    // format: { fb: [{ id: 'random', value: '100', channel: 'Kênh A', evidences: [] }] }
     const [entries, setEntries] = useState<Record<string, TrafficEntry[]>>(() => {
         if (initialEntries && Object.keys(initialEntries).length > 0) return initialEntries;
 
@@ -101,13 +95,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         return initial;
     });
 
-    React.useEffect(() => {
-        if (initialEvidences) {
-            setEvidences(initialEvidences);
-        }
-    }, [initialEvidences]);
-
-    React.useEffect(() => {
+    useEffect(() => {
         if (initialEntries && Object.keys(initialEntries).length > 0) {
             setEntries(initialEntries);
             
@@ -124,7 +112,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     }, [initialEntries]);
 
     // Update parent whenever entries change
-    const updateParent = (platformId: string, currentEntries: TrafficEntry[]) => {
+    const updateParent = (platformId: string, currentEntries: TrafficEntry[], allEntries: Record<string, TrafficEntry[]>) => {
         // Aggregated total
         const total = currentEntries.reduce((sum, e) => sum + (parseInt(e.value) || 0), 0);
         onChange(platformId as keyof TrafficData, total > 0 ? total.toString() : '');
@@ -136,76 +124,57 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             .join(', ');
         onChannelChange(platformId as keyof TrafficData, joinedChannels);
 
-        // Update platform evidence tokens for parent
-        const allPlatformTokens = currentEntries.reduce((acc, row) => 
-            [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
-        );
-        
-        // Better: reconstruct all from entries
+        // Reconstruct all platform tokens from allEntries
         const fullPlatformTokens: Record<string, string[]> = {};
-        Object.keys(entries).forEach(pid => {
-            const platformRows = pid === platformId ? currentEntries : (entries[pid] || []);
-            fullPlatformTokens[pid] = platformRows.reduce((acc, row) => 
+        Object.keys(allEntries).forEach(pid => {
+            fullPlatformTokens[pid] = (allEntries[pid] || []).reduce((acc, row) => 
                 [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
             );
         });
         onPlatformEvidenceChange?.(fullPlatformTokens);
 
-
         // Notify parent of entries
-        const updatedEntries = { ...entries, [platformId]: currentEntries };
-        onEntriesChange?.(updatedEntries);
+        onEntriesChange?.(allEntries);
     };
 
     const addRow = (platformId: string) => {
         if (readOnly) return;
-        const newEntries = [
+        const newRows = [
             ...(entries[platformId] || []),
             { id: Math.random().toString(36).slice(2, 9), value: '', channel: '', evidences: [] }
         ];
-        setEntries(prev => {
-            const next = { ...prev, [platformId]: newEntries };
-            onEntriesChange?.(next);
-            return next;
-        });
-        updateParent(platformId, newEntries);
+        const nextEntries = { ...entries, [platformId]: newRows };
+        setEntries(nextEntries);
+        updateParent(platformId, newRows, nextEntries);
     };
 
     const removeRow = (platformId: string, entryId: string) => {
         if (readOnly) return;
         const currentPlatformEntries = entries[platformId] || [];
         if (currentPlatformEntries.length <= 1) {
-            // Just clear the first one instead of removing
             updateRow(platformId, entryId, { value: '', channel: '', evidences: [] });
             return;
         }
-        const newEntries = currentPlatformEntries.filter(e => e.id !== entryId);
-        setEntries(prev => {
-            const next = { ...prev, [platformId]: newEntries };
-            onEntriesChange?.(next);
-            return next;
-        });
-        updateParent(platformId, newEntries);
+        const newRows = currentPlatformEntries.filter(e => e.id !== entryId);
+        const nextEntries = { ...entries, [platformId]: newRows };
+        setEntries(nextEntries);
+        updateParent(platformId, newRows, nextEntries);
     };
 
     const updateRow = (platformId: string, entryId: string, data: Partial<TrafficEntry>) => {
         if (readOnly) return;
         const currentEntries = entries[platformId] || [];
-        const newEntries = currentEntries.map(e => 
+        const newRows = currentEntries.map(e => 
             e.id === entryId ? { ...e, ...data } : e
         );
-        setEntries(prev => {
-            const next = { ...prev, [platformId]: newEntries };
-            onEntriesChange?.(next);
-            return next;
-        });
-        updateParent(platformId, newEntries);
+        const nextEntries = { ...entries, [platformId]: newRows };
+        setEntries(nextEntries);
+        updateParent(platformId, newRows, nextEntries);
     };
     
     const isPlatformMatch = (platformId: string, channelPlatform: string | null | undefined): boolean => {
         if (!channelPlatform) return false;
         const p = channelPlatform.toLowerCase().trim();
-        
         const platformMap: Record<string, string[]> = {
             'fb': ['fb', 'facebook', 'fanpage'],
             'ig': ['ig', 'instagram', 'ins'],
@@ -216,15 +185,12 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             'zalo': ['zalo', 'zalo oa', 'zalo video'],
             'twitter': ['twitter', 'twitter x', 'x']
         };
-
         const targets = platformMap[platformId] || [platformId.toLowerCase()];
-        
         return targets.some(target => {
             if (p === target) return true;
             if (target.length > 3 && p.includes(target)) return true;
             const regex = new RegExp(`\\b${target}\\b`, 'i');
-            if (regex.test(p)) return true;
-            return false;
+            return regex.test(p);
         });
     };
 
@@ -255,20 +221,17 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 token: data.fileTokens[i]
             }));
 
-            // Update specific row evidence
-            const currentPlatformEntries = entries[platformId] || [];
-            const updatedEntries = currentPlatformEntries.map(row => {
+            const currentRows = entries[platformId] || [];
+            const updatedRows = currentRows.map(row => {
                 if (row.id === entryId) {
-                    return {
-                        ...row,
-                        evidences: [...(row.evidences || []), ...newEvidences]
-                    };
+                    return { ...row, evidences: [...(row.evidences || []), ...newEvidences] };
                 }
                 return row;
             });
 
-            setEntries(prev => ({ ...prev, [platformId]: updatedEntries }));
-            updateParent(platformId, updatedEntries);
+            const nextEntries = { ...entries, [platformId]: updatedRows };
+            setEntries(nextEntries);
+            updateParent(platformId, updatedRows, nextEntries);
             
         } catch (err) {
             setUploadErrors(prev => ({ ...prev, [platformId]: 'Lỗi upload ảnh' }));
@@ -279,23 +242,23 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     };
 
     const removeEntryImage = (platformId: string, entryId: string, idx: number) => {
-        const currentEntries = entries[platformId] || [];
-        const updatedEntries = currentEntries.map(row => {
+        const currentRows = entries[platformId] || [];
+        const updatedRows = currentRows.map(row => {
             if (row.id === entryId) {
-                return {
-                    ...row,
-                    evidences: (row.evidences || []).filter((_, i) => i !== idx)
-                };
+                return { ...row, evidences: (row.evidences || []).filter((_, i) => i !== idx) };
             }
             return row;
         });
-        setEntries(prev => ({ ...prev, [platformId]: updatedEntries }));
-        updateParent(platformId, updatedEntries);
+        const nextEntries = { ...entries, [platformId]: updatedRows };
+        setEntries(nextEntries);
+        updateParent(platformId, updatedRows, nextEntries);
     };
 
     const triggerUpload = (platformId: string, entryId: string) => {
         setActiveTarget({ platformId, entryId });
         setTimeout(() => fileInputRef.current?.click(), 0);
+    };
+
     return (
         <div className="space-y-6">
             <input
@@ -466,12 +429,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                     </div>
                     <p className="text-slate-500 font-bold uppercase tracking-wider text-xs">Không tìm thấy kênh nào bạn đang quản lý</p>
                     <p className="text-slate-400 text-[10px] mt-1 italic">Vui lòng kiểm tra lại tài khoản hoặc liên hệ quản trị viên</p>
-                </div>
-            )}
-        </div>
-    );
-};
-�� quản trị viên</p>
                 </div>
             )}
         </div>

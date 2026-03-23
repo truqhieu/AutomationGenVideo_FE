@@ -13,6 +13,12 @@ interface TrafficToday {
     zalo: number;
     twitter: number;
     total: number;
+    details?: {
+        id: string;
+        value: string;
+        channel: string;
+        evidences?: { url: string; name: string; token: string }[];
+    }[];
 }
 
 interface EmployeeReport {
@@ -78,81 +84,63 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
             ...style,
             value: trafficToday[key as keyof TrafficToday] as number || 0,
         }))
+        .filter(p => p.value > 0)
         .sort((a, b) => b.value - a.value);
 
     if (platforms.length === 0) return null;
 
     const maxVal = Math.max(...platforms.map(p => p.value));
 
-    // Generate nice Y-axis ticks
     const generateTicks = (max: number) => {
         if (max <= 0) return [0];
         const rawStep = max / 4;
         const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
         const step = Math.ceil(rawStep / magnitude) * magnitude;
         const ticks: number[] = [];
-        for (let i = 0; i <= max; i += step) {
-            ticks.push(i);
-        }
-        if (ticks[ticks.length - 1] < max) {
-            ticks.push(ticks[ticks.length - 1] + step);
-        }
+        for (let i = 0; i <= max; i += step) ticks.push(i);
+        if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
         return ticks;
     };
 
     const ticks = generateTicks(maxVal);
     const chartMax = ticks[ticks.length - 1] || 1;
 
-    const formatAxisLabel = (num: number): string => {
-        if (num >= 1000000) return `${(num / 1000000).toFixed(0)}M`;
-        if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
-        return num.toString();
-    };
-
     return (
-        <div className="border border-purple-100 rounded-xl p-3 bg-white">
-            <h4 className="text-[11px] font-black text-purple-600 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
-                <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> TRAFFIC TIẾP CẬN
+        <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
+            <h4 className="text-[11px] font-black text-purple-600 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                <TrendingUp className="w-4 h-4" strokeWidth={3} /> TRAFFIC TIẾP CẬN
             </h4>
 
-            {/* Chart area */}
-            <div className="flex" style={{ height: 80 }}>
-                {/* Y-axis labels */}
-                <div className="flex flex-col justify-between pr-2 shrink-0" style={{ height: 80 }}>
+            {/* Chart Area */}
+            <div className="flex" style={{ height: 100 }}>
+                <div className="flex flex-col justify-between pr-3 shrink-0" style={{ height: 100 }}>
                     {[...ticks].reverse().map((tick, i) => (
-                        <span key={i} className="text-[11px] text-gray-500 font-bold leading-none text-right min-w-[28px]">
-                            {formatAxisLabel(tick)}
+                        <span key={i} className="text-[10px] text-gray-400 font-black leading-none text-right min-w-[30px]">
+                            {formatTrafficNumber(tick)}
                         </span>
                     ))}
                 </div>
 
-                {/* Grid + Bars */}
                 <div className="flex-1 relative">
-                    {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                         {ticks.map((_, i) => (
-                            <div key={i} className="border-b border-gray-100 w-full" style={{ height: 0 }} />
+                            <div key={i} className="border-b border-slate-50 w-full h-0" />
                         ))}
                     </div>
 
-                    {/* Columns */}
-                    <div className="relative flex items-end justify-center gap-1 h-full pt-4">
+                    <div className="relative flex items-end justify-center gap-1.5 h-full pt-4">
                         {platforms.map((p) => {
                             const pct = chartMax > 0 ? (p.value / chartMax) * 100 : 0;
                             return (
-                                <div key={p.key} className="flex flex-col items-center w-8 h-full justify-end group shrink-0">
-                                    {/* Tooltip on hover */}
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mb-1 absolute -top-2">
-                                        <span className="text-[10px] font-black text-gray-700 bg-white/90 backdrop-blur shadow-lg rounded-lg px-2 py-1 border border-purple-100 whitespace-nowrap z-10">
+                                <div key={p.key} className="flex flex-col items-center w-8 h-full justify-end group shrink-0 relative">
+                                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-none scale-90 group-hover:scale-100">
+                                        <div className="bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap shadow-xl">
                                             {p.label}: {formatTrafficNumber(p.value)}
-                                        </span>
+                                        </div>
                                     </div>
                                     <div
-                                        className="w-full relative rounded-t-md transition-all duration-500 hover:brightness-110 shadow-sm"
-                                        style={{
-                                            height: `${pct}%`,
-                                            backgroundColor: p.bgColor,
-                                        }}
+                                        className="w-full rounded-t-xl transition-all duration-500 hover:scale-x-110 shadow-sm"
+                                        style={{ height: `${pct}%`, backgroundColor: p.bgColor }}
                                     />
                                 </div>
                             );
@@ -161,6 +149,41 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                 </div>
             </div>
 
+            {/* Detailed Breakdown with Images */}
+            {trafficToday.details && trafficToday.details.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Chi tiết kênh & minh chứng</p>
+                    <div className="grid grid-cols-1 gap-2.5">
+                        {trafficToday.details.map((entry, idx) => (
+                            <div key={entry.id || idx} className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 hover:bg-white hover:shadow-sm transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-4 bg-purple-400 rounded-full" />
+                                        <span className="text-xs font-black text-slate-700 uppercase">{entry.channel || 'Kênh hệ thống'}</span>
+                                    </div>
+                                    <span className="text-xs font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100">
+                                        {Number(entry.value || 0).toLocaleString('vi-VN')}
+                                    </span>
+                                </div>
+
+                                {entry.evidences && entry.evidences.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2.5">
+                                        {entry.evidences.map((ev, evIdx) => (
+                                            <div 
+                                                key={evIdx} 
+                                                className="w-11 h-11 rounded-xl border border-white shadow-sm overflow-hidden cursor-zoom-in hover:scale-110 transition-all duration-300"
+                                                onClick={() => window.open(ev.url, '_blank')}
+                                            >
+                                                <img src={ev.url} alt={ev.name} className="w-full h-full object-cover" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
