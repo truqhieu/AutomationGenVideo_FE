@@ -56,6 +56,12 @@ interface TrafficReportSectionProps {
     initialEvidences?: Record<string, { url: string; name: string; token: string }[]>;
 }
 
+interface TrafficEntry {
+    id: string;
+    value: string;
+    channel: string;
+}
+
 const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
     values, 
     channels,
@@ -74,11 +80,68 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>(initialEvidences || {});
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
 
+    // Internal state to track multiple entries per platform
+    // format: { fb: [{ id: 'random', value: '100', channel: 'Kênh A' }] }
+    const [entries, setEntries] = useState<Record<string, TrafficEntry[]>>(() => {
+        const initial: Record<string, TrafficEntry[]> = {};
+        TRAFFIC_PLATFORMS.forEach(p => {
+            const val = values[p.id as keyof TrafficData] || '';
+            const ch = channels[p.id as keyof TrafficData] || '';
+            initial[p.id] = [{ id: Math.random().toString(36).slice(2, 9), value: val, channel: ch }];
+        });
+        return initial;
+    });
+
     React.useEffect(() => {
         if (initialEvidences) {
             setEvidences(initialEvidences);
         }
     }, [initialEvidences]);
+
+    // Update parent whenever entries change
+    const updateParent = (platformId: string, currentEntries: TrafficEntry[]) => {
+        // Aggregated total
+        const total = currentEntries.reduce((sum, e) => sum + (parseInt(e.value) || 0), 0);
+        onChange(platformId as keyof TrafficData, total > 0 ? total.toString() : '');
+        
+        // Joined channel names
+        const joinedChannels = currentEntries
+            .map(e => e.channel)
+            .filter(c => c !== '')
+            .join(', ');
+        onChannelChange(platformId as keyof TrafficData, joinedChannels);
+    };
+
+    const addRow = (platformId: string) => {
+        if (readOnly) return;
+        const newEntries = [
+            ...(entries[platformId] || []),
+            { id: Math.random().toString(36).slice(2, 9), value: '', channel: '' }
+        ];
+        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+    };
+
+    const removeRow = (platformId: string, entryId: string) => {
+        if (readOnly) return;
+        const currentPlatformEntries = entries[platformId] || [];
+        if (currentPlatformEntries.length <= 1) {
+            // Just clear the first one instead of removing
+            updateRow(platformId, entryId, { value: '', channel: '' });
+            return;
+        }
+        const newEntries = currentPlatformEntries.filter(e => e.id !== entryId);
+        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+        updateParent(platformId, newEntries);
+    };
+
+    const updateRow = (platformId: string, entryId: string, data: Partial<TrafficEntry>) => {
+        if (readOnly) return;
+        const newEntries = (entries[platformId] || []).map(e => 
+            e.id === entryId ? { ...e, ...data } : e
+        );
+        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+        updateParent(platformId, newEntries);
+    };
     
     const isPlatformMatch = (platformId: string, channelPlatform: string | null | undefined): boolean => {
         if (!channelPlatform) return false;
@@ -98,18 +161,10 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         const targets = platformMap[platformId] || [platformId.toLowerCase()];
         
         return targets.some(target => {
-            // Priority 1: Exact match
             if (p === target) return true;
-            
-            // Priority 2: Broad match - ONLY for longer terms (more than 3 chars)
-            // Example: "tiktok" should NOT match "ig"
             if (target.length > 3 && p.includes(target)) return true;
-            
-            // Priority 3: Check if the platform string contains the target as a standalone word
-            // Using regex to match whole word
             const regex = new RegExp(`\\b${target}\\b`, 'i');
             if (regex.test(p)) return true;
-            
             return false;
         });
     };
@@ -147,8 +202,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             };
             
             setEvidences(updatedEvidences);
-            
-            // Notify parent with per-platform tokens
             const platformTokens: Record<string, string[]> = {};
             Object.keys(updatedEvidences).forEach(pid => {
                 platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
@@ -157,7 +210,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             
         } catch (err) {
             setUploadErrors(prev => ({ ...prev, [platformId]: 'Lỗi upload ảnh' }));
-            console.error('Evidence upload error:', err);
         } finally {
             setUploadingPlatform(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -166,14 +218,8 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
 
     const removeImage = (platformId: string, idx: number) => {
         const updatedPlatformEvidences = (evidences[platformId] || []).filter((_, i) => i !== idx);
-        const updatedEvidences = {
-            ...evidences,
-            [platformId]: updatedPlatformEvidences
-        };
-        
+        const updatedEvidences = { ...evidences, [platformId]: updatedPlatformEvidences };
         setEvidences(updatedEvidences);
-        
-        // Notify parent with per-platform tokens
         const platformTokens: Record<string, string[]> = {};
         Object.keys(updatedEvidences).forEach(pid => {
             platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
@@ -194,119 +240,133 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 </div>
                 <div>
                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-0.5">Báo cáo Traffic</h3>
-                    <p className="text-sm text-slate-500 font-medium">Nhập số lượt traffic và tải ảnh minh chứng tương ứng</p>
+                    <p className="text-sm text-slate-500 font-medium">Nhập số lượt traffic theo từng kênh bạn quản lý</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {TRAFFIC_PLATFORMS.filter(platform => {
-                    const hasVal = values[platform.id as keyof TrafficData] && values[platform.id as keyof TrafficData] !== '';
-                    const hasEv = evidences[platform.id] && evidences[platform.id].length > 0;
                     const hasAccess = availableChannels.some(c => isPlatformMatch(platform.id, c.platform));
-                    
-                    // In read-only mode, we always show platforms that were reported (hasVal or hasEv)
-                    // We also show platforms the user currently has access to, to maintain visual consistency
-                    return hasVal || hasEv || hasAccess;
+                    const hasData = (entries[platform.id] || []).some(e => e.value !== '' || e.channel !== '');
+                    return hasAccess || hasData || readOnly;
                 }).map((platform) => (
-                    <div key={platform.id} className="group flex flex-col gap-3 p-4 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300">
+                    <div key={platform.id} className="flex flex-col gap-4 p-5 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md">
                         <div className="flex items-center justify-between px-1">
-                            <label className="text-sm font-bold text-slate-700 uppercase tracking-tight">
-                                {platform.label}
-                            </label>
-                            {uploadingPlatform === platform.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                            ) : !readOnly && (
-                                <button
-                                    type="button"
-                                    onClick={() => triggerUpload(platform.id)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-                                    title="Thêm ảnh minh chứng"
-                                >
-                                    <ImagePlus className="w-5 h-5" />
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="relative">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Số Traffic</label>
-                                <input
-                                    type="text"
-                                    placeholder="Nhập số..."
-                                    readOnly={readOnly}
-                                    disabled={readOnly}
-                                    value={values[platform.id as keyof TrafficData] && !isNaN(Number(values[platform.id as keyof TrafficData])) 
-                                        ? Number(values[platform.id as keyof TrafficData]).toLocaleString('en-US') 
-                                        : ''}
-                                    onChange={(e) => {
-                                        const rawValue = e.target.value.replace(/\D/g, '');
-                                        onChange(platform.id as keyof TrafficData, rawValue);
-                                    }}
-                                    className={`w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none placeholder:text-slate-300 ${readOnly ? 'cursor-not-allowed bg-slate-50' : ''}`}
-                                />
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-6 bg-purple-500 rounded-full" />
+                                <label className="text-base font-black text-slate-800 uppercase tracking-tight">
+                                    {platform.label}
+                                </label>
                             </div>
-
-                            <div className="relative">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh đăng</label>
-                                <select
-                                    disabled={readOnly}
-                                    value={channels[platform.id as keyof TrafficData] || ''}
-                                    onChange={(e) => onChannelChange(platform.id as keyof TrafficData, e.target.value)}
-                                    className={`w-full h-[40px] px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer ${readOnly ? 'cursor-not-allowed' : ''}`}
-                                >
-                                    <option value="">-- Chọn kênh --</option>
-                                    {availableChannels
-                                        ?.filter(c => isPlatformMatch(platform.id, c.platform))
-                                        .map((c, idx) => (
-                                            <option key={c.id || idx} value={c.name}>{c.name}</option>
-                                        ))
-                                    }
-                                    {readOnly && channels[platform.id as keyof TrafficData] && (
-                                        <option value={channels[platform.id as keyof TrafficData] || ''}>
-                                            {channels[platform.id as keyof TrafficData]}
-                                        </option>
-                                    )}
-                                </select>
+                            <div className="flex items-center gap-2">
+                                {uploadingPlatform === platform.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                                ) : !readOnly && (
+                                    <button
+                                        type="button"
+                                        onClick={() => triggerUpload(platform.id)}
+                                        className="p-2 rounded-xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-all active:scale-95"
+                                        title="Tải minh chứng"
+                                    >
+                                        <ImagePlus className="w-5 h-5" />
+                                    </button>
+                                )}
                                 {!readOnly && (
-                                    <div className="absolute right-3 top-[26px] pointer-events-none text-slate-400">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => addRow(platform.id)}
+                                        className="px-3 py-1.5 bg-purple-600 text-white rounded-xl text-xs font-bold hover:bg-purple-700 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                                    >
+                                        <Activity className="w-3.5 h-3.5" /> Thêm kênh
+                                    </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Platform specific Evidence Preview */}
-                        <div className="min-h-[40px] flex flex-wrap gap-2 px-1">
+                        <div className="space-y-4">
+                            {(entries[platform.id] || []).map((entry, idx) => (
+                                <div key={entry.id} className="relative grid grid-cols-12 gap-3 items-end group/row bg-white/50 p-3 rounded-2xl border border-slate-100">
+                                    <div className="col-span-12 sm:col-span-5 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1 flex justify-between">
+                                            <span>Số Traffic</span>
+                                            {idx > 0 && <span className="text-purple-400">Kênh #{idx + 1}</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Số lượt..."
+                                            readOnly={readOnly}
+                                            value={entry.value !== '' ? Number(entry.value).toLocaleString('en-US') : ''}
+                                            onChange={(e) => {
+                                                const rawValue = e.target.value.replace(/\D/g, '');
+                                                updateRow(platform.id, entry.id, { value: rawValue });
+                                            }}
+                                            className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none"
+                                        />
+                                    </div>
+
+                                    <div className="col-span-12 sm:col-span-6 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh</label>
+                                        <select
+                                            disabled={readOnly}
+                                            value={entry.channel}
+                                            onChange={(e) => updateRow(platform.id, entry.id, { channel: e.target.value })}
+                                            className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="">-- Chọn kênh --</option>
+                                            {availableChannels
+                                                ?.filter(c => isPlatformMatch(platform.id, c.platform))
+                                                .map((c, cIdx) => (
+                                                    <option key={c.id || cIdx} value={c.name}>{c.name}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+
+                                    {!readOnly && (entries[platform.id]?.length > 1) && (
+                                        <div className="col-span-12 sm:col-span-1 mb-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeRow(platform.id, entry.id)}
+                                                className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Xóa dòng này"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Evidence Preview */}
+                        <div className="flex flex-wrap gap-2.5 px-1 min-h-[30px]">
                             {(evidences[platform.id] || []).map((img, idx) => (
-                                <div key={idx} className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm animate-in zoom-in duration-200 cursor-pointer" onClick={() => window.open(img.url, '_blank')}>
-                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" title={img.name} />
+                                <div key={idx} className="relative group/img w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-all cursor-pointer bg-slate-200" onClick={() => window.open(img.url, '_blank')}>
+                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
                                     {!readOnly && (
                                         <button
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); removeImage(platform.id, idx); }}
                                             className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
                                         >
-                                            <X className="w-3 h-3" />
+                                            <X className="w-4 h-4" />
                                         </button>
                                     )}
                                 </div>
                             ))}
-                            {(!evidences[platform.id] || evidences[platform.id].length === 0) && !uploadingPlatform && (
-                                <div className="text-[10px] text-slate-400 italic flex items-center gap-1">
-                                    <ImagePlus className="w-3 h-3 opacity-50" />
-                                    Chưa có minh chứng
-                                </div>
+                            {(!evidences[platform.id] || evidences[platform.id].length === 0) && (
+                                <span className="text-[10px] text-slate-400 italic">Chưa có minh chứng hình ảnh</span>
                             )}
                         </div>
 
                         {uploadErrors[platform.id] && (
-                            <p className="text-[10px] text-red-500 font-medium px-1">{uploadErrors[platform.id]}</p>
+                            <p className="text-xs text-red-500 font-bold px-1 mt-1">{uploadErrors[platform.id]}</p>
                         )}
                     </div>
                 ))}
             </div>
+
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
 
             {availableChannels.length === 0 && !readOnly && (
                 <div className="flex flex-col items-center justify-center p-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
@@ -317,15 +377,6 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                     <p className="text-slate-400 text-sm">Vui lòng kiểm tra lại tài khoản hoặc liên hệ quản trị viên</p>
                 </div>
             )}
-
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleFileChange}
-            />
         </div>
     );
 };

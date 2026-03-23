@@ -111,26 +111,16 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
 
     return (
         <div className="border border-purple-100 rounded-xl p-3 bg-white">
-            <h4 className="text-xs font-bold text-purple-600 mb-1.5 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
+            <h4 className="text-[11px] font-black text-purple-600 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> TRAFFIC TIẾP CẬN
             </h4>
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mb-2">
-                {platforms.map((p) => (
-                    <div key={p.key} className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                        <span className="text-[11px] text-gray-600 font-semibold">{p.label}</span>
-                    </div>
-                ))}
-            </div>
-
             {/* Chart area */}
-            <div className="flex" style={{ height: 100 }}>
+            <div className="flex" style={{ height: 80 }}>
                 {/* Y-axis labels */}
-                <div className="flex flex-col justify-between pr-1.5 shrink-0" style={{ height: 100 }}>
+                <div className="flex flex-col justify-between pr-2 shrink-0" style={{ height: 80 }}>
                     {[...ticks].reverse().map((tick, i) => (
-                        <span key={i} className="text-[10px] text-gray-400 font-semibold leading-none text-right min-w-[24px]">
+                        <span key={i} className="text-[11px] text-gray-500 font-bold leading-none text-right min-w-[28px]">
                             {formatAxisLabel(tick)}
                         </span>
                     ))}
@@ -146,19 +136,19 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                     </div>
 
                     {/* Columns */}
-                    <div className="relative flex items-end justify-around gap-0 h-full">
+                    <div className="relative flex items-end justify-center gap-1 h-full pt-4">
                         {platforms.map((p) => {
-                            const pct = chartMax > 0 ? Math.max((p.value / chartMax) * 100, 3) : 0;
+                            const pct = chartMax > 0 ? (p.value / chartMax) * 100 : 0;
                             return (
-                                <div key={p.key} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group">
+                                <div key={p.key} className="flex flex-col items-center w-8 h-full justify-end group shrink-0">
                                     {/* Tooltip on hover */}
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mb-0.5">
-                                        <span className="text-[10px] font-bold text-gray-700 bg-white shadow-md rounded px-1 py-0.5 border border-gray-100 whitespace-nowrap">
-                                            {formatTrafficNumber(p.value)}
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mb-1 absolute -top-2">
+                                        <span className="text-[10px] font-black text-gray-700 bg-white/90 backdrop-blur shadow-lg rounded-lg px-2 py-1 border border-purple-100 whitespace-nowrap z-10">
+                                            {p.label}: {formatTrafficNumber(p.value)}
                                         </span>
                                     </div>
                                     <div
-                                        className="w-full max-w-[38px] rounded-t transition-all duration-700 ease-out hover:opacity-90 cursor-default"
+                                        className="w-full relative rounded-t-md transition-all duration-500 hover:brightness-110 shadow-sm"
                                         style={{
                                             height: `${pct}%`,
                                             backgroundColor: p.bgColor,
