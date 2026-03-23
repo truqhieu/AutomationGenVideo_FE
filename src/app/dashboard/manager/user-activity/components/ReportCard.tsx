@@ -1,7 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, TrendingUp } from 'lucide-react';
+
+interface TrafficToday {
+    fb: number;
+    ig: number;
+    tiktok: number;
+    yt: number;
+    thread: number;
+    lemon8: number;
+    zalo: number;
+    twitter: number;
+    total: number;
+}
 
 interface EmployeeReport {
     id: string;
@@ -23,6 +35,7 @@ interface EmployeeReport {
         reportLink: boolean;
     };
     videoCount: number;
+    trafficToday?: TrafficToday | null;
     questions: {
         question: string;
         answer: string;
@@ -42,6 +55,12 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
+const formatTrafficNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toLocaleString('vi-VN');
+};
+
 const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
@@ -50,6 +69,19 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const isUnreported = statusRaw.includes('CHƯA BÁO CÁO') || statusRaw === '' || statusRaw === 'PENDING';
     const isLate = !isOnTime && !isUnreported && (statusRaw.includes('TRỄ') || statusRaw.includes('LATE'));
     const showTime = report.time && report.time !== 'Chưa báo cáo';
+
+    const trafficPlatforms = report.trafficToday ? [
+        { key: 'fb', label: 'FB', value: report.trafficToday.fb, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { key: 'ig', label: 'IG', value: report.trafficToday.ig, color: 'text-pink-600', bg: 'bg-pink-50' },
+        { key: 'tiktok', label: 'TikTok', value: report.trafficToday.tiktok, color: 'text-gray-900', bg: 'bg-gray-50' },
+        { key: 'yt', label: 'YT', value: report.trafficToday.yt, color: 'text-red-600', bg: 'bg-red-50' },
+        { key: 'thread', label: 'Thread', value: report.trafficToday.thread, color: 'text-gray-700', bg: 'bg-gray-50' },
+        { key: 'zalo', label: 'Zalo', value: report.trafficToday.zalo, color: 'text-blue-500', bg: 'bg-blue-50' },
+        { key: 'lemon8', label: 'Lemon8', value: report.trafficToday.lemon8, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+        { key: 'twitter', label: 'X', value: report.trafficToday.twitter, color: 'text-gray-800', bg: 'bg-gray-50' },
+    ].filter(p => p.value > 0) : [];
+
+    const hasTraffic = trafficPlatforms.length > 0;
 
     return (
         <div
@@ -165,6 +197,33 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                         </span>
                     </div>
 
+                    {/* Traffic Section */}
+                    {hasTraffic && (
+                        <div className="border border-purple-100 rounded-xl p-3 bg-white">
+                            <h4 className="text-xs font-bold text-purple-600 mb-2 flex items-center gap-2">
+                                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
+                            </h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {trafficPlatforms.map((platform) => (
+                                    <div key={platform.key} className={`flex items-center justify-between ${platform.bg} rounded-lg px-2.5 py-1.5`}>
+                                        <span className={`text-xs font-bold ${platform.color}`}>{platform.label}</span>
+                                        <span className={`text-sm font-bold ${platform.color}`}>
+                                            {formatTrafficNumber(platform.value)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            {report.trafficToday && report.trafficToday.total > 0 && (
+                                <div className="mt-2 flex items-center justify-between bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
+                                    <span className="text-xs font-bold text-purple-700 uppercase">Tổng Traffic:</span>
+                                    <span className="text-lg font-bold text-purple-700">
+                                        {formatTrafficNumber(report.trafficToday.total)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Questions Section */}
                     <div className="space-y-2.5">
                         {report.questions.map((q, index) => (
@@ -180,9 +239,37 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <span className="text-4xl mb-2">📋</span>
-                    <span className="text-sm font-medium">Chưa có báo cáo hôm nay</span>
+                <div className="flex-1 flex flex-col gap-3">
+                    {/* Show traffic even when work report is missing */}
+                    {hasTraffic && (
+                        <div className="border border-purple-100 rounded-xl p-3 bg-white">
+                            <h4 className="text-xs font-bold text-purple-600 mb-2 flex items-center gap-2">
+                                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
+                            </h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {trafficPlatforms.map((platform) => (
+                                    <div key={platform.key} className={`flex items-center justify-between ${platform.bg} rounded-lg px-2.5 py-1.5`}>
+                                        <span className={`text-xs font-bold ${platform.color}`}>{platform.label}</span>
+                                        <span className={`text-sm font-bold ${platform.color}`}>
+                                            {formatTrafficNumber(platform.value)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            {report.trafficToday && report.trafficToday.total > 0 && (
+                                <div className="mt-2 flex items-center justify-between bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
+                                    <span className="text-xs font-bold text-purple-700 uppercase">Tổng Traffic:</span>
+                                    <span className="text-lg font-bold text-purple-700">
+                                        {formatTrafficNumber(report.trafficToday.total)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                        <span className="text-4xl mb-2">📋</span>
+                        <span className="text-sm font-medium">Chưa có báo cáo hôm nay</span>
+                    </div>
                 </div>
             )}
         </div>
@@ -190,3 +277,4 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
 };
 
 export default ReportCard;
+

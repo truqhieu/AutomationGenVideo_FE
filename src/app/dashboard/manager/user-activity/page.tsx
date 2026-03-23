@@ -398,6 +398,7 @@ const UserActivityPageContent = () => {
                     },
                     videoCount: item.answers ? Number(item.answers[Object.keys(item.answers).find(k => k.toLowerCase().includes('50%')) || ''] || 0) : 0,
                     task_progress: item.task_progress || null,
+                    trafficToday: item.trafficToday || null,
                     questions: [
                         {
                             question: isLeaderReport ? 'ĐÃ KIỂM TRA CHẤT LƯỢNG VIDEO ĐẦU RA CỦA TEAM CHƯA?' : 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
