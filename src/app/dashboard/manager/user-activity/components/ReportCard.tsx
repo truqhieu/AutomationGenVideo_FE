@@ -104,7 +104,7 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
     return (
         <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
             <div className="mt-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
+                <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
                     <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
                 </p>
                 
@@ -166,8 +166,8 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                         
                         {/* Central Summary */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Tổng kênh</span>
-                            <span className="text-xl font-black text-slate-800 leading-none">
+                            <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                            <span className="text-2xl font-black text-slate-800 leading-none">
                                 {formatTrafficNumber(trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0))}
                             </span>
                         </div>
