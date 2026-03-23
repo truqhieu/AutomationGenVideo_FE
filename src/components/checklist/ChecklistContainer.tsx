@@ -178,7 +178,8 @@ const ChecklistContainer = ({
 }: { 
     mode?: 'member' | 'leader',
     showOnlyTraffic?: boolean,
-    showOnlyWork?: boolean
+    showOnlyWork?: boolean,
+    onSuccess?: () => void
 }) => {
     const { user } = useAuthStore();
     const [checks, setChecks] = useState<boolean[]>(initialChecks);

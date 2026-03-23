@@ -121,7 +121,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
             </div>
 
             {/* Content for Submitted/Pending */}
-            {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN') ? (
+            {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN' || (report.questions && report.questions.length > 0)) ? (
                 <div className="space-y-3 flex-1">
                     {/* Checklist Section */}
                     <div className="border border-blue-100 rounded-xl p-3 bg-white">
