@@ -24,22 +24,13 @@ const isTokenExpired = (token: string): boolean => {
 };
 
 // Ensure local auth storage is cleared when it is no longer valid.
-// - In development: always clear on page load so restarting the dev
-//   server effectively logs users out.
-// - In other envs: clear when token is already expired on the client.
 if (typeof window !== 'undefined') {
   try {
-    if (process.env.NODE_ENV === 'development') {
+    const existingToken = localStorage.getItem('auth_token');
+    if (existingToken && isTokenExpired(existingToken)) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
       localStorage.removeItem('auth-storage');
-    } else {
-      const existingToken = localStorage.getItem('auth_token');
-      if (existingToken && isTokenExpired(existingToken)) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth-storage');
-      }
     }
   } catch {
     // Ignore storage access errors

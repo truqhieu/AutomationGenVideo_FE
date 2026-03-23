@@ -1,7 +1,6 @@
 import apiClient from '@/lib/api-client';
 import { clearLarkSyncCooldown, type LarkTrackedSyncResult } from '@/lib/sync-lark-tracked-channels';
 import {
-  pollTrackedChannelsUntilStats,
   channelAwaitingStats,
 } from '@/lib/poll-tracked-channels-stats';
 
@@ -70,14 +69,6 @@ export async function runGlobalHrSync<T>(
       { timeout: 900000 },
     );
     const r = data;
-    let list = await loadChannels();
-    if (
-      r.imported > 0 &&
-      list.length > 0 &&
-      list.some((c) => channelAwaitingStats(c as Parameters<typeof channelAwaitingStats>[0]))
-    ) {
-      await pollTrackedChannelsUntilStats<T>(loadChannels);
-    }
     return r;
   } finally {
     rel();

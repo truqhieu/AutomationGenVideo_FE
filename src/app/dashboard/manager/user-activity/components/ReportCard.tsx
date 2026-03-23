@@ -61,14 +61,14 @@ const formatTrafficNumber = (num: number): string => {
 };
 
 const PLATFORM_STYLES: Record<string, { label: string; barColor: string; textColor: string }> = {
-    fb:      { label: 'FB',      barColor: 'bg-blue-500',   textColor: 'text-blue-700' },
-    ig:      { label: 'IG',      barColor: 'bg-gradient-to-t from-pink-500 to-purple-500', textColor: 'text-pink-700' },
-    tiktok:  { label: 'TikTok',  barColor: 'bg-gray-800',   textColor: 'text-gray-800' },
-    yt:      { label: 'YT',      barColor: 'bg-red-500',    textColor: 'text-red-700' },
-    thread:  { label: 'Thread',  barColor: 'bg-gray-600',   textColor: 'text-gray-700' },
-    zalo:    { label: 'Zalo',    barColor: 'bg-sky-500',    textColor: 'text-sky-700' },
-    lemon8:  { label: 'Lemon8',  barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
-    twitter: { label: 'X',       barColor: 'bg-gray-900',   textColor: 'text-gray-800' },
+    fb: { label: 'FB', barColor: 'bg-blue-500', textColor: 'text-blue-700' },
+    ig: { label: 'IG', barColor: 'bg-gradient-to-t from-pink-500 to-purple-500', textColor: 'text-pink-700' },
+    tiktok: { label: 'TikTok', barColor: 'bg-gray-800', textColor: 'text-gray-800' },
+    yt: { label: 'YT', barColor: 'bg-red-500', textColor: 'text-red-700' },
+    thread: { label: 'Thread', barColor: 'bg-gray-600', textColor: 'text-gray-700' },
+    zalo: { label: 'Zalo', barColor: 'bg-sky-500', textColor: 'text-sky-700' },
+    lemon8: { label: 'Lemon8', barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
+    twitter: { label: 'X', barColor: 'bg-gray-900', textColor: 'text-gray-800' },
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
@@ -129,15 +129,14 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
 
     return (
         <div
-            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${
-                isOnTime
+            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${isOnTime
                     ? 'bg-emerald-50 border-emerald-200'
                     : isLate
-                    ? 'bg-amber-50 border-amber-200'
-                    : isUnreported
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-white border-gray-100'
-            }`}
+                        ? 'bg-amber-50 border-amber-200'
+                        : isUnreported
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-white border-gray-100'
+                }`}
         >
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -169,24 +168,23 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </div>
 
                 <span
-                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${
-                        isOnTime
+                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${isOnTime
                             ? 'bg-emerald-500 text-white'
                             : isLate
-                            ? 'bg-amber-400 text-white'
-                            : isUnreported
-                            ? 'bg-red-500 text-white'
-                            : 'bg-slate-300 text-slate-800'
-                    }`}
+                                ? 'bg-amber-400 text-white'
+                                : isUnreported
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-slate-300 text-slate-800'
+                        }`}
                 >
                     <span>
                         {isOnTime
                             ? 'ĐÚNG HẠN'
                             : isLate
-                            ? 'TRỄ HẠN'
-                            : isUnreported
-                            ? 'CHƯA BÁO CÁO'
-                            : report.status || 'TRẠNG THÁI?'}
+                                ? 'TRỄ HẠN'
+                                : isUnreported
+                                    ? 'CHƯA BÁO CÁO'
+                                    : report.status || 'TRẠNG THÁI?'}
                     </span>
                     {showTime && (
                         <span className="text-[11px] font-medium opacity-90">
@@ -196,8 +194,8 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </span>
             </div>
 
-            {/* Content for Submitted */}
-            {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN') ? (
+            {/* Content for Submitted/Pending */}
+            {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN' || (report.questions && report.questions.length > 0)) ? (
                 <div className="space-y-3 flex-1">
                     {/* Checklist Section */}
                     <div className="border border-blue-100 rounded-xl p-3 bg-white">
