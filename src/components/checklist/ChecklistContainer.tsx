@@ -252,7 +252,14 @@ const ChecklistContainer = ({
                     const data = await response.json();
                     
                     if (data && (data.report || data.traffic)) {
-                        setIsReadOnly(true);
+                        // Only lock the form section that is relevant to the current mode
+                        if (showOnlyTraffic) {
+                            setIsReadOnly(!!data.traffic);
+                        } else if (showOnlyWork) {
+                            setIsReadOnly(!!data.report);
+                        } else {
+                            setIsReadOnly(true);
+                        }
 
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
