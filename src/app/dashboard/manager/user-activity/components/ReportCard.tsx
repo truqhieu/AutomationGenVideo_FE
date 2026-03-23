@@ -167,8 +167,10 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
 
             {/* Detailed Breakdown with Images */}
             {trafficToday.details && trafficToday.details.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Chi tiết kênh & minh chứng</p>
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
+                        <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
+                    </p>
                     <div className="grid grid-cols-1 gap-2.5">
                         {trafficToday.details.map((entry, idx) => (
                             <div key={entry.id || idx} className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 hover:bg-white hover:shadow-sm transition-all">
