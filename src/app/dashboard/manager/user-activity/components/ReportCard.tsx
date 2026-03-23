@@ -60,15 +60,15 @@ const formatTrafficNumber = (num: number): string => {
     return num.toLocaleString('vi-VN');
 };
 
-const PLATFORM_STYLES: Record<string, { label: string; barColor: string; textColor: string }> = {
-    fb: { label: 'FB', barColor: 'bg-blue-500', textColor: 'text-blue-700' },
-    ig: { label: 'IG', barColor: 'bg-gradient-to-t from-pink-500 to-purple-500', textColor: 'text-pink-700' },
-    tiktok: { label: 'TikTok', barColor: 'bg-gray-800', textColor: 'text-gray-800' },
-    yt: { label: 'YT', barColor: 'bg-red-500', textColor: 'text-red-700' },
-    thread: { label: 'Thread', barColor: 'bg-gray-600', textColor: 'text-gray-700' },
-    zalo: { label: 'Zalo', barColor: 'bg-sky-500', textColor: 'text-sky-700' },
-    lemon8: { label: 'Lemon8', barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
-    twitter: { label: 'X', barColor: 'bg-gray-900', textColor: 'text-gray-800' },
+const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: string }> = {
+    fb: { label: 'Facebook', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.85)' },
+    ig: { label: 'Instagram', color: '#ec4899', bgColor: 'rgba(236,72,153,0.85)' },
+    tiktok: { label: 'TikTok', color: '#1f2937', bgColor: 'rgba(31,41,55,0.85)' },
+    yt: { label: 'Youtube', color: '#ef4444', bgColor: 'rgba(239,68,68,0.85)' },
+    thread: { label: 'Thread', color: '#6b7280', bgColor: 'rgba(107,114,128,0.85)' },
+    zalo: { label: 'Zalo', color: '#0ea5e9', bgColor: 'rgba(14,165,233,0.85)' },
+    lemon8: { label: 'Lemon8', color: '#eab308', bgColor: 'rgba(234,179,8,0.85)' },
+    twitter: { label: 'X', color: '#111827', bgColor: 'rgba(17,24,39,0.85)' },
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
@@ -78,37 +78,106 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
             ...style,
             value: trafficToday[key as keyof TrafficToday] as number || 0,
         }))
-        .filter(p => p.value > 0);
+        .sort((a, b) => b.value - a.value);
 
     if (platforms.length === 0) return null;
 
     const maxVal = Math.max(...platforms.map(p => p.value));
 
+    // Generate nice Y-axis ticks
+    const generateTicks = (max: number) => {
+        if (max <= 0) return [0];
+        const rawStep = max / 4;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+        const step = Math.ceil(rawStep / magnitude) * magnitude;
+        const ticks: number[] = [];
+        for (let i = 0; i <= max; i += step) {
+            ticks.push(i);
+        }
+        if (ticks[ticks.length - 1] < max) {
+            ticks.push(ticks[ticks.length - 1] + step);
+        }
+        return ticks;
+    };
+
+    const ticks = generateTicks(maxVal);
+    const chartMax = ticks[ticks.length - 1] || 1;
+
+    const formatAxisLabel = (num: number): string => {
+        if (num >= 1000000) return `${(num / 1000000).toFixed(0)}M`;
+        if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+        return num.toString();
+    };
+
     return (
         <div className="border border-purple-100 rounded-xl p-3 bg-white">
-            <h4 className="text-xs font-bold text-purple-600 mb-3 flex items-center gap-2">
+            <h4 className="text-xs font-bold text-purple-600 mb-1.5 flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
             </h4>
-            <div className="flex items-end justify-around gap-1.5" style={{ height: 120 }}>
-                {platforms.map((p) => {
-                    const pct = maxVal > 0 ? Math.max((p.value / maxVal) * 100, 10) : 0;
-                    return (
-                        <div key={p.key} className="flex flex-col items-center gap-1 flex-1 min-w-0 h-full justify-end">
-                            <span className={`text-[10px] font-bold ${p.textColor} leading-none`}>
-                                {formatTrafficNumber(p.value)}
-                            </span>
-                            <div className="w-full flex justify-center" style={{ height: `${pct}%` }}>
-                                <div
-                                    className={`w-full max-w-[32px] rounded-t-md ${p.barColor} transition-all duration-700 ease-out`}
-                                    style={{ height: '100%' }}
-                                />
-                            </div>
-                            <span className={`text-[10px] font-bold ${p.textColor} leading-none mt-0.5 truncate w-full text-center`}>
-                                {p.label}
-                            </span>
-                        </div>
-                    );
-                })}
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mb-2">
+                {platforms.map((p) => (
+                    <div key={p.key} className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="text-[11px] text-gray-600 font-semibold">{p.label}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Chart area */}
+            <div className="flex" style={{ height: 100 }}>
+                {/* Y-axis labels */}
+                <div className="flex flex-col justify-between pr-1.5 shrink-0" style={{ height: 100 }}>
+                    {[...ticks].reverse().map((tick, i) => (
+                        <span key={i} className="text-[10px] text-gray-400 font-semibold leading-none text-right min-w-[24px]">
+                            {formatAxisLabel(tick)}
+                        </span>
+                    ))}
+                </div>
+
+                {/* Grid + Bars */}
+                <div className="flex-1 relative max-w-[280px] mx-auto">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                        {ticks.map((_, i) => (
+                            <div key={i} className="border-b border-gray-100 w-full" style={{ height: 0 }} />
+                        ))}
+                    </div>
+
+                    {/* Columns */}
+                    <div className="relative flex items-end justify-center gap-0 h-full">
+                        {platforms.map((p) => {
+                            const pct = chartMax > 0 ? Math.max((p.value / chartMax) * 100, 3) : 0;
+                            return (
+                                <div key={p.key} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group px-0.5">
+                                    {/* Tooltip on hover */}
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mb-0.5">
+                                        <span className="text-[10px] font-bold text-gray-700 bg-white shadow-md rounded px-1 py-0.5 border border-gray-100 whitespace-nowrap">
+                                            {formatTrafficNumber(p.value)}
+                                        </span>
+                                    </div>
+                                    <div
+                                        className="w-full max-w-[24px] rounded-t transition-all duration-700 ease-out hover:opacity-90 cursor-default"
+                                        style={{
+                                            height: `${pct}%`,
+                                            backgroundColor: p.bgColor,
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* X-axis labels */}
+            <div className="flex justify-evenly pl-7 mt-1">
+                {platforms.map((p) => (
+                    <span key={p.key} className="text-[10px] font-bold text-gray-500 flex-1 text-center truncate min-w-0">
+                        {p.label.length > 5 ? p.label.substring(0, 2).toUpperCase() : p.label}
+                    </span>
+                ))}
             </div>
         </div>
     );
