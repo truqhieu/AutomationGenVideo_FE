@@ -46,7 +46,6 @@ const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
     if (url.includes('drive.google.com')) {
-        // Extract ID from various Drive formats
         const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
         if (match && match[1]) {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
@@ -61,6 +60,60 @@ const formatTrafficNumber = (num: number): string => {
     return num.toLocaleString('vi-VN');
 };
 
+const PLATFORM_STYLES: Record<string, { label: string; barColor: string; textColor: string }> = {
+    fb:      { label: 'FB',      barColor: 'bg-blue-500',   textColor: 'text-blue-700' },
+    ig:      { label: 'IG',      barColor: 'bg-gradient-to-t from-pink-500 to-purple-500', textColor: 'text-pink-700' },
+    tiktok:  { label: 'TikTok',  barColor: 'bg-gray-800',   textColor: 'text-gray-800' },
+    yt:      { label: 'YT',      barColor: 'bg-red-500',    textColor: 'text-red-700' },
+    thread:  { label: 'Thread',  barColor: 'bg-gray-600',   textColor: 'text-gray-700' },
+    zalo:    { label: 'Zalo',    barColor: 'bg-sky-500',    textColor: 'text-sky-700' },
+    lemon8:  { label: 'Lemon8',  barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
+    twitter: { label: 'X',       barColor: 'bg-gray-900',   textColor: 'text-gray-800' },
+};
+
+const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
+    const platforms = Object.entries(PLATFORM_STYLES)
+        .map(([key, style]) => ({
+            key,
+            ...style,
+            value: trafficToday[key as keyof TrafficToday] as number || 0,
+        }))
+        .filter(p => p.value > 0);
+
+    if (platforms.length === 0) return null;
+
+    const maxVal = Math.max(...platforms.map(p => p.value));
+
+    return (
+        <div className="border border-purple-100 rounded-xl p-3 bg-white">
+            <h4 className="text-xs font-bold text-purple-600 mb-3 flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
+            </h4>
+            <div className="flex items-end justify-around gap-1.5" style={{ height: 120 }}>
+                {platforms.map((p) => {
+                    const pct = maxVal > 0 ? Math.max((p.value / maxVal) * 100, 10) : 0;
+                    return (
+                        <div key={p.key} className="flex flex-col items-center gap-1 flex-1 min-w-0 h-full justify-end">
+                            <span className={`text-[10px] font-bold ${p.textColor} leading-none`}>
+                                {formatTrafficNumber(p.value)}
+                            </span>
+                            <div className="w-full flex justify-center" style={{ height: `${pct}%` }}>
+                                <div
+                                    className={`w-full max-w-[32px] rounded-t-md ${p.barColor} transition-all duration-700 ease-out`}
+                                    style={{ height: '100%' }}
+                                />
+                            </div>
+                            <span className={`text-[10px] font-bold ${p.textColor} leading-none mt-0.5 truncate w-full text-center`}>
+                                {p.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
@@ -70,18 +123,9 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const isLate = !isOnTime && !isUnreported && (statusRaw.includes('TRỄ') || statusRaw.includes('LATE'));
     const showTime = report.time && report.time !== 'Chưa báo cáo';
 
-    const trafficPlatforms = report.trafficToday ? [
-        { key: 'fb', label: 'FB', value: report.trafficToday.fb, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { key: 'ig', label: 'IG', value: report.trafficToday.ig, color: 'text-pink-600', bg: 'bg-pink-50' },
-        { key: 'tiktok', label: 'TikTok', value: report.trafficToday.tiktok, color: 'text-gray-900', bg: 'bg-gray-50' },
-        { key: 'yt', label: 'YT', value: report.trafficToday.yt, color: 'text-red-600', bg: 'bg-red-50' },
-        { key: 'thread', label: 'Thread', value: report.trafficToday.thread, color: 'text-gray-700', bg: 'bg-gray-50' },
-        { key: 'zalo', label: 'Zalo', value: report.trafficToday.zalo, color: 'text-blue-500', bg: 'bg-blue-50' },
-        { key: 'lemon8', label: 'Lemon8', value: report.trafficToday.lemon8, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-        { key: 'twitter', label: 'X', value: report.trafficToday.twitter, color: 'text-gray-800', bg: 'bg-gray-50' },
-    ].filter(p => p.value > 0) : [];
-
-    const hasTraffic = trafficPlatforms.length > 0;
+    const hasTraffic = report.trafficToday && Object.entries(PLATFORM_STYLES).some(
+        ([key]) => (report.trafficToday?.[key as keyof TrafficToday] as number || 0) > 0
+    );
 
     return (
         <div
@@ -152,7 +196,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </span>
             </div>
 
-            {/* Content for Submitted/Pending */}
+            {/* Content for Submitted */}
             {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN') ? (
                 <div className="space-y-3 flex-1">
                     {/* Checklist Section */}
@@ -197,33 +241,6 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                         </span>
                     </div>
 
-                    {/* Traffic Section */}
-                    {hasTraffic && (
-                        <div className="border border-purple-100 rounded-xl p-3 bg-white">
-                            <h4 className="text-xs font-bold text-purple-600 mb-2 flex items-center gap-2">
-                                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {trafficPlatforms.map((platform) => (
-                                    <div key={platform.key} className={`flex items-center justify-between ${platform.bg} rounded-lg px-2.5 py-1.5`}>
-                                        <span className={`text-xs font-bold ${platform.color}`}>{platform.label}</span>
-                                        <span className={`text-sm font-bold ${platform.color}`}>
-                                            {formatTrafficNumber(platform.value)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                            {report.trafficToday && report.trafficToday.total > 0 && (
-                                <div className="mt-2 flex items-center justify-between bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
-                                    <span className="text-xs font-bold text-purple-700 uppercase">Tổng Traffic:</span>
-                                    <span className="text-lg font-bold text-purple-700">
-                                        {formatTrafficNumber(report.trafficToday.total)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
                     {/* Questions Section */}
                     <div className="space-y-2.5">
                         {report.questions.map((q, index) => (
@@ -237,34 +254,17 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                             </div>
                         ))}
                     </div>
+
+                    {/* Traffic Chart - Below questions */}
+                    {hasTraffic && report.trafficToday && (
+                        <TrafficChart trafficToday={report.trafficToday} />
+                    )}
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col gap-3">
-                    {/* Show traffic even when work report is missing */}
-                    {hasTraffic && (
-                        <div className="border border-purple-100 rounded-xl p-3 bg-white">
-                            <h4 className="text-xs font-bold text-purple-600 mb-2 flex items-center gap-2">
-                                <TrendingUp className="w-3.5 h-3.5" /> BÁO CÁO TRAFFIC
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {trafficPlatforms.map((platform) => (
-                                    <div key={platform.key} className={`flex items-center justify-between ${platform.bg} rounded-lg px-2.5 py-1.5`}>
-                                        <span className={`text-xs font-bold ${platform.color}`}>{platform.label}</span>
-                                        <span className={`text-sm font-bold ${platform.color}`}>
-                                            {formatTrafficNumber(platform.value)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                            {report.trafficToday && report.trafficToday.total > 0 && (
-                                <div className="mt-2 flex items-center justify-between bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
-                                    <span className="text-xs font-bold text-purple-700 uppercase">Tổng Traffic:</span>
-                                    <span className="text-lg font-bold text-purple-700">
-                                        {formatTrafficNumber(report.trafficToday.total)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                    {/* Show traffic chart even when work report is missing */}
+                    {hasTraffic && report.trafficToday && (
+                        <TrafficChart trafficToday={report.trafficToday} />
                     )}
                     <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                         <span className="text-4xl mb-2">📋</span>
@@ -277,4 +277,5 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
 };
 
 export default ReportCard;
+
 
