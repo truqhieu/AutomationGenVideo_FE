@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, TrendingUp, PieChart as PieIcon } from 'lucide-react';
+import { Check, PieChart as PieIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface TrafficToday {
@@ -18,6 +18,7 @@ interface TrafficToday {
         id: string;
         value: string;
         channel: string;
+        platform?: string;
         evidences?: { url: string; name: string; token: string }[];
     }[];
 }
@@ -79,126 +80,107 @@ const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: s
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
-    const platforms = Object.entries(PLATFORM_STYLES)
-        .map(([key, style]) => ({
-            key,
-            ...style,
-            value: trafficToday[key as keyof TrafficToday] as number || 0,
-        }))
-        .filter(p => p.value > 0)
-        .sort((a, b) => b.value - a.value);
-
-    if (platforms.length === 0) return null;
-
-    const maxVal = Math.max(...platforms.map(p => p.value));
-
-    const generateTicks = (max: number) => {
-        if (max <= 0) return [0];
-        const rawStep = max / 4;
-        const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-        const step = Math.ceil(rawStep / magnitude) * magnitude;
-        const ticks: number[] = [];
-        for (let i = 0; i <= max; i += step) ticks.push(i);
-        if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
-        return ticks;
-    };
-
-    const ticks = generateTicks(maxVal);
-    const chartMax = ticks[ticks.length - 1] || 1;
+    if (!trafficToday.details || trafficToday.details.length === 0) return null;
 
     return (
         <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
-            <h4 className="text-[11px] font-black text-purple-600 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                <TrendingUp className="w-4 h-4" strokeWidth={3} /> TRAFFIC TIẾP CẬN
-            </h4>
-
-            {/* Chart Area */}
-            <div className="flex" style={{ height: 100 }}>
-                <div className="flex flex-col justify-between pr-3 shrink-0" style={{ height: 100 }}>
-                    {[...ticks].reverse().map((tick, i) => (
-                        <span key={i} className="text-[10px] text-gray-400 font-black leading-none text-right min-w-[30px]">
-                            {formatTrafficNumber(tick)}
-                        </span>
-                    ))}
-                </div>
-
-                <div className="flex-1 relative">
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                        {ticks.map((_, i) => (
-                            <div key={i} className="border-b border-slate-50 w-full h-0" />
-                        ))}
-                    </div>
-
-                    <div className="relative flex items-end justify-center gap-8 h-full pt-4">
-                        {platforms.map((p) => {
-                            const pct = chartMax > 0 ? (p.value / chartMax) * 100 : 0;
-                            return (
-                                <div key={p.key} className="flex flex-col items-center w-8 h-full justify-end group shrink-0 relative">
-                                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-none scale-90 group-hover:scale-100">
-                                        <div className="bg-slate-900 text-white text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap shadow-xl">
-                                            {p.label}: {formatTrafficNumber(p.value)}
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="w-full rounded-t-xl transition-all duration-500 hover:scale-x-110 shadow-sm"
-                                        style={{ height: `${pct}%`, backgroundColor: p.bgColor }}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-
-            {/* Legend Section */}
-            <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2.5 px-2 border-t border-slate-50 pt-4">
-                {platforms.map((p) => (
-                    <div key={p.key} className="flex items-center gap-2 group">
-                        <div 
-                            className="w-2.5 h-2.5 rounded-full shadow-sm ring-2 ring-white transition-all group-hover:scale-125" 
-                            style={{ backgroundColor: p.bgColor }} 
-                        />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-slate-800 transition-colors">
-                            {p.label}
-                        </span>
-                    </div>
-                ))}
-            </div>
-
-            {/* Detailed Breakdown with Images */}
+            {/* Pie Chart Distribution for Channels */}
             {trafficToday.details && trafficToday.details.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="mt-2">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
                         <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
                     </p>
-                    <div className="grid grid-cols-1 gap-2.5">
-                        {trafficToday.details.map((entry, idx) => (
-                            <div key={entry.id || idx} className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 hover:bg-white hover:shadow-sm transition-all">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-4 bg-purple-400 rounded-full" />
-                                        <span className="text-xs font-black text-slate-700 uppercase">{entry.channel || 'Kênh hệ thống'}</span>
-                                    </div>
-                                    <span className="text-xs font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100">
-                                        {Number(entry.value || 0).toLocaleString('vi-VN')}
-                                    </span>
-                                </div>
+                    
+                    <div className="flex flex-col items-center justify-center py-8 bg-slate-50/50 rounded-3xl border border-slate-100/50">
+                        {/* Interactive Pie Chart - Centered */}
+                        <div className="w-full h-[280px] max-w-[280px] relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={trafficToday.details.map((entry, idx) => ({
+                                            name: entry.channel || 'Hệ thống',
+                                            value: Number(entry.value || 0),
+                                            platform: entry.platform,
+                                            id: entry.id || idx
+                                        })).filter(d => d.value > 0)}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={80}
+                                        outerRadius={115}
+                                        paddingAngle={4}
+                                        dataKey="value"
+                                        animationDuration={1500}
+                                        animationBegin={200}
+                                    >
+                                        {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
+                                            const platformStyle = PLATFORM_STYLES[entry.platform || ''];
+                                            return (
+                                                <Cell 
+                                                    key={`cell-${idx}`} 
+                                                    fill={platformStyle?.bgColor || '#8b5cf6'} 
+                                                    stroke="#fff"
+                                                    strokeWidth={3}
+                                                    className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                                                />
+                                            );
+                                        })}
+                                    </Pie>
+                                    <Tooltip 
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-2xl shadow-xl animate-in fade-in zoom-in duration-200">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill }} />
+                                                            <span className="text-[10px] font-black text-slate-800 uppercase">{data.name}</span>
+                                                        </div>
+                                                        <p className="text-xs font-black text-purple-600">
+                                                            {formatTrafficNumber(data.value)} Traffic
+                                                        </p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            
+                            {/* Central Summary */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                                <span className="text-xl font-black text-slate-800 leading-none">
+                                    {formatTrafficNumber(trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0))}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
 
-                                {entry.evidences && entry.evidences.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-2.5">
-                                        {entry.evidences.filter(ev => ev).map((ev, evIdx) => (
+                    {/* Evidence Gallery categorized by channel */}
+                    <div className="mt-6 space-y-4">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Minh chứng hoạt động</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+                            {trafficToday.details.filter(e => e.evidences && e.evidences.length > 0).map((entry, idx) => (
+                                <div key={`ev-gallery-${idx}`} className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                    <div className="flex items-center gap-2 mb-2.5">
+                                         <div className="w-1.5 h-3 bg-purple-300 rounded-full" />
+                                         <span className="text-[9px] font-black text-slate-500 uppercase truncate">{entry.channel}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(entry.evidences || []).filter(ev => ev).map((ev, evIdx) => (
                                             <div 
                                                 key={evIdx} 
-                                                className="w-11 h-11 rounded-xl border border-white shadow-sm overflow-hidden cursor-zoom-in hover:scale-110 transition-all duration-300"
+                                                className="w-12 h-12 rounded-xl border border-white shadow-sm overflow-hidden cursor-zoom-in hover:scale-110 transition-all duration-300"
                                                 onClick={() => window.open(ev.url, '_blank')}
                                             >
                                                 <img src={ev.url} alt={ev.name} className="w-full h-full object-cover" />
                                             </div>
                                         ))}
                                     </div>
-                                )}
-                            </div>
-                        ))}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
@@ -367,5 +349,3 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
 };
 
 export default ReportCard;
-
-
