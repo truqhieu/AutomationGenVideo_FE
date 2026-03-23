@@ -1086,7 +1086,7 @@ const UserActivityPageContent = () => {
                                                 </button>
                                             </div>
                                             <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
-                                                <ChecklistContainer mode="member" showOnlyTraffic={true} onSuccess={() => fetchReports(false)} />
+                                                <ChecklistContainer key="traffic" mode="member" showOnlyTraffic={true} onSuccess={() => fetchReports(false)} />
                                             </div>
                                         </div>
                                     ) : (
@@ -1154,7 +1154,7 @@ const UserActivityPageContent = () => {
                                                         </button>
                                                     </div>
                                                     <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
-                                                        <ChecklistContainer mode={reportMode} showOnlyWork={true} onSuccess={() => fetchReports(false)} />
+                                                        <ChecklistContainer key="work" mode={reportMode} showOnlyWork={true} onSuccess={() => fetchReports(false)} />
                                                     </div>
                                                 </div>
                                             )}

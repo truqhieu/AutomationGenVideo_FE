@@ -273,7 +273,16 @@ const ChecklistContainer = ({
                     const data = await response.json();
                     
                     if (data && (data.report || data.traffic)) {
-                        setIsReadOnly(true);
+                        let shouldBeReadOnly = false;
+                        if (showOnlyTraffic) {
+                            shouldBeReadOnly = !!data.traffic;
+                        } else if (showOnlyWork) {
+                            shouldBeReadOnly = !!data.report;
+                        } else {
+                            // If showing both, base it on whether either exists, but allow submission of the missing part
+                            shouldBeReadOnly = !!data.report && !!data.traffic;
+                        }
+                        setIsReadOnly(shouldBeReadOnly);
 
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
@@ -723,23 +732,25 @@ const ChecklistContainer = ({
                 </p>
             )}
 
-            <div className="flex justify-center pt-8 border-t border-gray-100">
-                <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={
-                        loading || 
-                        isReadOnly ||
-                        (!status.is_open && !showOnlyTraffic) 
-                        // Tạm tắt rule chặn thời gian báo cáo Traffic
-                        // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
-                    }
-                    className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    <Send className="w-4 h-4" />
-                    {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
-                </button>
-            </div>
+            {!(showOnlyTraffic && availableChannels.length === 0) && (
+                <div className="flex justify-center pt-8 border-t border-gray-100">
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={
+                            loading || 
+                            isReadOnly ||
+                            (!status.is_open && !showOnlyTraffic) 
+                            // Tạm tắt rule chặn thời gian báo cáo Traffic
+                            // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                        }
+                        className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <Send className="w-4 h-4" />
+                        {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

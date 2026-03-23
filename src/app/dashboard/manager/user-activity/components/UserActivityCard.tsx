@@ -13,7 +13,7 @@ interface UserActivity {
     done: number;
     traffic: string;
     revenue: string;
-    reportStatus: 'CHƯA BÁO CÁO' | 'ĐÃ XONG' | 'ĐÃ BÁO CÁO' | 'ĐÚNG HẠN';
+    reportStatus: string;
     monthlyProgress: number;
     task_progress?: {
         task_auto: number;
@@ -83,7 +83,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
     };
 
     const style = statusStyles[statusType];
-    const isReportedOnTime = data.reportStatus === 'ĐÚNG HẠN' || data.reportStatus === 'ĐÃ XONG';
+    const isReportedOnTime = data.reportStatus === 'ĐÚNG HẠN' || data.reportStatus === 'ĐÃ XONG' || data.reportStatus === 'ĐÃ BÁO CÁO ĐỦ' || data.reportStatus === 'SUBMITTED';
     const isRange = timeType && !['today', 'yesterday'].includes(timeType);
     const goalLabel = 'MỤC TIÊU NGÀY';
 

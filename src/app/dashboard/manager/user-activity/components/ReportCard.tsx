@@ -46,17 +46,18 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
     const statusRaw = (report.status || '').toString().toUpperCase();
-    const isOnTime = statusRaw === 'SUBMITTED' || statusRaw.includes('ĐÚNG HẠN');
-    const isUnreported = statusRaw.includes('CHƯA BÁO CÁO') || statusRaw === '' || statusRaw === 'PENDING';
-    const isLate = !isOnTime && !isUnreported && (statusRaw.includes('TRỄ') || statusRaw.includes('LATE'));
+    const isCompleted = statusRaw === 'ĐÃ BÁO CÁO ĐỦ' || statusRaw === 'SUBMITTED' || statusRaw === 'ĐÚNG HẠN';
+    const isPartial = statusRaw === 'CHƯA BÁO CÁO TRAFFIC' || statusRaw === 'CHƯA BÁO CÁO MEMBER';
+    const isUnreported = statusRaw === 'CHƯA BÁO CÁO' || statusRaw === '' || statusRaw === 'PENDING';
+    const isLate = statusRaw.includes('TRỄ') || statusRaw.includes('LATE');
     const showTime = report.time && report.time !== 'Chưa báo cáo';
 
     return (
         <div
             className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${
-                isOnTime
+                isCompleted
                     ? 'bg-emerald-50 border-emerald-200'
-                    : isLate
+                    : isPartial || isLate
                     ? 'bg-amber-50 border-amber-200'
                     : isUnreported
                     ? 'bg-red-50 border-red-200'
@@ -94,9 +95,9 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
 
                 <span
                     className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${
-                        isOnTime
+                        isCompleted
                             ? 'bg-emerald-500 text-white'
-                            : isLate
+                            : isPartial || isLate
                             ? 'bg-amber-400 text-white'
                             : isUnreported
                             ? 'bg-red-500 text-white'
@@ -104,13 +105,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     }`}
                 >
                     <span>
-                        {isOnTime
-                            ? 'ĐÚNG HẠN'
-                            : isLate
-                            ? 'TRỄ HẠN'
-                            : isUnreported
-                            ? 'CHƯA BÁO CÁO'
-                            : report.status || 'TRẠNG THÁI?'}
+                        {statusRaw || 'TRẠNG THÁI?'}
                     </span>
                     {showTime && (
                         <span className="text-[11px] font-medium opacity-90">
@@ -121,7 +116,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
             </div>
 
             {/* Content for Submitted/Pending */}
-            {(report.status === 'submitted' || report.status === 'ĐÚNG HẠN' || (report.questions && report.questions.length > 0)) ? (
+            {(isCompleted || isPartial || isLate || (report.questions && report.questions.length > 0)) ? (
                 <div className="space-y-3 flex-1">
                     {/* Checklist Section */}
                     <div className="border border-blue-100 rounded-xl p-3 bg-white">
