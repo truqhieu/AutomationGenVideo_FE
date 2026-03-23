@@ -15,7 +15,6 @@ import {
 } from '@/lib/global-hr-sync';
 import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
 import {
-  pollTrackedChannelsUntilStats,
   channelAwaitingStats,
 } from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
@@ -86,22 +85,24 @@ export default function TrackedChannelsPage() {
         }
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        let list = await loadPlatformChannels();
+        const list = await loadPlatformChannels();
         if (cancelled) return;
         setChannels(list);
-        if (
-          r &&
-          r.imported > 0 &&
-          list.length > 0 &&
-          list.some((c) => channelAwaitingStats(c))
-        ) {
-          setLongSyncHint(true);
-          list = await pollTrackedChannelsUntilStats(() => loadPlatformChannels());
-          if (!cancelled) setChannels(list);
-          setLongSyncHint(false);
-        }
         if (!cancelled && r && r.imported > 0) {
           toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+        }
+        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
+          let tries = 0;
+          const bgRefresh = async () => {
+            if (cancelled || tries >= 30) return;
+            tries++;
+            await new Promise((res) => setTimeout(res, 15000));
+            if (cancelled) return;
+            const updated = await loadPlatformChannels();
+            if (!cancelled) setChannels(updated);
+            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) bgRefresh();
+          };
+          bgRefresh();
         }
       } catch {
         /* ignore */
@@ -501,85 +502,94 @@ export default function TrackedChannelsPage() {
                   </button>
                 </div>
 
-                {/* Followers Section with Chart */}
-                <div className="mb-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                        <Users className="w-3.5 h-3.5" />
-                        <span className="uppercase font-semibold">FOLLOWERS</span>
+                {/* Stats Wrapper */}
+                <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-5">
+                  {channelAwaitingStats(channel) && (
+                    <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
+                      <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
+                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-200">AI đang quét số liệu...</span>
+                    </div>
+                  )}
+                  {/* Followers Section with Chart */}
+                  <div className="mb-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                          <Users className="w-3.5 h-3.5" />
+                          <span className="uppercase font-semibold">FOLLOWERS</span>
+                        </div>
+                        <p
+                          className="text-2xl font-bold text-slate-900 cursor-help"
+                          title="Followers count"
+                        >
+                          {formatNumber(channel.total_followers || 0)}
+                        </p>
                       </div>
-                      <p
-                        className="text-2xl font-bold text-slate-900 cursor-help"
-                        title="Followers count"
-                      >
-                        {formatNumber(channel.total_followers || 0)}
+                      <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-xs font-semibold">
+                        Live
+                      </div>
+                    </div>
+
+                    {/* Simple Line Chart (Visual placeholder since we only have one data point for history currently) */}
+                    <div className="h-16 relative">
+                      <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id={`gradient-${idx}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M 0,35 L 40,32 L 80,28 L 120,25 L 160,20 L 200,15"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M 0,35 L 40,32 L 80,28 L 120,25 L 160,20 L 200,15 L 200,40 L 0,40 Z"
+                          fill={`url(#gradient-${idx})`}
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                        <Video className="w-3.5 h-3.5 text-purple-500" />
+                        <span className="uppercase font-medium text-slate-400">VIDEOS</span>
+                      </div>
+                      <p className="text-lg font-bold text-slate-900">{channel.total_videos?.toLocaleString() || 0}</p>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                        <Heart className="w-3.5 h-3.5 text-red-500" />
+                        <span className="uppercase font-medium text-slate-400">LIKES</span>
+                      </div>
+                      <p className="text-lg font-bold text-slate-900">
+                        {formatNumber(typeof channel.total_likes === 'string' ? parseInt(channel.total_likes) : channel.total_likes || 0)}
                       </p>
                     </div>
-                    <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-xs font-semibold">
-                      Live
-                    </div>
-                  </div>
 
-                  {/* Simple Line Chart (Visual placeholder since we only have one data point for history currently) */}
-                  <div className="h-16 relative">
-                    <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id={`gradient-${idx}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M 0,35 L 40,32 L 80,28 L 120,25 L 160,20 L 200,15"
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M 0,35 L 40,32 L 80,28 L 120,25 L 160,20 L 200,15 L 200,40 L 0,40 Z"
-                        fill={`url(#gradient-${idx})`}
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                      <Video className="w-3.5 h-3.5 text-purple-500" />
-                      <span className="uppercase font-medium text-slate-400">VIDEOS</span>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                        <Eye className="w-3.5 h-3.5 text-teal-500" />
+                        <span className="uppercase font-medium text-slate-400">TOTAL VIEWS</span>
+                      </div>
+                      <p className="text-lg font-bold text-slate-900">{formatNumber(channel.total_views || 0)}</p>
                     </div>
-                    <p className="text-lg font-bold text-slate-900">{channel.total_videos?.toLocaleString() || 0}</p>
-                  </div>
 
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                      <Heart className="w-3.5 h-3.5 text-red-500" />
-                      <span className="uppercase font-medium text-slate-400">LIKES</span>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                        <TrendingUp className="w-3.5 h-3.5 text-orange-500" />
+                        <span className="uppercase font-medium text-slate-400">ENG. RATE</span>
+                      </div>
+                      <p className="text-lg font-bold text-slate-900">
+                        {channel.engagement_rate?.toFixed(2) || '0.00'}%
+                      </p>
                     </div>
-                    <p className="text-lg font-bold text-slate-900">
-                      {formatNumber(typeof channel.total_likes === 'string' ? parseInt(channel.total_likes) : channel.total_likes || 0)}
-                    </p>
-                  </div>
-
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                      <Eye className="w-3.5 h-3.5 text-teal-500" />
-                      <span className="uppercase font-medium text-slate-400">TOTAL VIEWS</span>
-                    </div>
-                    <p className="text-lg font-bold text-slate-900">{formatNumber(channel.total_views || 0)}</p>
-                  </div>
-
-                  <div className="bg-slate-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                      <TrendingUp className="w-3.5 h-3.5 text-orange-500" />
-                      <span className="uppercase font-medium text-slate-400">ENG. RATE</span>
-                    </div>
-                    <p className="text-lg font-bold text-slate-900">
-                      {channel.engagement_rate?.toFixed(2) || '0.00'}%
-                    </p>
                   </div>
                 </div>
 

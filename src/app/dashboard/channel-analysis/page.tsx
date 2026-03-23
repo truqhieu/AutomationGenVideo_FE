@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import apiClient from '@/lib/api-client';
 import toast from 'react-hot-toast';
 import {
@@ -10,7 +9,7 @@ import {
   clearLarkSyncCooldown,
 } from '@/lib/sync-lark-tracked-channels';
 import { BarChart3, Facebook, Instagram, Music2, RefreshCcw, Wand2, Plus, X, Link as LinkIcon, Loader2, Trash2, Eye, EyeOff, RotateCcw, DownloadCloud } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 type PlatformKey = 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK';
 type PlatformFilter = PlatformKey | 'ALL';
@@ -34,9 +33,10 @@ type Row = {
   platform: PlatformKey;
   countLabel: string;
   maxAvailable: number;
-  status: 'not_analyzed' | 'scheduled' | 'completed';
+  status: 'not_analyzed' | 'scheduled' | 'analyzing' | 'completed';
   timeLabel: string;
   username: string;
+  analyzingAt?: number;
 };
 
 function platformIcon(p: PlatformKey) {
@@ -64,16 +64,6 @@ function getHiddenId(platform: PlatformKey, username: string) {
   return `${platform}:${u}`;
 }
 
-function getStoredMaxPosts(platform: PlatformKey, username: string): number | null {
-  try {
-    const raw = localStorage.getItem(getAnalysisKey(platform, username));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const n = parseInt(parsed?.maxPosts, 10);
-    if (!Number.isNaN(n) && n > 0) return Math.min(Math.max(n, 10), 200);
-  } catch (_) {}
-  return null;
-}
 
 function formatTimeLabel(ts?: number | null, fallbackIso?: string | null) {
   if (ts && ts > 0) {
@@ -100,7 +90,6 @@ function formatTimeLabel(ts?: number | null, fallbackIso?: string | null) {
 }
 
 export default function ChannelAnalysisHubPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [channels, setChannels] = useState<TrackedChannel[]>([]);
@@ -115,39 +104,20 @@ export default function ChannelAnalysisHubPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState('');
   const [insights, setInsights] = useState<Record<string, string>>({});
-  const [insightsMaxPosts, setInsightsMaxPosts] = useState<number>(30);
+  const [insightsStartDate, setInsightsStartDate] = useState<string>('');
+  const [insightsEndDate, setInsightsEndDate] = useState<string>('');
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState('');
   const [channelMetrics, setChannelMetrics] = useState<any>(null);
   const [viralShowAll, setViralShowAll] = useState(false);
 
-  // Max posts chooser (before running analysis)
+  // Date range chooser (before running analysis)
   const [showMaxPostsModal, setShowMaxPostsModal] = useState(false);
   const [pendingRow, setPendingRow] = useState<Row | null>(null);
   const [pendingMode, setPendingMode] = useState<'open' | 'rerun'>('open');
-
-  const safeInt = useCallback((v: any) => {
-    const n = typeof v === 'number' ? v : parseInt(String(v ?? ''), 10);
-    return Number.isFinite(n) ? n : 0;
-  }, []);
-
-  const buildMaxPostsOptions = useCallback((maxAvailable: number) => {
-    // Backend limits (to keep requests reasonable)
-    const HARD_MAX = 200;
-    const HARD_MIN = 10;
-    const maxSelectable = Math.min(Math.max(safeInt(maxAvailable), HARD_MIN), HARD_MAX);
-
-    if (maxSelectable <= 30) return [maxSelectable];
-
-    const q1 = Math.max(HARD_MIN, Math.round(maxSelectable * 0.25));
-    const q2 = Math.max(HARD_MIN, Math.round(maxSelectable * 0.5));
-    const q3 = Math.max(HARD_MIN, Math.round(maxSelectable * 0.75));
-    const list = [q1, q2, q3, maxSelectable].map((n) => Math.min(Math.max(n, HARD_MIN), maxSelectable));
-
-    if (maxSelectable >= 80) list.unshift(30);
-
-    return Array.from(new Set(list)).sort((a, b) => a - b);
-  }, [safeInt]);
+  const [pendingStartDate, setPendingStartDate] = useState<string>('');
+  const [pendingEndDate, setPendingEndDate] = useState<string>('');
+  const [pendingMaxPosts, setPendingMaxPosts] = useState<number>(30);
 
   // Create Report Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -155,7 +125,8 @@ export default function ChannelAnalysisHubPage() {
   const [sourceMode, setSourceMode] = useState<'existing' | 'new'>('existing');
   const [existingUsername, setExistingUsername] = useState('');
   const [newInput, setNewInput] = useState('');
-  const [maxPosts, setMaxPosts] = useState<number>(30);
+  const [createStartDate, setCreateStartDate] = useState<string>('');
+  const [createEndDate, setCreateEndDate] = useState<string>('');
   const [runMode, setRunMode] = useState<'now' | 'schedule'>('now');
   const [scheduleAt, setScheduleAt] = useState(''); // yyyy-MM-ddTHH:mm
   const [creating, setCreating] = useState(false);
@@ -270,47 +241,22 @@ export default function ChannelAnalysisHubPage() {
     return <div className="text-[15px] md:text-base leading-7 text-slate-700 whitespace-pre-wrap">{text}</div>;
   }, []);
 
-  const openFacebookInsightsPopup = useCallback((row: Row) => {
+  const openFacebookInsightsPopup = useCallback((row: Row, startDate?: string, endDate?: string) => {
     setInsightsRow(row);
     setInsights({});
     setInsightsError('');
     setChannelMetrics(null);
     setMetricsError('');
     setViralShowAll(false);
-    // Try to reuse last maxPosts choice (from "Tạo Báo Cáo") if any
-    try {
-      const raw = sessionStorage.getItem('channel_analysis_autorun');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const p = (parsed?.platform || '').toString().toLowerCase();
-        const u = (parsed?.username || '').toString().replace(/^@/, '').trim().toLowerCase();
-        const cur = (row.username || '').toString().replace(/^@/, '').trim().toLowerCase();
-        if (p === 'facebook' && u && cur && u === cur) {
-          const n = parseInt(parsed?.maxPosts, 10);
-          if (!Number.isNaN(n) && n > 0) setInsightsMaxPosts(Math.min(Math.max(n, 10), 200));
-        }
-      }
-    } catch (_) {}
-
-    // Prefer stored maxPosts per channel (so popup + table stay consistent)
-    const stored = getStoredMaxPosts(row.platform, row.username);
-    if (stored) setInsightsMaxPosts(stored);
-
-    // Ensure we persist the chosen maxPosts for table display
-    try {
-      const key = getAnalysisKey(row.platform, row.username);
-      const existing = localStorage.getItem(key);
-      const prev = existing ? JSON.parse(existing) : {};
-      localStorage.setItem(key, JSON.stringify({ ...prev, maxPosts: stored || prev?.maxPosts || insightsMaxPosts || 30 }));
-    } catch (_) {}
+    if (startDate) setInsightsStartDate(startDate);
+    if (endDate) setInsightsEndDate(endDate);
     setStorageTick((x) => x + 1);
     setShowInsightsModal(true);
   }, []);
 
-  const runGenericInsights = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runGenericInsights = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -323,10 +269,13 @@ export default function ChannelAnalysisHubPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: row.platform.toLowerCase(),
+          platform: targetRow.platform.toLowerCase(),
           username,
-          max_posts: insightsMaxPosts,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
           language: 'vi',
+          force_refresh: forceRefresh,
+          max_posts: maxPosts,
         }),
       });
       let json: any = {};
@@ -340,26 +289,36 @@ export default function ChannelAnalysisHubPage() {
       if (json.success === false && json.error) throw new Error(json.error);
       const data = (json.insights || {}) as Record<string, string>;
       setInsights(data);
+      const scanned = json.scanned_count ?? json.total_posts ?? null;
 
       try {
         localStorage.setItem(
-          getAnalysisKey(row.platform, username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts: insightsMaxPosts }),
+          getAnalysisKey(targetRow.platform, username),
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned }),
         );
       } catch (_) {}
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
       setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
+      // Revert 'analyzing' on error so row doesn't stay stuck
+      try {
+        const key = getAnalysisKey(targetRow.platform, username);
+        const raw = localStorage.getItem(key);
+        const prev = raw ? JSON.parse(raw) : {};
+        if (prev.status === 'analyzing') {
+          localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
+          setStorageTick((x) => x + 1);
+        }
+      } catch (_) {}
     } finally {
       setInsightsLoading(false);
     }
-  }, [fetchAll, insightsMaxPosts, insightsRow]);
+  }, [fetchAll]);
 
-  const runGenericMetrics = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runGenericMetrics = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -372,9 +331,12 @@ export default function ChannelAnalysisHubPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: row.platform.toLowerCase(),
+          platform: targetRow.platform.toLowerCase(),
           username,
-          max_posts: Math.max(30, insightsMaxPosts),
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          force_refresh: forceRefresh,
+          max_posts: maxPosts,
         }),
       });
       let json: any = {};
@@ -392,25 +354,36 @@ export default function ChannelAnalysisHubPage() {
     } finally {
       setMetricsLoading(false);
     }
-  }, [insightsMaxPosts, insightsRow]);
+  }, []);
 
-  const openMaxPostsChooser = useCallback((row: Row, mode: 'open' | 'rerun') => {
+  const openDateRangeChooser = useCallback((row: Row, mode: 'open' | 'rerun') => {
     setPendingRow(row);
     setPendingMode(mode);
-    const stored = getStoredMaxPosts(row.platform, row.username);
-    if (stored) {
-      setInsightsMaxPosts(stored);
-    } else {
-      const opts = buildMaxPostsOptions(row.maxAvailable || 0);
-      setInsightsMaxPosts(opts.includes(30) ? 30 : opts[0] || 30);
+    // Load stored date range if available
+    try {
+      const raw = localStorage.getItem(getAnalysisKey(row.platform, row.username));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.startDate) setPendingStartDate(parsed.startDate);
+        if (parsed?.endDate) setPendingEndDate(parsed.endDate);
+        if (parsed?.maxPosts) setPendingMaxPosts(parsed.maxPosts);
+        else setPendingMaxPosts(30);
+      } else {
+        setPendingStartDate('');
+        setPendingEndDate('');
+        setPendingMaxPosts(30);
+      }
+    } catch (_) {
+      setPendingStartDate('');
+      setPendingEndDate('');
+      setPendingMaxPosts(30);
     }
     setShowMaxPostsModal(true);
-  }, [buildMaxPostsOptions]);
+  }, []);
 
-  const runFacebookInsights = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runFacebookInsights = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -423,7 +396,7 @@ export default function ChannelAnalysisHubPage() {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, max_posts: insightsMaxPosts, language: 'vi' }),
+        body: JSON.stringify({ url, start_date: startDate || undefined, end_date: endDate || undefined, language: 'vi', force_refresh: forceRefresh, max_posts: maxPosts }),
       });
       let json: any = {};
       try {
@@ -440,12 +413,13 @@ export default function ChannelAnalysisHubPage() {
       if (json.success === false && json.error) throw new Error(json.error);
       const data = (json.insights || {}) as Record<string, string>;
       setInsights(data);
+      const scanned = json.scanned_count ?? json.total_posts ?? null;
 
       // Mark analyzed in localStorage (table status)
       try {
         localStorage.setItem(
           getAnalysisKey('FACEBOOK', username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), maxPosts: insightsMaxPosts })
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned })
         );
       } catch (_) {}
       setStorageTick((x) => x + 1);
@@ -453,15 +427,24 @@ export default function ChannelAnalysisHubPage() {
       await fetchAll();
     } catch (e: any) {
       setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
+      // Revert 'analyzing' on error
+      try {
+        const key = getAnalysisKey('FACEBOOK', username);
+        const raw = localStorage.getItem(key);
+        const prev = raw ? JSON.parse(raw) : {};
+        if (prev.status === 'analyzing') {
+          localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
+          setStorageTick((x) => x + 1);
+        }
+      } catch (_) {}
     } finally {
       setInsightsLoading(false);
     }
-  }, [fetchAll, insightsMaxPosts, insightsRow]);
+  }, [fetchAll]);
 
-  const runFacebookMetrics = useCallback(async () => {
-    const row = insightsRow;
-    if (!row) return;
-    const username = (row.username || '').replace(/^@/, '').trim();
+  const runFacebookMetrics = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+    if (!targetRow) return;
+    const username = (targetRow.username || '').replace(/^@/, '').trim();
     if (!username) return;
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -474,7 +457,7 @@ export default function ChannelAnalysisHubPage() {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, max_posts: Math.max(30, insightsMaxPosts) }),
+        body: JSON.stringify({ url, start_date: startDate || undefined, end_date: endDate || undefined, force_refresh: forceRefresh, max_posts: maxPosts }),
       });
       let json: any = {};
       try {
@@ -486,28 +469,50 @@ export default function ChannelAnalysisHubPage() {
       }
       if (json.success === false && json.error) throw new Error(json.error);
       setChannelMetrics(json.metrics || null);
+      // Also persist scanned_count if insights haven't done so yet
+      const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
+      if (scanned !== null) {
+        try {
+          const key = getAnalysisKey('FACEBOOK', username);
+          const existing = localStorage.getItem(key);
+          const prev = existing ? JSON.parse(existing) : {};
+          // Only update if scannedCount not yet set or this is newer
+          if (!prev.scannedCount) {
+            localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
+            setStorageTick((x) => x + 1);
+          }
+        } catch (_) {}
+      }
     } catch (e: any) {
       setMetricsError((e?.message || 'Không thể tải thống kê kênh').toString());
     } finally {
       setMetricsLoading(false);
     }
-  }, [insightsMaxPosts, insightsRow]);
+  }, []);
 
-  // Auto-run once when popup opens (Facebook)
-  useEffect(() => {
-    if (!showInsightsModal) return;
-    if (!insightsRow) return;
-    // If already has real insights, don't auto rerun
-    if (hasRealInsights(insights)) return;
-    if (insightsRow.platform === 'FACEBOOK') {
-      runFacebookInsights();
-      runFacebookMetrics();
-    } else {
-      runGenericInsights();
-      runGenericMetrics();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInsightsModal, insightsRow]);
+  // Xóa Auto-run useEffect, để fetch cache / refresh rõ ràng
+  const onView = useCallback((row: Row) => {
+    let sDate = '';
+    let eDate = '';
+    try {
+      const raw = localStorage.getItem(getAnalysisKey(row.platform, row.username));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        sDate = parsed?.startDate || '';
+        eDate = parsed?.endDate || '';
+      }
+    } catch (_) {}
+
+    openFacebookInsightsPopup(row, sDate, eDate);
+
+    setTimeout(() => {
+      if (row.platform === 'FACEBOOK') {
+        void Promise.all([runFacebookInsights(row, sDate, eDate, false), runFacebookMetrics(row, sDate, eDate, false)]);
+      } else {
+        void Promise.all([runGenericInsights(row, sDate, eDate, false), runGenericMetrics(row, sDate, eDate, false)]);
+      }
+    }, 0);
+  }, [openFacebookInsightsPopup, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
 
   useEffect(() => {
     let alive = true;
@@ -670,7 +675,7 @@ export default function ChannelAnalysisHubPage() {
         try {
           localStorage.setItem(
             getAnalysisKey(platform, username),
-            JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, maxPosts, createdAt: Date.now() })
+            JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, startDate: createStartDate, endDate: createEndDate, createdAt: Date.now() })
           );
         } catch (_) {}
         await fetchAll();
@@ -682,73 +687,34 @@ export default function ChannelAnalysisHubPage() {
         return;
       }
 
-      // mark autorun intent + go analytics now
-      try {
-        sessionStorage.setItem('analytics_from_channels', '1');
-        sessionStorage.setItem(
-          'channel_analysis_autorun',
-          JSON.stringify({ platform, username, maxPosts, ts: Date.now() })
-        );
-      } catch (_) {}
-
-      // Persist maxPosts per channel for table display (and popup defaults)
+      // Persist date range per channel for table display
       try {
         const key = getAnalysisKey(platform, username);
         const existing = localStorage.getItem(key);
         const prev = existing ? JSON.parse(existing) : {};
-        localStorage.setItem(key, JSON.stringify({ ...prev, status: prev?.status || 'not_analyzed', maxPosts }));
+        localStorage.setItem(key, JSON.stringify({ ...prev, status: prev?.status || 'not_analyzed', startDate: createStartDate, endDate: createEndDate }));
       } catch (_) {}
       setStorageTick((x) => x + 1);
 
       setShowCreateModal(false);
       setNewInput('');
       setExistingUsername('');
+      setCreateStartDate('');
+      setCreateEndDate('');
       setScheduleAt('');
       setRunMode('now');
 
-      const u = encodeURIComponent(username.replace(/^@/, '').trim());
-      if (platform === 'FACEBOOK') {
-        // Do NOT navigate. Open popup on this page.
-        setInsightsMaxPosts(maxPosts);
-        openMaxPostsChooser({
-          id: `${Date.now()}`,
-          name: username,
-          url: buildChannelUrl('FACEBOOK', username),
-          platform: 'FACEBOOK',
-          countLabel: `${maxPosts} bài`,
-          maxAvailable: 0,
-          status: 'not_analyzed',
-          timeLabel: '-',
-          username,
-        }, 'open');
-      }
-      else if (platform === 'INSTAGRAM') {
-        setInsightsMaxPosts(maxPosts);
-        openMaxPostsChooser({
-          id: `${Date.now()}`,
-          name: username,
-          url: buildChannelUrl('INSTAGRAM', username),
-          platform: 'INSTAGRAM',
-          countLabel: `${maxPosts} bài`,
-          maxAvailable: 0,
-          status: 'not_analyzed',
-          timeLabel: '-',
-          username,
-        }, 'open');
-      } else {
-        setInsightsMaxPosts(maxPosts);
-        openMaxPostsChooser({
-          id: `${Date.now()}`,
-          name: username,
-          url: buildChannelUrl('TIKTOK', username),
-          platform: 'TIKTOK',
-          countLabel: `${maxPosts} bài`,
-          maxAvailable: 0,
-          status: 'not_analyzed',
-          timeLabel: '-',
-          username,
-        }, 'open');
-      }
+      openDateRangeChooser({
+        id: `${Date.now()}`,
+        name: username,
+        url: buildChannelUrl(platform, username),
+        platform,
+        countLabel: '-',
+        maxAvailable: 0,
+        status: 'not_analyzed',
+        timeLabel: '-',
+        username,
+      }, 'open');
     } catch (e: any) {
       setCreateError((e?.message || 'Không thể tạo báo cáo').toString());
     } finally {
@@ -761,18 +727,17 @@ export default function ChannelAnalysisHubPage() {
       const name = (ch.display_name || ch.username || '').trim() || '(No name)';
       const url = buildChannelUrl(ch.platform, ch.username);
 
-      // Count label: prefer the "maxPosts" chosen in report (localStorage), fallback to scanned counts
-      const storedMaxPosts = getStoredMaxPosts(ch.platform, ch.username);
+      // Count label: scannedCount from localStorage (set after analysis), fallback to available count
+      let scannedCount: number | null = null;
       const availableCount =
         (typeof ch.posts_count === 'number' && ch.posts_count !== null ? ch.posts_count : null) ??
         (typeof ch.total_videos === 'number' && ch.total_videos !== null ? ch.total_videos : null) ??
         0;
-      const countForLabel = storedMaxPosts ?? availableCount ?? 0;
-      const countLabel = `${countForLabel} bài`;
 
       // Analysis status from localStorage
       let analyzedAt: number | null = null;
       let scheduledAtMs: number | null = null;
+      let analyzingAtMs: number | undefined = undefined;
       let status: Row['status'] = 'not_analyzed';
       try {
         const raw = localStorage.getItem(getAnalysisKey(ch.platform, ch.username));
@@ -781,6 +746,11 @@ export default function ChannelAnalysisHubPage() {
           if (parsed?.status === 'completed') {
             status = 'completed';
             analyzedAt = parsed?.analyzedAt || null;
+            scannedCount = parsed?.scannedCount ?? null;
+          }
+          if (parsed?.status === 'analyzing') {
+            status = 'analyzing';
+            analyzingAtMs = parsed?.analyzingAt;
           }
           if (parsed?.status === 'scheduled') {
             status = 'scheduled';
@@ -788,6 +758,14 @@ export default function ChannelAnalysisHubPage() {
           }
         }
       } catch (_) {}
+
+      // Build countLabel: show scannedCount (from analysis) or availableCount — never show dates
+      let countLabel = '-';
+      if (scannedCount !== null) {
+        countLabel = `${scannedCount} bài`;
+      } else if (availableCount > 0) {
+        countLabel = `${availableCount} bài`;
+      }
 
       // Fallback time: last_synced_at / created_at
       const timeLabel =
@@ -805,6 +783,7 @@ export default function ChannelAnalysisHubPage() {
         status,
         timeLabel,
         username: ch.username,
+        analyzingAt: analyzingAtMs,
       };
     });
     const visible = showHidden
@@ -819,7 +798,6 @@ export default function ChannelAnalysisHubPage() {
     const u = (row.username || '').replace(/^@/, '').trim();
     if (!u) return;
 
-    // Mark "clicked" as analyzed placeholder (actual completed is set by analytics pages; FB already does)
     try {
       const key = getAnalysisKey(row.platform, row.username);
       const existing = localStorage.getItem(key);
@@ -828,51 +806,89 @@ export default function ChannelAnalysisHubPage() {
       }
     } catch (_) {}
 
-    // Avoid auto-analyze loops where applicable
     try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) {}
 
-    // All platforms: open popup flow (no navigation)
-    openMaxPostsChooser(row, 'open');
+    openDateRangeChooser(row, row.status === 'completed' ? 'rerun' : 'open');
   };
 
-  const confirmMaxPostsAndRun = useCallback(() => {
+  const confirmDateRangeAndRun = useCallback(() => {
     const row = pendingRow;
     if (!row) return;
 
-    // Persist maxPosts choice for table + future default
+    // Mark channel as 'analyzing' immediately so table shows progress bar
     try {
       const key = getAnalysisKey(row.platform, row.username);
       const existing = localStorage.getItem(key);
       const prev = existing ? JSON.parse(existing) : {};
-      localStorage.setItem(key, JSON.stringify({ ...prev, maxPosts: insightsMaxPosts }));
+      localStorage.setItem(key, JSON.stringify({
+        ...prev,
+        status: 'analyzing',
+        startDate: pendingStartDate,
+        endDate: pendingEndDate,
+        maxPosts: pendingMaxPosts,
+        analyzingAt: Date.now(),
+      }));
     } catch (_) {}
     setStorageTick((x) => x + 1);
 
     setShowMaxPostsModal(false);
 
-    // All platforms: open popup + run analysis (no navigation)
-    if (pendingMode === 'open') {
-      openFacebookInsightsPopup(row);
-    }
+    openFacebookInsightsPopup(row, pendingStartDate, pendingEndDate);
 
-    // Defer network calls so UI updates instantly (smooth click)
     setTimeout(() => {
+      const isRerun = pendingMode === 'rerun';
       if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(), runFacebookMetrics()]);
+        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
       } else {
-        void Promise.all([runGenericInsights(), runGenericMetrics()]);
+        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
       }
     }, 0);
-  }, [insightsMaxPosts, openFacebookInsightsPopup, pendingMode, pendingRow, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
+  }, [openFacebookInsightsPopup, pendingEndDate, pendingMode, pendingRow, pendingStartDate, pendingMaxPosts, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
 
-  const badge = (status: Row['status']) => {
-    if (status === 'completed') {
-      return <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">Hoàn thành</span>;
+  // Poll localStorage every 2s while any row is 'analyzing' to detect completion
+  useEffect(() => {
+    const hasAnalyzing = channels.some((ch) => {
+      try {
+        const raw = localStorage.getItem(getAnalysisKey(ch.platform, ch.username));
+        if (!raw) return false;
+        return JSON.parse(raw)?.status === 'analyzing';
+      } catch { return false; }
+    });
+    if (!hasAnalyzing) return;
+    const timer = setInterval(() => setStorageTick((x) => x + 1), 2000);
+    return () => clearInterval(timer);
+  }, [channels, storageTick]);
+
+  const badge = (r: Row) => {
+    if (r.status === 'completed') {
+      return <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 w-fit">Hoàn thành</span>;
     }
-    if (status === 'scheduled') {
-      return <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700">Đã lên lịch</span>;
+    if (r.status === 'analyzing') {
+      let percent = 5; // default 5%
+      if (r.analyzingAt) {
+        // Giả sử quy trình mất khoảng 45s để hoàn thành
+        const elapsedS = (Date.now() - r.analyzingAt) / 1000;
+        const mapped = Math.min(Math.round((elapsedS / 45) * 100), 95);  // max 95% fake progress
+        percent = Math.max(percent, mapped);
+      }
+      return (
+        <div className="relative inline-flex items-center w-36 h-6 rounded-full bg-indigo-50 border border-indigo-200 overflow-hidden shadow-sm">
+          {/* Progress fill */}
+          <div 
+            className="absolute left-0 top-0 bottom-0 bg-indigo-500 transition-all duration-1000 ease-linear" 
+            style={{ width: `${percent}%` }}
+          />
+          {/* Text overlap */}
+          <span className="relative w-full text-center text-[11px] font-black tracking-wide text-indigo-700 blend-difference px-2 z-10 mix-blend-difference text-white">
+            {percent}% • ĐANG XỬ LÝ
+          </span>
+        </div>
+      );
     }
-    return <span className="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600">Chưa phân tích</span>;
+    if (r.status === 'scheduled') {
+      return <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 w-fit">Đã lên lịch</span>;
+    }
+    return <span className="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 w-fit">Chưa phân tích</span>;
   };
 
   return (
@@ -1064,7 +1080,7 @@ export default function ChannelAnalysisHubPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-700">{r.countLabel}</td>
-                    <td className="px-6 py-4">{badge(r.status)}</td>
+                    <td className="px-6 py-4">{badge(r)}</td>
                     <td className="px-6 py-4 text-slate-600">{r.timeLabel}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
@@ -1087,17 +1103,34 @@ export default function ChannelAnalysisHubPage() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onAnalyze(r)}
-                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${
-                            r.status === 'completed' || r.status === 'scheduled'
-                              ? 'bg-slate-900 text-white hover:bg-slate-800'
-                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          }`}
-                        >
-                          {r.status === 'completed' ? <RefreshCcw className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
-                          {r.status === 'completed' ? 'Phân tích lại' : r.status === 'scheduled' ? 'Mở phân tích' : 'Phân tích'}
-                        </button>
+                        {r.status === 'completed' && (
+                          <button
+                            onClick={() => onView(r)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-all"
+                            title="Xem lại lịch sử phân tích"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Xem
+                          </button>
+                        )}
+                        {r.status === 'analyzing' ? (
+                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-indigo-50 text-indigo-500 border border-indigo-100 cursor-not-allowed">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Đang xử lý...
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onAnalyze(r)}
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+                              r.status === 'completed' || r.status === 'scheduled'
+                                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
+                          >
+                            {r.status === 'completed' ? <RefreshCcw className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
+                            {r.status === 'completed' ? 'Phân tích lại' : r.status === 'scheduled' ? 'Mở phân tích' : 'Phân tích'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1119,7 +1152,9 @@ export default function ChannelAnalysisHubPage() {
       {showCreateModal && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => !creating && setShowCreateModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !creating) setShowCreateModal(false);
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1228,18 +1263,30 @@ export default function ChannelAnalysisHubPage() {
                 </div>
               )}
 
-              {/* Max posts */}
+              {/* Date range */}
               <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Số lượng</label>
-                <select
-                  value={maxPosts}
-                  onChange={(e) => setMaxPosts(parseInt(e.target.value, 10))}
-                  className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
-                >
-                  <option value={30}>30 bài gần nhất</option>
-                  <option value={50}>50 bài gần nhất</option>
-                  <option value={80}>80 bài gần nhất</option>
-                </select>
+                <label className="block text-sm font-bold text-slate-800 mb-2">Khoảng thời gian</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
+                    <input
+                      type="date"
+                      value={createStartDate}
+                      onChange={(e) => setCreateStartDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
+                    <input
+                      type="date"
+                      value={createEndDate}
+                      onChange={(e) => setCreateEndDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Hệ thống sẽ quét số lượng bài trong khoảng ngày này.</p>
               </div>
 
               {/* Run time */}
@@ -1295,7 +1342,9 @@ export default function ChannelAnalysisHubPage() {
       {showInsightsModal && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => !(insightsLoading || metricsLoading) && setShowInsightsModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowInsightsModal(false);
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1309,18 +1358,13 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <select
-                  value={insightsMaxPosts}
-                  onChange={(e) => setInsightsMaxPosts(parseInt(e.target.value, 10))}
-                  disabled={insightsLoading}
-                  className="px-3 py-2 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold text-sm"
-                >
-                  <option value={30}>30 bài</option>
-                  <option value={50}>50 bài</option>
-                  <option value={80}>80 bài</option>
-                </select>
+                {(insightsStartDate || insightsEndDate) && (
+                  <span className="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">
+                    {insightsStartDate ? insightsStartDate.split('-').reverse().join('/') : '...'} – {insightsEndDate ? insightsEndDate.split('-').reverse().join('/') : '...'}
+                  </span>
+                )}
                 <button
-                  onClick={() => insightsRow && openMaxPostsChooser(insightsRow, 'rerun')}
+                  onClick={() => insightsRow && openDateRangeChooser(insightsRow, 'rerun')}
                   disabled={insightsLoading || metricsLoading}
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm disabled:opacity-60 inline-flex items-center gap-2"
                 >
@@ -1328,8 +1372,9 @@ export default function ChannelAnalysisHubPage() {
                   {(insightsLoading || metricsLoading) ? 'Đang phân tích...' : (hasRealInsights(insights) || channelMetrics) ? 'Phân tích lại' : 'Phân tích'}
                 </button>
                 <button
-                  onClick={() => !(insightsLoading || metricsLoading) && setShowInsightsModal(false)}
+                  onClick={() => setShowInsightsModal(false)}
                   className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                  title="Đóng (phân tích vẫn tiếp tục nền)"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1358,6 +1403,11 @@ export default function ChannelAnalysisHubPage() {
                   </div>
                 ) : !channelMetrics ? (
                   <div className="text-sm text-slate-500">Chưa có thống kê. Bấm “Phân tích” để tải.</div>
+                ) : channelMetrics?.meta?.posts_analyzed === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+                    <p className="text-base font-bold text-slate-700">Không tìm thấy bài viết nào!</p>
+                    <p className="text-sm text-slate-500 mt-1">Các bài viết đã bị lọc khỏi khoảng thời gian bạn đã chọn ({insightsStartDate?.split('-').reverse().join('/') || ''} – {insightsEndDate?.split('-').reverse().join('/') || ''}).</p>
+                  </div>
                 ) : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1392,6 +1442,60 @@ export default function ChannelAnalysisHubPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Hashtag A1–A5 bar chart */}
+                    {true && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 mb-1">Tuyến nội dung (A1–A5)</p>
+                          <p className="text-xs text-slate-500 mb-2">Số bài có hashtag #A1…#A5 trong khoảng thời gian đã quét</p>
+                          <div className="h-52">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart 
+                                data={channelMetrics?.hashtag_stats?.length ? channelMetrics.hashtag_stats : [
+                                  {hashtag: 'A1', count: 0}, {hashtag: 'A2', count: 0}, {hashtag: 'A3', count: 0}, {hashtag: 'A4', count: 0}, {hashtag: 'A5', count: 0}
+                                ]} 
+                                layout="vertical" 
+                                margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <YAxis type="category" dataKey="hashtag" tick={{ fontSize: 12, fontWeight: 700 }} width={32} />
+                                <Tooltip formatter={(v: any) => [`${v} bài`, 'Số bài']} />
+                                <Bar dataKey="count" name="Số bài" radius={[0, 6, 6, 0]}>
+                                  {(channelMetrics?.hashtag_stats || []).map((_: any, i: number) => (
+                                    <Cell key={i} fill={['#6366f1','#0ea5e9','#10b981','#f59e0b','#f43f5e'][i % 5]} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 mb-1">Xu hướng phát triển kênh</p>
+                          <p className="text-xs text-slate-500 mb-2">Biến động tổng tương tác theo ngày (đánh giá đà tăng/giảm)</p>
+                          <div className="h-52">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart
+                                data={(() => {
+                                  return (channelMetrics?.charts?.avg_engagement_by_day || []).map((d: any) => {
+                                    const totalEng = Math.round((d.posts || 0) * ((d.avgLikes || 0) + (d.avgComments || 0) + (d.avgShares || 0) + (d.avgViews || 0)));
+                                    return { date: d.date, score: totalEng };
+                                  });
+                                })()}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <Tooltip formatter={(v: any) => [v, 'Tổng tương tác']} />
+                                <Legend formatter={() => 'Mức độ phát triển (Tương tác)'} />
+                                <Area type="monotone" dataKey="score" stroke="#f43f5e" fill="#ffe4e6" name="score" />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <p className="text-sm font-bold text-slate-800 mb-2">Top URL viral</p>
@@ -1491,11 +1595,15 @@ export default function ChannelAnalysisHubPage() {
         </div>
       )}
 
-      {/* Max posts chooser */}
+      {/* Date range chooser */}
       {showMaxPostsModal && pendingRow && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
-          onClick={() => !(insightsLoading || metricsLoading) && setShowMaxPostsModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !(insightsLoading || metricsLoading)) {
+              setShowMaxPostsModal(false);
+            }
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1503,7 +1611,7 @@ export default function ChannelAnalysisHubPage() {
           >
             <div className="px-7 py-6 border-b border-slate-100 flex items-center justify-between">
               <div className="min-w-0">
-                <h3 className="text-lg font-black text-slate-900 truncate">Chọn số lượng bài để phân tích</h3>
+                <h3 className="text-lg font-black text-slate-900 truncate">Chọn khoảng thời gian phân tích</h3>
                 <p className="text-xs text-slate-500 mt-1 truncate">
                   {(pendingRow.name || pendingRow.username || '').toString()}
                 </p>
@@ -1518,21 +1626,48 @@ export default function ChannelAnalysisHubPage() {
 
             <div className="p-7 space-y-5">
               <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Số lượng</label>
-                <select
-                  value={insightsMaxPosts}
-                  onChange={(e) => setInsightsMaxPosts(parseInt(e.target.value, 10))}
-                  disabled={insightsLoading || metricsLoading}
-                  className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold"
-                >
-                  {buildMaxPostsOptions(pendingRow.maxAvailable || 0).map((n) => (
-                    <option key={n} value={n}>
-                      {n} bài gần nhất{(pendingRow.maxAvailable || 0) > 0 && n === Math.min(Math.max(pendingRow.maxAvailable || 0, 10), 200) ? ' (tối đa)' : ''}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-bold text-slate-800 mb-3">Khoảng thời gian</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
+                    <input
+                      type="date"
+                      value={pendingStartDate}
+                      onChange={(e) => setPendingStartDate(e.target.value)}
+                      disabled={insightsLoading || metricsLoading}
+                      className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
+                    <input
+                      type="date"
+                      value={pendingEndDate}
+                      onChange={(e) => setPendingEndDate(e.target.value)}
+                      disabled={insightsLoading || metricsLoading}
+                      className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
+                    />
+                  </div>
+                </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Áp dụng cho cả AI insights và metrics. Kênh có {(pendingRow.maxAvailable || 0).toLocaleString()} bài/video; hệ thống phân tích tối đa 200 bài/lần.
+                  Hệ thống sẽ quét và phân tích các bài đăng trong khoảng ngày đã chọn. Để trống để quét toàn bộ.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-3">Số lượng bài đăng (Max: 100)</label>
+                <input
+                  type="number"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={pendingMaxPosts}
+                  onChange={(e) => setPendingMaxPosts(Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
+                  disabled={insightsLoading || metricsLoading}
+                  className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Giới hạn số bài quét giúp tiết kiệm token và phân tích nhanh hơn. Mặc định: 30 bài.
                 </p>
               </div>
 
@@ -1547,7 +1682,7 @@ export default function ChannelAnalysisHubPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={confirmMaxPostsAndRun}
+                  onClick={confirmDateRangeAndRun}
                   disabled={insightsLoading || metricsLoading}
                   className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
                 >
