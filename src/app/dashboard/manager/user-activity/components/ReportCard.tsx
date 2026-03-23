@@ -137,7 +137,7 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                 </div>
 
                 {/* Grid + Bars */}
-                <div className="flex-1 relative max-w-[280px] mx-auto">
+                <div className="flex-1 relative">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                         {ticks.map((_, i) => (
@@ -146,11 +146,11 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                     </div>
 
                     {/* Columns */}
-                    <div className="relative flex items-end justify-center gap-0 h-full">
+                    <div className="relative flex items-end justify-around gap-0 h-full">
                         {platforms.map((p) => {
                             const pct = chartMax > 0 ? Math.max((p.value / chartMax) * 100, 3) : 0;
                             return (
-                                <div key={p.key} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group px-0.5">
+                                <div key={p.key} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group">
                                     {/* Tooltip on hover */}
                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mb-0.5">
                                         <span className="text-[10px] font-bold text-gray-700 bg-white shadow-md rounded px-1 py-0.5 border border-gray-100 whitespace-nowrap">
@@ -158,7 +158,7 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                         </span>
                                     </div>
                                     <div
-                                        className="w-full max-w-[24px] rounded-t transition-all duration-700 ease-out hover:opacity-90 cursor-default"
+                                        className="w-full max-w-[38px] rounded-t transition-all duration-700 ease-out hover:opacity-90 cursor-default"
                                         style={{
                                             height: `${pct}%`,
                                             backgroundColor: p.bgColor,
@@ -171,14 +171,6 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                 </div>
             </div>
 
-            {/* X-axis labels */}
-            <div className="flex justify-evenly pl-7 mt-1">
-                {platforms.map((p) => (
-                    <span key={p.key} className="text-[10px] font-bold text-gray-500 flex-1 text-center truncate min-w-0">
-                        {p.label.length > 5 ? p.label.substring(0, 2).toUpperCase() : p.label}
-                    </span>
-                ))}
-            </div>
         </div>
     );
 };
