@@ -102,10 +102,12 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             // Re-sync platform evidences for parent compatibility
             const platformEvidences: Record<string, string[]> = {};
             Object.keys(initialEntries).forEach(pid => {
-                const allTokens = initialEntries[pid].reduce((acc, row) => 
-                    [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
-                );
-                platformEvidences[pid] = allTokens;
+                if (Array.isArray(initialEntries[pid])) {
+                    const allTokens = initialEntries[pid].reduce((acc, row) => 
+                        [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
+                    );
+                    platformEvidences[pid] = allTokens;
+                }
             });
             onPlatformEvidenceChange?.(platformEvidences);
         }

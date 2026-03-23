@@ -168,7 +168,7 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
 
                                 {entry.evidences && entry.evidences.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mt-2.5">
-                                        {entry.evidences.map((ev, evIdx) => (
+                                        {entry.evidences.filter(ev => ev).map((ev, evIdx) => (
                                             <div 
                                                 key={evIdx} 
                                                 className="w-11 h-11 rounded-xl border border-white shadow-sm overflow-hidden cursor-zoom-in hover:scale-110 transition-all duration-300"

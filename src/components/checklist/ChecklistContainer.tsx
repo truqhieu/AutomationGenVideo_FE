@@ -373,10 +373,22 @@ const ChecklistContainer = ({
                             setTrafficChannels(newChannels);
                             setHistoricalEvidences(newEvidences);
                             if (data.traffic.details) {
-                                if ((data.traffic.details as any).breakdown) {
-                                    setEntryDetails((data.traffic.details as any).breakdown);
+                                let rawDetails = (data.traffic.details as any).breakdown || data.traffic.details;
+                                if (Array.isArray(rawDetails)) {
+                                    // Group array by platform for the frontend's Record<string, TrafficEntry[]> requirement
+                                    const grouped = rawDetails.reduce((acc: any, item: any) => {
+                                        const pid = item.platform || 'unknown';
+                                        if (!acc[pid]) acc[pid] = [];
+                                        acc[pid].push({
+                                            ...item,
+                                            id: item.id || `hist_${pid}_${acc[pid].length}_${Math.random().toString(36).substr(2, 4)}`,
+                                            value: String(item.value || '')
+                                        });
+                                        return acc;
+                                    }, {} as Record<string, any[]>);
+                                    setEntryDetails(grouped);
                                 } else {
-                                    setEntryDetails(data.traffic.details);
+                                    setEntryDetails(rawDetails);
                                 }
                             }
                         }
