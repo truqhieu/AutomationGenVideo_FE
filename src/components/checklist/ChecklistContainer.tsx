@@ -187,7 +187,9 @@ const ChecklistContainer = ({
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [trafficChannels, setTrafficChannels] = useState<TrafficData>(initialTrafficChannels());
+    const [entryDetails, setEntryDetails] = useState<Record<string, any>>({});
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
+
     const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -262,7 +264,9 @@ const ChecklistContainer = ({
             setLeaderAnswers(initialLeaderAnswers());
             setTraffic(initialTrafficData());
             setTrafficChannels(initialTrafficChannels());
+            setEntryDetails({});
             setHistoricalEvidences({});
+
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -368,7 +372,16 @@ const ChecklistContainer = ({
                             setTraffic(newTraffic);
                             setTrafficChannels(newChannels);
                             setHistoricalEvidences(newEvidences);
+                            if (data.traffic.details) {
+                                if ((data.traffic.details as any).breakdown) {
+                                    setEntryDetails((data.traffic.details as any).breakdown);
+                                } else {
+                                    setEntryDetails(data.traffic.details);
+                                }
+                            }
                         }
+
+
                     }
                 }
             } catch (err) {
@@ -590,8 +603,14 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
+                        trafficDetails: {
+                            breakdown: entryDetails,
+                            evidences: platformEvidences
+                        },
                         reportDate: reportDate, // Send custom date
                     })
+
+
                 });
                 
                 if (showOnlyTraffic) {
@@ -717,9 +736,12 @@ const ChecklistContainer = ({
                             onChange={handleTrafficChange}
                             onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                            onEntriesChange={setEntryDetails}
                             readOnly={isReadOnly}
                             initialEvidences={historicalEvidences}
+                            initialEntries={entryDetails}
                         />
+
                     </div>
                 )}
             </div>

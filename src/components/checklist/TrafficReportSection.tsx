@@ -52,15 +52,20 @@ interface TrafficReportSectionProps {
     onChange: (platformId: keyof TrafficData, value: string) => void;
     onChannelChange: (platformId: keyof TrafficData, value: string) => void;
     onPlatformEvidenceChange?: (platformEvidences: Record<string, string[]>) => void;
+    onEntriesChange?: (entries: Record<string, TrafficEntry[]>) => void;
     readOnly?: boolean;
     initialEvidences?: Record<string, { url: string; name: string; token: string }[]>;
+    initialEntries?: Record<string, TrafficEntry[]>;
 }
+
 
 interface TrafficEntry {
     id: string;
     value: string;
     channel: string;
+    evidences?: { url: string; name: string; token: string }[];
 }
+
 
 const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({ 
     values, 
@@ -69,25 +74,29 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
     onChange, 
     onChannelChange,
     onPlatformEvidenceChange,
+    onEntriesChange,
     readOnly,
-    initialEvidences
+    initialEvidences,
+    initialEntries
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
-    const [activePlatform, setActivePlatform] = useState<string | null>(null);
+    const [activeTarget, setActiveTarget] = useState<{ platformId: string; entryId: string } | null>(null);
     
-    // Store evidence per platform: { platformId: [{ url, name, token }] }
+    // Store evidence per platform for compatibility: { platformId: [{ url, name, token }] }
     const [evidences, setEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>(initialEvidences || {});
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
 
     // Internal state to track multiple entries per platform
-    // format: { fb: [{ id: 'random', value: '100', channel: 'Kênh A' }] }
+    // format: { fb: [{ id: 'random', value: '100', channel: 'Kênh A', evidences: [] }] }
     const [entries, setEntries] = useState<Record<string, TrafficEntry[]>>(() => {
+        if (initialEntries && Object.keys(initialEntries).length > 0) return initialEntries;
+
         const initial: Record<string, TrafficEntry[]> = {};
         TRAFFIC_PLATFORMS.forEach(p => {
             const val = values[p.id as keyof TrafficData] || '';
             const ch = channels[p.id as keyof TrafficData] || '';
-            initial[p.id] = [{ id: Math.random().toString(36).slice(2, 9), value: val, channel: ch }];
+            initial[p.id] = [{ id: Math.random().toString(36).slice(2, 9), value: val, channel: ch, evidences: [] }];
         });
         return initial;
     });
@@ -97,6 +106,22 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             setEvidences(initialEvidences);
         }
     }, [initialEvidences]);
+
+    React.useEffect(() => {
+        if (initialEntries && Object.keys(initialEntries).length > 0) {
+            setEntries(initialEntries);
+            
+            // Re-sync platform evidences for parent compatibility
+            const platformEvidences: Record<string, string[]> = {};
+            Object.keys(initialEntries).forEach(pid => {
+                const allTokens = initialEntries[pid].reduce((acc, row) => 
+                    [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
+                );
+                platformEvidences[pid] = allTokens;
+            });
+            onPlatformEvidenceChange?.(platformEvidences);
+        }
+    }, [initialEntries]);
 
     // Update parent whenever entries change
     const updateParent = (platformId: string, currentEntries: TrafficEntry[]) => {
@@ -110,15 +135,40 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
             .filter(c => c !== '')
             .join(', ');
         onChannelChange(platformId as keyof TrafficData, joinedChannels);
+
+        // Update platform evidence tokens for parent
+        const allPlatformTokens = currentEntries.reduce((acc, row) => 
+            [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
+        );
+        
+        // Better: reconstruct all from entries
+        const fullPlatformTokens: Record<string, string[]> = {};
+        Object.keys(entries).forEach(pid => {
+            const platformRows = pid === platformId ? currentEntries : (entries[pid] || []);
+            fullPlatformTokens[pid] = platformRows.reduce((acc, row) => 
+                [...acc, ...(row.evidences || []).map(ev => ev.token)], [] as string[]
+            );
+        });
+        onPlatformEvidenceChange?.(fullPlatformTokens);
+
+
+        // Notify parent of entries
+        const updatedEntries = { ...entries, [platformId]: currentEntries };
+        onEntriesChange?.(updatedEntries);
     };
 
     const addRow = (platformId: string) => {
         if (readOnly) return;
         const newEntries = [
             ...(entries[platformId] || []),
-            { id: Math.random().toString(36).slice(2, 9), value: '', channel: '' }
+            { id: Math.random().toString(36).slice(2, 9), value: '', channel: '', evidences: [] }
         ];
-        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+        setEntries(prev => {
+            const next = { ...prev, [platformId]: newEntries };
+            onEntriesChange?.(next);
+            return next;
+        });
+        updateParent(platformId, newEntries);
     };
 
     const removeRow = (platformId: string, entryId: string) => {
@@ -126,20 +176,29 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         const currentPlatformEntries = entries[platformId] || [];
         if (currentPlatformEntries.length <= 1) {
             // Just clear the first one instead of removing
-            updateRow(platformId, entryId, { value: '', channel: '' });
+            updateRow(platformId, entryId, { value: '', channel: '', evidences: [] });
             return;
         }
         const newEntries = currentPlatformEntries.filter(e => e.id !== entryId);
-        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+        setEntries(prev => {
+            const next = { ...prev, [platformId]: newEntries };
+            onEntriesChange?.(next);
+            return next;
+        });
         updateParent(platformId, newEntries);
     };
 
     const updateRow = (platformId: string, entryId: string, data: Partial<TrafficEntry>) => {
         if (readOnly) return;
-        const newEntries = (entries[platformId] || []).map(e => 
+        const currentEntries = entries[platformId] || [];
+        const newEntries = currentEntries.map(e => 
             e.id === entryId ? { ...e, ...data } : e
         );
-        setEntries(prev => ({ ...prev, [platformId]: newEntries }));
+        setEntries(prev => {
+            const next = { ...prev, [platformId]: newEntries };
+            onEntriesChange?.(next);
+            return next;
+        });
         updateParent(platformId, newEntries);
     };
     
@@ -171,9 +230,9 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        if (files.length === 0 || !activePlatform) return;
+        if (files.length === 0 || !activeTarget) return;
 
-        const platformId = activePlatform;
+        const { platformId, entryId } = activeTarget;
         setUploadingPlatform(platformId);
         setUploadErrors(prev => ({ ...prev, [platformId]: '' }));
 
@@ -196,17 +255,20 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 token: data.fileTokens[i]
             }));
 
-            const updatedEvidences = {
-                ...evidences,
-                [platformId]: [...(evidences[platformId] || []), ...newEvidences]
-            };
-            
-            setEvidences(updatedEvidences);
-            const platformTokens: Record<string, string[]> = {};
-            Object.keys(updatedEvidences).forEach(pid => {
-                platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
+            // Update specific row evidence
+            const currentPlatformEntries = entries[platformId] || [];
+            const updatedEntries = currentPlatformEntries.map(row => {
+                if (row.id === entryId) {
+                    return {
+                        ...row,
+                        evidences: [...(row.evidences || []), ...newEvidences]
+                    };
+                }
+                return row;
             });
-            onPlatformEvidenceChange?.(platformTokens);
+
+            setEntries(prev => ({ ...prev, [platformId]: updatedEntries }));
+            updateParent(platformId, updatedEntries);
             
         } catch (err) {
             setUploadErrors(prev => ({ ...prev, [platformId]: 'Lỗi upload ảnh' }));
@@ -216,24 +278,35 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         }
     };
 
-    const removeImage = (platformId: string, idx: number) => {
-        const updatedPlatformEvidences = (evidences[platformId] || []).filter((_, i) => i !== idx);
-        const updatedEvidences = { ...evidences, [platformId]: updatedPlatformEvidences };
-        setEvidences(updatedEvidences);
-        const platformTokens: Record<string, string[]> = {};
-        Object.keys(updatedEvidences).forEach(pid => {
-            platformTokens[pid] = updatedEvidences[pid].map(ev => ev.token);
+    const removeEntryImage = (platformId: string, entryId: string, idx: number) => {
+        const currentEntries = entries[platformId] || [];
+        const updatedEntries = currentEntries.map(row => {
+            if (row.id === entryId) {
+                return {
+                    ...row,
+                    evidences: (row.evidences || []).filter((_, i) => i !== idx)
+                };
+            }
+            return row;
         });
-        onPlatformEvidenceChange?.(platformTokens);
+        setEntries(prev => ({ ...prev, [platformId]: updatedEntries }));
+        updateParent(platformId, updatedEntries);
     };
 
-    const triggerUpload = (platformId: string) => {
-        setActivePlatform(platformId);
+    const triggerUpload = (platformId: string, entryId: string) => {
+        setActiveTarget({ platformId, entryId });
         setTimeout(() => fileInputRef.current?.click(), 0);
-    };
-
     return (
         <div className="space-y-6">
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+            />
+
             <div className="flex items-center gap-3 pb-4 border-b border-purple-100">
                 <div className="p-2.5 bg-purple-100/50 rounded-xl">
                     <Activity className="w-5 h-5 text-purple-600" />
@@ -244,7 +317,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {TRAFFIC_PLATFORMS.filter(platform => {
                     const hasAccess = availableChannels.some(c => isPlatformMatch(platform.id, c.platform));
                     const hasData = (entries[platform.id] || []).some(e => e.value !== '' || e.channel !== '');
@@ -259,25 +332,13 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                 </label>
                             </div>
                             <div className="flex items-center gap-2">
-                                {uploadingPlatform === platform.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                                ) : !readOnly && (
-                                    <button
-                                        type="button"
-                                        onClick={() => triggerUpload(platform.id)}
-                                        className="p-2 rounded-xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-all active:scale-95"
-                                        title="Tải minh chứng"
-                                    >
-                                        <ImagePlus className="w-5 h-5" />
-                                    </button>
-                                )}
                                 {!readOnly && (
                                     <button
                                         type="button"
                                         onClick={() => addRow(platform.id)}
-                                        className="px-3 py-1.5 bg-purple-600 text-white rounded-xl text-xs font-bold hover:bg-purple-700 transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                                        className="px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-black hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 active:scale-95 flex items-center gap-2"
                                     >
-                                        <Activity className="w-3.5 h-3.5" /> Thêm kênh
+                                        <Activity className="w-4 h-4" /> Thêm kênh
                                     </button>
                                 )}
                             </div>
@@ -285,96 +346,132 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
 
                         <div className="space-y-4">
                             {(entries[platform.id] || []).map((entry, idx) => (
-                                <div key={entry.id} className="relative grid grid-cols-12 gap-3 items-end group/row bg-white/50 p-3 rounded-2xl border border-slate-100">
-                                    <div className="col-span-12 sm:col-span-5 space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1 flex justify-between">
-                                            <span>Số Traffic</span>
-                                            {idx > 0 && <span className="text-purple-400">Kênh #{idx + 1}</span>}
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Số lượt..."
-                                            readOnly={readOnly}
-                                            value={entry.value !== '' ? Number(entry.value).toLocaleString('en-US') : ''}
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/\D/g, '');
-                                                updateRow(platform.id, entry.id, { value: rawValue });
-                                            }}
-                                            className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-800 text-base font-black focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none"
-                                        />
-                                    </div>
-
-                                    <div className="col-span-12 sm:col-span-6 space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter px-1">Tên kênh</label>
-                                        <select
-                                            disabled={readOnly}
-                                            value={entry.channel}
-                                            onChange={(e) => updateRow(platform.id, entry.id, { channel: e.target.value })}
-                                            className="w-full h-[46px] px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all outline-none appearance-none cursor-pointer"
-                                        >
-                                            <option value="">-- Chọn kênh --</option>
-                                            {availableChannels
-                                                ?.filter(c => isPlatformMatch(platform.id, c.platform))
-                                                .map((c, cIdx) => (
-                                                    <option key={c.id || cIdx} value={c.name}>{c.name}</option>
-                                                ))
-                                            }
-                                        </select>
-                                    </div>
-
-                                    {!readOnly && (entries[platform.id]?.length > 1) && (
-                                        <div className="col-span-12 sm:col-span-1 mb-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => removeRow(platform.id, entry.id)}
-                                                className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Xóa dòng này"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
+                                <div key={entry.id} className="group/row bg-white rounded-3xl p-4 border border-slate-100 hover:border-purple-100 hover:shadow-sm transition-all">
+                                    <div className="grid grid-cols-12 gap-3 items-end">
+                                        <div className="col-span-12 sm:col-span-5 space-y-1.5">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Số Traffic</label>
+                                                {idx > 0 && <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Kênh #{idx + 1}</span>}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Số lượt..."
+                                                readOnly={readOnly}
+                                                value={entry.value !== '' ? Number(entry.value).toLocaleString('en-US') : ''}
+                                                onChange={(e) => {
+                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                    updateRow(platform.id, entry.id, { value: rawValue });
+                                                }}
+                                                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 text-base font-black focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all outline-none"
+                                            />
                                         </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
 
-                        {/* Evidence Preview */}
-                        <div className="flex flex-wrap gap-2.5 px-1 min-h-[30px]">
-                            {(evidences[platform.id] || []).map((img, idx) => (
-                                <div key={idx} className="relative group/img w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-all cursor-pointer bg-slate-200" onClick={() => window.open(img.url, '_blank')}>
-                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                                    {!readOnly && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { e.stopPropagation(); removeImage(platform.id, idx); }}
-                                            className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                        <div className="col-span-12 sm:col-span-5 space-y-1.5">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tên kênh</label>
+                                            <select
+                                                disabled={readOnly}
+                                                value={entry.channel}
+                                                onChange={(e) => updateRow(platform.id, entry.id, { channel: e.target.value })}
+                                                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 text-sm font-bold focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all outline-none appearance-none cursor-pointer"
+                                            >
+                                                <option value="">-- Chọn kênh --</option>
+                                                {availableChannels
+                                                    ?.filter(c => isPlatformMatch(platform.id, c.platform))
+                                                    .filter(c => {
+                                                        if (!c.name) return false;
+                                                        if (c.name === entry.channel) return true;
+                                                        const alreadySelected = (entries[platform.id] || []).some(e => e.channel === c.name);
+                                                        return !alreadySelected;
+                                                    })
+                                                    .map((c, cIdx) => (
+                                                        <option key={c.id || cIdx} value={c.name}>{c.name}</option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <div className="col-span-12 sm:col-span-2 flex items-center justify-end gap-2 mb-1">
+                                            {uploadingPlatform === platform.id && activeTarget?.entryId === entry.id ? (
+                                                <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                                            ) : (
+                                                !readOnly && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => triggerUpload(platform.id, entry.id)}
+                                                        className="p-2.5 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all active:scale-90"
+                                                        title="Tải minh chứng"
+                                                    >
+                                                        <ImagePlus className="w-5 h-5" />
+                                                    </button>
+                                                )
+                                            )}
+                                            
+                                            {!readOnly && (entries[platform.id]?.length > 1) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeRow(platform.id, entry.id)}
+                                                    className="p-2.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all active:scale-95"
+                                                    title="Xóa kênh"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Evidence Gallery for this specific channel */}
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {(entry.evidences || []).length === 0 && (
+                                            <p className="text-[10px] text-slate-400 font-bold italic px-1">
+                                                {readOnly ? 'Không có minh chứng' : 'Chưa có minh chứng hình ảnh'}
+                                            </p>
+                                        )}
+                                        {(entry.evidences || []).map((ev, evIdx) => (
+                                            <div key={evIdx} className="group/img relative w-14 h-14 rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                                                <img 
+                                                    src={ev.url} 
+                                                    alt={ev.name} 
+                                                    className="w-full h-full object-cover cursor-zoom-in group-hover/img:scale-110 transition-transform duration-300" 
+                                                    onClick={() => window.open(ev.url, '_blank')}
+                                                />
+                                                {!readOnly && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeEntryImage(platform.id, entry.id, evIdx)}
+                                                        className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-all hover:bg-red-600 shadow-lg"
+                                                    >
+                                                        <X className="w-2.5 h-2.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
-                            {(!evidences[platform.id] || evidences[platform.id].length === 0) && (
-                                <span className="text-[10px] text-slate-400 italic">Chưa có minh chứng hình ảnh</span>
-                            )}
                         </div>
 
                         {uploadErrors[platform.id] && (
-                            <p className="text-xs text-red-500 font-bold px-1 mt-1">{uploadErrors[platform.id]}</p>
+                            <p className="text-xs text-red-500 font-bold px-1 animate-pulse mt-1">
+                                {uploadErrors[platform.id]}
+                            </p>
                         )}
                     </div>
                 ))}
             </div>
 
-            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-
             {availableChannels.length === 0 && !readOnly && (
-                <div className="flex flex-col items-center justify-center p-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                <div className="flex flex-col items-center justify-center p-12 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
                     <div className="p-4 bg-white rounded-full shadow-sm mb-4">
                         <Activity className="w-8 h-8 text-slate-300" />
                     </div>
-                    <p className="text-slate-500 font-bold">Không tìm thấy kênh nào bạn đang quản lý</p>
-                    <p className="text-slate-400 text-sm">Vui lòng kiểm tra lại tài khoản hoặc liên hệ quản trị viên</p>
+                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs">Không tìm thấy kênh nào bạn đang quản lý</p>
+                    <p className="text-slate-400 text-[10px] mt-1 italic">Vui lòng kiểm tra lại tài khoản hoặc liên hệ quản trị viên</p>
+                </div>
+            )}
+        </div>
+    );
+};
+�� quản trị viên</p>
                 </div>
             )}
         </div>
