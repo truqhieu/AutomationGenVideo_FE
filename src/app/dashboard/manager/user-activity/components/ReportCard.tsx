@@ -68,122 +68,140 @@ const formatTrafficNumber = (num: number): string => {
     return num.toLocaleString('vi-VN');
 };
 
-const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: string }> = {
-    fb: { label: 'Facebook', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.85)' },
-    ig: { label: 'Instagram', color: '#ec4899', bgColor: 'rgba(236,72,153,0.85)' },
-    tiktok: { label: 'TikTok', color: '#1f2937', bgColor: 'rgba(31,41,55,0.85)' },
-    yt: { label: 'Youtube', color: '#ef4444', bgColor: 'rgba(239,68,68,0.85)' },
-    thread: { label: 'Thread', color: '#6b7280', bgColor: 'rgba(107,114,128,0.85)' },
-    zalo: { label: 'Zalo', color: '#0ea5e9', bgColor: 'rgba(14,165,233,0.85)' },
+import { 
+    SiFacebook, 
+    SiInstagram, 
+    SiTiktok, 
+    SiYoutube, 
+    SiThreads, 
+    SiZalo, 
+    SiX 
+} from 'react-icons/si';
+
+const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: string; icon?: React.ElementType }> = {
+    fb: { label: 'Facebook', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.85)', icon: SiFacebook },
+    ig: { label: 'Instagram', color: '#ec4899', bgColor: 'rgba(236,72,153,0.85)', icon: SiInstagram },
+    tiktok: { label: 'TikTok', color: '#1f2937', bgColor: 'rgba(31,41,55,0.85)', icon: SiTiktok },
+    yt: { label: 'Youtube', color: '#ef4444', bgColor: 'rgba(239,68,68,0.85)', icon: SiYoutube },
+    thread: { label: 'Thread', color: '#6b7280', bgColor: 'rgba(107,114,128,0.85)', icon: SiThreads },
+    zalo: { label: 'Zalo', color: '#0ea5e9', bgColor: 'rgba(14,165,233,0.85)', icon: SiZalo },
     lemon8: { label: 'Lemon8', color: '#eab308', bgColor: 'rgba(234,179,8,0.85)' },
-    twitter: { label: 'X', color: '#111827', bgColor: 'rgba(17,24,39,0.85)' },
+    twitter: { label: 'X', color: '#111827', bgColor: 'rgba(17,24,39,0.85)', icon: SiX },
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
     if (!trafficToday.details || trafficToday.details.length === 0) return null;
 
+    const platformTotals = Object.entries(PLATFORM_STYLES)
+        .map(([key, style]) => ({
+            key,
+            ...style,
+            value: trafficToday[key as keyof TrafficToday] as number || 0,
+        }))
+        .filter(p => p.value > 0)
+        .sort((a, b) => b.value - a.value);
+
     return (
         <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
-            {/* Pie Chart Distribution for Channels */}
-            {trafficToday.details && trafficToday.details.length > 0 && (
-                <div className="mt-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
-                        <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
-                    </p>
-                    
-                    <div className="flex flex-col items-center justify-center py-8 bg-slate-50/50 rounded-3xl border border-slate-100/50">
-                        {/* Interactive Pie Chart - Centered */}
-                        <div className="w-full h-[280px] max-w-[280px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={trafficToday.details.map((entry, idx) => ({
-                                            name: entry.channel || 'Hệ thống',
-                                            value: Number(entry.value || 0),
-                                            platform: entry.platform,
-                                            id: entry.id || idx
-                                        })).filter(d => d.value > 0)}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={80}
-                                        outerRadius={115}
-                                        paddingAngle={4}
-                                        dataKey="value"
-                                        animationDuration={1500}
-                                        animationBegin={200}
-                                    >
-                                        {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
-                                            const platformStyle = PLATFORM_STYLES[entry.platform || ''];
+            <div className="mt-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
+                    <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
+                </p>
+                
+                <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 rounded-3xl border border-slate-100/50">
+                    {/* Interactive Pie Chart - Centered */}
+                    <div className="w-full h-[260px] max-w-[260px] relative mb-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={trafficToday.details.map((entry, idx) => ({
+                                        name: entry.channel || 'Hệ thống',
+                                        value: Number(entry.value || 0),
+                                        platform: entry.platform,
+                                        id: entry.id || idx
+                                    })).filter(d => d.value > 0)}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={75}
+                                    outerRadius={110}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                    animationDuration={1500}
+                                    animationBegin={200}
+                                >
+                                    {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
+                                        const platformStyle = PLATFORM_STYLES[entry.platform || ''];
+                                        return (
+                                            <Cell 
+                                                key={`cell-${idx}`} 
+                                                fill={platformStyle?.bgColor || '#8b5cf6'} 
+                                                stroke="#fff"
+                                                strokeWidth={3}
+                                                className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
+                                            />
+                                        );
+                                    })}
+                                </Pie>
+                                <Tooltip 
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
                                             return (
-                                                <Cell 
-                                                    key={`cell-${idx}`} 
-                                                    fill={platformStyle?.bgColor || '#8b5cf6'} 
-                                                    stroke="#fff"
-                                                    strokeWidth={3}
-                                                    className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
-                                                />
-                                            );
-                                        })}
-                                    </Pie>
-                                    <Tooltip 
-                                        content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                                const data = payload[0].payload;
-                                                return (
-                                                    <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-2xl shadow-xl animate-in fade-in zoom-in duration-200">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill }} />
-                                                            <span className="text-[10px] font-black text-slate-800 uppercase">{data.name}</span>
-                                                        </div>
-                                                        <p className="text-xs font-black text-purple-600">
-                                                            {formatTrafficNumber(data.value)} Traffic
-                                                        </p>
+                                                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-2xl shadow-xl animate-in fade-in zoom-in duration-200">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill }} />
+                                                        <span className="text-[10px] font-black text-slate-800 uppercase">{data.name}</span>
                                                     </div>
-                                                );
-                                            }
-                                            return null;
-                                        }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                            
-                            {/* Central Summary */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Tổng kênh</span>
-                                <span className="text-xl font-black text-slate-800 leading-none">
-                                    {formatTrafficNumber(trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0))}
-                                </span>
-                            </div>
+                                                    <p className="text-xs font-black text-purple-600">
+                                                        {formatTrafficNumber(data.value)} Traffic
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        
+                        {/* Central Summary */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                            <span className="text-xl font-black text-slate-800 leading-none">
+                                {formatTrafficNumber(trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0))}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Evidence Gallery categorized by channel */}
-                    <div className="mt-6 space-y-4">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Minh chứng hoạt động</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
-                            {trafficToday.details.filter(e => e.evidences && e.evidences.length > 0).map((entry, idx) => (
-                                <div key={`ev-gallery-${idx}`} className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
-                                    <div className="flex items-center gap-2 mb-2.5">
-                                         <div className="w-1.5 h-3 bg-purple-300 rounded-full" />
-                                         <span className="text-[9px] font-black text-slate-500 uppercase truncate">{entry.channel}</span>
+                    {/* Platform Traffic Notes (Notes màu và Tổng Traffic nền tảng) */}
+                    <div className="w-full flex flex-wrap justify-center gap-3">
+                        {platformTotals.map((p) => (
+                            <div key={p.key} className="flex items-center gap-3 bg-white px-3 py-2 rounded-2xl border border-slate-100/50 hover:shadow-sm transition-all group">
+                                <div 
+                                    className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm transition-transform group-hover:scale-125" 
+                                    style={{ backgroundColor: p.bgColor }} 
+                                />
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider leading-none">
+                                            {p.label}
+                                        </span>
+                                        {p.icon && (
+                                            <p.icon 
+                                                className="w-3 h-3 transition-colors group-hover:opacity-100 opacity-80" 
+                                                style={{ color: p.color }} 
+                                            />
+                                        )}
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(entry.evidences || []).filter(ev => ev).map((ev, evIdx) => (
-                                            <div 
-                                                key={evIdx} 
-                                                className="w-12 h-12 rounded-xl border border-white shadow-sm overflow-hidden cursor-zoom-in hover:scale-110 transition-all duration-300"
-                                                onClick={() => window.open(ev.url, '_blank')}
-                                            >
-                                                <img src={ev.url} alt={ev.name} className="w-full h-full object-cover" />
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <span className="text-xs font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(p.value)}
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 };
