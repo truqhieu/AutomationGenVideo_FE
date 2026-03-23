@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Check, TrendingUp } from 'lucide-react';
+import { Check, TrendingUp, PieChart as PieIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface TrafficToday {
     fb: number;
@@ -128,7 +129,7 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                         ))}
                     </div>
 
-                    <div className="relative flex items-end justify-center gap-1.5 h-full pt-4">
+                    <div className="relative flex items-end justify-center gap-8 h-full pt-4">
                         {platforms.map((p) => {
                             const pct = chartMax > 0 ? (p.value / chartMax) * 100 : 0;
                             return (
@@ -147,6 +148,21 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                         })}
                     </div>
                 </div>
+            </div>
+
+            {/* Legend Section */}
+            <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2.5 px-2 border-t border-slate-50 pt-4">
+                {platforms.map((p) => (
+                    <div key={p.key} className="flex items-center gap-2 group">
+                        <div 
+                            className="w-2.5 h-2.5 rounded-full shadow-sm ring-2 ring-white transition-all group-hover:scale-125" 
+                            style={{ backgroundColor: p.bgColor }} 
+                        />
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-slate-800 transition-colors">
+                            {p.label}
+                        </span>
+                    </div>
+                ))}
             </div>
 
             {/* Detailed Breakdown with Images */}
