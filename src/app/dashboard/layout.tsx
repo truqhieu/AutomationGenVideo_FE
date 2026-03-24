@@ -105,13 +105,14 @@ export default function DashboardLayout({
       <div className={`transition-[padding-left] duration-200 ease-out ${sidebarOpen ? 'pl-[320px]' : 'pl-[80px]'}`}>
         {/* Header - Make it stick but transparent or matching? */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex-1 lg:hidden" />
-            <div className="flex items-center gap-4 ml-auto">
-              {/* Optional User info in header if sidebar is collapsed? */}
+          <div className="flex items-center justify-between px-6 py-3 min-h-[72px]">
+            <div className="flex-1 flex items-center">
+              <div id="navbar-portal-root" className="w-full"></div>
+            </div>
+            <div className="flex items-center gap-8 ml-8">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                <p className="text-xs text-gray-500">{user.roles?.join(', ')}</p>
+                <p className="text-sm font-bold text-gray-900 leading-tight">{user.full_name}</p>
+                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-tighter">{user.roles?.join(' • ')}</p>
               </div>
             </div>
           </div>

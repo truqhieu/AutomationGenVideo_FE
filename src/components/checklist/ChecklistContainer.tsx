@@ -171,11 +171,12 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
     );
 };
 
-const ChecklistContainer = ({ 
-    mode, 
-    showOnlyTraffic = false, 
-    showOnlyWork = false 
-}: { 
+const ChecklistContainer = ({
+    mode,
+    showOnlyTraffic = false,
+    showOnlyWork = false,
+    onSuccess
+}: {
     mode?: 'member' | 'leader',
     showOnlyTraffic?: boolean,
     showOnlyWork?: boolean,
@@ -187,7 +188,9 @@ const ChecklistContainer = ({
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [trafficChannels, setTrafficChannels] = useState<TrafficData>(initialTrafficChannels());
+    const [entryDetails, setEntryDetails] = useState<Record<string, any>>({});
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
+
     const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -204,7 +207,7 @@ const ChecklistContainer = ({
             if (!user?.email) return;
 
             try {
-                const apiBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const base = apiBase.replace(/\/$/, '');
                 const url = base.endsWith('/api')
                     ? `${base}/lark/user-permission?email=${encodeURIComponent(user.email)}`
@@ -262,16 +265,18 @@ const ChecklistContainer = ({
             setLeaderAnswers(initialLeaderAnswers());
             setTraffic(initialTrafficData());
             setTrafficChannels(initialTrafficChannels());
+            setEntryDetails({});
             setHistoricalEvidences({});
+
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-                const url = `${beBaseUrl}/lark/user-report-details?email=${encodeURIComponent(user.email)}&date=${reportDate}`;
+                const url = `${beBaseUrl}/lark/user-report-details?email=${encodeURIComponent(user.email)}&date=${reportDate}&_t=${Date.now()}`;
 
-                const response = await fetch(url);
+                const response = await fetch(url, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
-                    
+
                     if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
@@ -286,7 +291,7 @@ const ChecklistContainer = ({
 
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
-                            
+
                             // Restore checklist
                             const newChecks = CHECKLIST_ITEMS.map(label => !!answers[label]);
                             setChecks(newChecks);
@@ -306,7 +311,7 @@ const ChecklistContainer = ({
                             const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
 
                             const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
-                            
+
                             // Check for evidence_files fallback for older/synced records
                             let sharedEvidences: any[] = [];
                             if (data.traffic.evidence_files) {
@@ -370,7 +375,28 @@ const ChecklistContainer = ({
                             setTraffic(newTraffic);
                             setTrafficChannels(newChannels);
                             setHistoricalEvidences(newEvidences);
+                            if (data.traffic.details) {
+                                let rawDetails = (data.traffic.details as any).breakdown || data.traffic.details;
+                                if (Array.isArray(rawDetails)) {
+                                    // Group array by platform for the frontend's Record<string, TrafficEntry[]> requirement
+                                    const grouped = rawDetails.reduce((acc: any, item: any) => {
+                                        const pid = item.platform || 'unknown';
+                                        if (!acc[pid]) acc[pid] = [];
+                                        acc[pid].push({
+                                            ...item,
+                                            id: item.id || `hist_${pid}_${acc[pid].length}_${Math.random().toString(36).substr(2, 4)}`,
+                                            value: String(item.value || '')
+                                        });
+                                        return acc;
+                                    }, {} as Record<string, any[]>);
+                                    setEntryDetails(grouped);
+                                } else {
+                                    setEntryDetails(rawDetails);
+                                }
+                            }
                         }
+
+
                     }
                 }
             } catch (err) {
@@ -388,14 +414,14 @@ const ChecklistContainer = ({
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const url = new URL(`${beBaseUrl}/lark/channel`, window.location.origin);
-                
+
                 if (user.email) {
                     url.searchParams.append('email', user.email);
                 } else {
                     url.searchParams.append('owner', user.full_name || '');
                     if (user.team) url.searchParams.append('team', user.team);
                 }
-                
+
                 const res = await fetch(url.toString());
                 if (res.ok) {
                     const data = await res.json();
@@ -573,6 +599,15 @@ const ChecklistContainer = ({
                     return;
                 }
                 setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
+                
+                // --- Xoá cache trên Backend (NestJS) lập tức để hiển thị luôn ở Checklist ---
+                try {
+                    const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                    await fetch(`${beBaseUrl}/lark/clear-activity-cache`, { method: 'POST' });
+                } catch (err) {
+                    console.log('Failed to flush cache', err);
+                }
+                
                 setChecks(initialChecks());
                 setDetails(initialDetails());
                 setLeaderAnswers(initialLeaderAnswers());
@@ -592,10 +627,25 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
+                        trafficDetails: {
+                            breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
+                                acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
+                                    ...entry,
+                                    evidences: (entry.evidences || []).map((ev: any) => ({
+                                        url: ev.url,
+                                        name: ev.name
+                                    }))
+                                }));
+                                return acc;
+                            }, {} as Record<string, any>),
+                            evidences: platformEvidences
+                        },
                         reportDate: reportDate, // Send custom date
                     })
+
+
                 });
-                
+
                 if (showOnlyTraffic) {
                     if (trafficRes.ok) {
                         setMessage({ type: 'success', text: 'Báo cáo Traffic thành công' });
@@ -606,14 +656,16 @@ const ChecklistContainer = ({
                         return;
                     }
                 }
-                
+
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
                 setSubmitCount(prev => prev + 1);
+                if (onSuccess) onSuccess();
             } else {
-                 if (!showOnlyWork) setMessage({ type: 'success', text: 'Báo cáo thành công' });
-                 setSubmitCount(prev => prev + 1);
+                if (!showOnlyWork) setMessage({ type: 'success', text: 'Báo cáo thành công' });
+                setSubmitCount(prev => prev + 1);
+                if (onSuccess) onSuccess();
             }
 
         } catch (e) {
@@ -677,9 +729,9 @@ const ChecklistContainer = ({
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <ChecklistSection 
-                            values={checks} 
-                            onChange={handleCheckChange} 
+                        <ChecklistSection
+                            values={checks}
+                            onChange={handleCheckChange}
                             readOnly={isReadOnly}
                         />
                     </div>
@@ -689,10 +741,10 @@ const ChecklistContainer = ({
                 {/* Show Detail Section for Member/Staff - Hide if only traffic */}
                 {showForm12 && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <DetailSection 
-                             values={details} 
-                             onChange={handleDetailChange} 
-                             readOnly={isReadOnly}
+                        <DetailSection
+                            values={details}
+                            onChange={handleDetailChange}
+                            readOnly={isReadOnly}
                         />
                     </div>
                 )}
@@ -700,28 +752,31 @@ const ChecklistContainer = ({
                 {/* Leader Section - Show for Leader mode - Hide if only traffic */}
                 {showForm3 && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <LeaderEvaluationSection 
-                            values={leaderAnswers} 
-                            onChange={handleLeaderAnswerChange} 
+                        <LeaderEvaluationSection
+                            values={leaderAnswers}
+                            onChange={handleLeaderAnswerChange}
                             readOnly={isReadOnly}
                         />
                     </div>
                 )}
-                
+
                 {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
-                        <TrafficReportSection 
+                        <TrafficReportSection
                             key={`${submitCount}-${reportDate}`}
-                            values={traffic} 
+                            values={traffic}
                             channels={trafficChannels}
                             availableChannels={availableChannels}
                             onChange={handleTrafficChange}
                             onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                            onEntriesChange={setEntryDetails}
                             readOnly={isReadOnly}
                             initialEvidences={historicalEvidences}
+                            initialEntries={entryDetails}
                         />
+
                     </div>
                 )}
             </div>
@@ -738,9 +793,9 @@ const ChecklistContainer = ({
                         type="button"
                         onClick={handleSubmit}
                         disabled={
-                            loading || 
+                            loading ||
                             isReadOnly ||
-                            (!status.is_open && !showOnlyTraffic) 
+                            (!status.is_open && !showOnlyTraffic)
                             // Tạm tắt rule chặn thời gian báo cáo Traffic
                             // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
                         }

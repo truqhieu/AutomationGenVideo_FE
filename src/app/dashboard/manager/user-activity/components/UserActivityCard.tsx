@@ -87,6 +87,22 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
     const isRange = timeType && !['today', 'yesterday'].includes(timeType);
     const goalLabel = 'MỤC TIÊU NGÀY';
 
+    // Flag background - match exact team names from backend
+    const getFlagBg = () => {
+        const t = (data.team || '').toLowerCase();
+        // Global - Indo / Global Indo
+        if (t.includes('indo')) return '/indo-flag.png';
+        // Global - JP1 / Global - JP2 / Global JP3 / Global JP4
+        if (t.includes('- jp') || t.includes(' jp')) return '/japan-flag.png';
+        // Global Thái Lan
+        if (t.includes('th') && t.includes('lan')) return '/thailand-flag.png';
+        // Global Đài Loan / Global Dai Loan
+        if (t.includes('loan') || t.includes('taiwan')) return '/taiwan-flag.png';
+        // Default: VN (Team K0, K1, K2, v.v.)
+        return '/vn-flag.png';
+    };
+    const flagBg = getFlagBg();
+
     return (
         <div
             onClick={canClick ? onClick : undefined}
@@ -94,6 +110,20 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                 ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
                 : `${style.glow}`
                 }`}>
+
+            {/* Flag background - visible like reference photo */}
+            <div
+                className="absolute inset-0 z-0 pointer-events-none"
+                style={{
+                    backgroundImage: `url(${flagBg})`,
+                    backgroundSize: flagBg === '/japan-flag.png' ? '155%' : flagBg === '/thailand-flag.png' ? '110%' : 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    opacity: 0.35,
+                }}
+            />
+            {/* White overlay to keep text readable */}
+            <div className="absolute inset-0 z-0 pointer-events-none bg-white/45" />
 
             <div className="p-4 flex flex-col items-center relative z-10">
                 {/* Warning/Status Icon */}

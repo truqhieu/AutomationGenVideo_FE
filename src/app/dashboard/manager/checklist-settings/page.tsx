@@ -135,8 +135,17 @@ export default function ChecklistSettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] p-4 md:p-8">
-            <div className="max-w-6xl mx-auto space-y-8">
+        <div className="min-h-[calc(100vh-73px)] bg-[#0f172a] p-6 -m-6">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                header { background-color: #0f172a !important; border-bottom-color: #1e293b !important; }
+                header p { color: #f8fafc !important; }
+                body { background-color: #0f172a !important; }
+                main { background-color: #0f172a !important; }
+                .bg-gray-50 { background-color: #0f172a !important; }
+                .bg-white { background-color: #0f172a !important; }
+            `}} />
+            <div className="max-w-6xl mx-auto space-y-8 pt-6">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
