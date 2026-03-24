@@ -618,9 +618,7 @@ const ChecklistContainer = ({
                     console.log('Failed to flush cache', err);
                 }
                 
-                setChecks(initialChecks());
-                setDetails(initialDetails());
-                setLeaderAnswers(initialLeaderAnswers());
+                setIsReadOnly(true); // Khóa form ngay lập tức sau khi gửi thành công
             }
 
             // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
@@ -670,10 +668,12 @@ const ChecklistContainer = ({
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
+                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             } else {
                 if (!showOnlyWork) toast.success('Báo cáo thành công');
+                setIsReadOnly(true);
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             }
@@ -809,7 +809,7 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'BÁO CÁO ĐÃ GỬI') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}

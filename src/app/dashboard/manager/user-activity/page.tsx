@@ -286,6 +286,13 @@ const UserActivityPageContent = () => {
         [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
     );
 
+    // Filter Logic: If not Admin, lock to their own team
+    React.useEffect(() => {
+        if (!isAdminUser && userTeam && activeTeam !== userTeam) {
+            setActiveTeam(userTeam);
+        }
+    }, [isAdminUser, userTeam, activeTeam]);
+
     React.useEffect(() => {
         fetchReports(true);
 
