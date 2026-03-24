@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { Suspense } from 'react';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -353,7 +354,7 @@ function InstagramAnalyticsInner() {
           {/* Left: Profile Info */}
           <div className="flex items-center gap-5 min-w-[300px]">
             <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-pink-500 via-purple-500 to-orange-500 flex-shrink-0">
-              <img
+              <Image
                 src={getAvatarUrl(profile?.avatar_url)}
                 alt={profile?.name}
                 className="w-full h-full rounded-full object-cover border-2 border-white"
@@ -362,7 +363,7 @@ function InstagramAnalyticsInner() {
                   const target = e.target as HTMLImageElement;
                   target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || username)}&background=ec4899&color=fff&size=128`;
                 }}
-              />
+               width={0} height={0} sizes="100vw" unoptimized/>
             </div>
             <div>
               <div className="flex items-center gap-3 mb-1">

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import React from 'react';
 import { Check } from 'lucide-react';
 
@@ -66,14 +67,14 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                    <img
+                    <Image
                         src={avatarSrc}
                         alt={report.name}
                         className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
                         onError={(e) => {
                             e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(report.name)}&background=random`;
                         }}
-                    />
+                     width={0} height={0} sizes="100vw" unoptimized/>
                     <div>
                         <div className="flex items-center gap-1.5 mb-0.5">
                             <h3 className="font-semibold text-gray-900 text-sm leading-tight">{report.name}</h3>

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -35,12 +36,12 @@ const Avatar = ({ src, alt, fallback }: { src?: string, alt: string, fallback: s
     }
 
     return (
-        <img
+        <Image
             src={src}
             alt={alt}
             className="w-12 h-12 rounded-full border border-slate-100 shadow-sm object-cover"
             onError={() => setError(true)}
-        />
+         width={0} height={0} sizes="100vw" unoptimized/>
     );
 };
 

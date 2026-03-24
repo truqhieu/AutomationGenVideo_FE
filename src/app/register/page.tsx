@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -70,7 +71,7 @@ export default function RegisterPage() {
           className="mb-8 flex flex-col items-center"
         >
           <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl shadow-blue-500/20 mb-4">
-            <img src="/logo-vcb.jfif" alt="VCB" className="w-full h-full object-cover" />
+            <Image src="/logo-vcb.jfif" alt="VCB" className="w-full h-full object-cover" width={64} height={64} unoptimized />
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Viễn Chí Bảo</h2>
           <p className="text-slate-400 text-sm mt-1">Đăng ký thành viên mới</p>

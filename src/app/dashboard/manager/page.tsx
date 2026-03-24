@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
@@ -383,14 +384,14 @@ export default function ManagerDashboardPage() {
                       >
                         {/* Channel Header */}
                         <div className="flex items-start gap-3 mb-3">
-                          <img
+                          <Image
                             src={channel.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random`}
                             alt={channel.display_name}
                             className="w-12 h-12 rounded-full object-cover border-2 border-white shadow"
                             onError={(e) => {
                               e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=random`;
                             }}
-                          />
+                           width={0} height={0} sizes="100vw" unoptimized/>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-slate-900 truncate">{channel.display_name}</h4>
                             <p className="text-xs text-slate-500">@{channel.username}</p>

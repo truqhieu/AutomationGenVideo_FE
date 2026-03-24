@@ -2,6 +2,7 @@
 
 
 
+import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -513,8 +514,7 @@ export default function ChannelAnalyticsPage() {
           <div className="flex items-center gap-5 min-w-[300px]">
 
             <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0">
-
-              <img src={profile?.avatar_url} alt={profile?.name} className="w-full h-full rounded-full object-cover border-2 border-white" referrerPolicy="no-referrer" />
+              <Image src={profile?.avatar_url} alt={profile?.name} className="w-full h-full rounded-full object-cover border-2 border-white" referrerPolicy="no-referrer" width={80} height={80} unoptimized />
 
             </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useState, useRef, useEffect } from "react";
 import { Calendar, ChevronDown, Check, Globe, MapPin, Layers, Search, X, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -408,32 +409,44 @@ const ActivityFilters = ({
                                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                                                 )}
                                                 {team.toLowerCase().includes("global - indo") && (
-                                                    <img
+                                                    <Image
                                                         src="/indo-flag.png"
                                                         alt="INDO"
                                                         className="w-5 h-3.5 object-contain rounded-sm"
+                                                        width={20}
+                                                        height={14}
+                                                        unoptimized
                                                     />
                                                 )}
                                                 {team.toLowerCase().includes("global thái lan") && (
-                                                    <img
+                                                    <Image
                                                         src="/thailand-flag.png"
                                                         alt="TH"
                                                         className="w-5 h-3.5 object-contain rounded-sm"
+                                                        width={20}
+                                                        height={14}
+                                                        unoptimized
                                                     />
                                                 )}
                                                 {(team.toLowerCase().includes("jp") ||
                                                     team.toLowerCase().includes("nhật bản")) && (
-                                                    <img
+                                                    <Image
                                                         src="/japan-flag.png"
                                                         alt="JP"
                                                         className="w-5 h-3.5 object-contain rounded-sm border border-gray-100"
+                                                        width={20}
+                                                        height={14}
+                                                        unoptimized
                                                     />
                                                 )}
                                                 {team.toLowerCase().includes("đài loan") && (
-                                                    <img
+                                                    <Image
                                                         src="/taiwan-flag.png"
                                                         alt="TW"
                                                         className="w-5 h-3.5 object-contain rounded-sm"
+                                                        width={20}
+                                                        height={14}
+                                                        unoptimized
                                                     />
                                                 )}
                                                 {team}
@@ -456,7 +469,7 @@ const ActivityFilters = ({
                                     : "bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
                             }`}
                         >
-                            <img src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm shadow-sm" />
+                            <Image src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm shadow-sm" width={28} height={20} unoptimized />
                             {getVNLabel()}
                             <ChevronDown
                                 className={`w-5 h-5 transition-transform duration-300 ${openDropdown === "vietnam" ? "rotate-180 text-blue-400" : ""}`}
@@ -482,10 +495,13 @@ const ActivityFilters = ({
                                             {activeTeam === "All VN" && (
                                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                                             )}
-                                            <img
+                                            <Image
                                                 src="/vn-flag.png"
                                                 alt="VN"
                                                 className="w-6 h-4 object-contain rounded-sm shadow-sm"
+                                                width={24}
+                                                height={16}
+                                                unoptimized
                                             />
                                             Tất cả VN
                                         </span>

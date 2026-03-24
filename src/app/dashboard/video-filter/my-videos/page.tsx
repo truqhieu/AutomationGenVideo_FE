@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Film, Calendar, CheckCircle, AlertTriangle, Clock, TrendingUp } from 'lucide-react';
 
@@ -180,11 +181,11 @@ export default function MyVideosPage() {
                 {/* Thumbnail */}
                 <div className="aspect-video bg-slate-900 relative overflow-hidden">
                   {video.thumbnail_url ? (
-                    <img
+                    <Image
                       src={video.thumbnail_url}
                       alt={video.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                     width={0} height={0} sizes="100vw" unoptimized/>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Film className="w-16 h-16 text-slate-700" />

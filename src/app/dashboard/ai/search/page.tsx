@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle, Share2, Music2, Hash, Play, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -418,13 +419,13 @@ export default function TikTokSearchPage() {
                           </div>
                         </div>
 
-                        <img
+                        <Image
                           src={video.thumbnail_url}
                           alt={video.description}
                           className="w-full h-full object-cover"
                           loading='lazy'
                           decoding="async"
-                        />
+                         width={0} height={0} sizes="100vw" unoptimized/>
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
 
                         {/* Stats Overlay */}
@@ -440,12 +441,12 @@ export default function TikTokSearchPage() {
                       <div className="p-4 relative bg-slate-900 z-10 flex flex-col flex-1">
                         {/* Author */}
                         <div className="flex items-center gap-2 mb-3">
-                          <img
+                          <Image
                             src={getAvatarUrl(video)}
                             alt=""
                             className="w-8 h-8 rounded-full border border-slate-700 object-cover"
                             loading="lazy"
-                          />
+                           width={0} height={0} sizes="100vw" unoptimized/>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-white truncate" title={video.author_name}>{video.author_name}</p>
                             <p className="text-xs text-slate-500 truncate">@{video.author_username}</p>

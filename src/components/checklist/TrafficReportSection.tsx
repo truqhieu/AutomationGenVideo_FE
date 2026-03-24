@@ -1,3 +1,4 @@
+import Image from "next/image";
 import React, { useRef, useState } from 'react';
 import { Activity, ImagePlus, X, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -281,7 +282,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                         <div className="min-h-[40px] flex flex-wrap gap-2 px-1">
                             {(evidences[platform.id] || []).map((img, idx) => (
                                 <div key={idx} className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm animate-in zoom-in duration-200 cursor-pointer" onClick={() => window.open(img.url, '_blank')}>
-                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" title={img.name} />
+                                    <Image src={img.url} alt={img.name} className="w-full h-full object-cover" title={img.name} width={40} height={40} unoptimized />
                                     {!readOnly && (
                                         <button
                                             type="button"

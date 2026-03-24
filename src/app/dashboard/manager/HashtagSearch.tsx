@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import {
@@ -220,11 +221,11 @@ export default function HashtagSearchSection() {
                   {/* Thumbnail */}
                   <div className="relative aspect-[9/16] bg-slate-100 overflow-hidden">
                     {video.thumbnail_url ? (
-                      <img
+                      <Image
                         src={video.thumbnail_url}
                         alt={video.title || 'Video thumbnail'}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                       width={0} height={0} sizes="100vw" unoptimized/>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <VideoIcon className="w-16 h-16 text-slate-300" />
@@ -244,11 +245,11 @@ export default function HashtagSearchSection() {
                     {/* Channel Info */}
                     <div className="flex items-center gap-2 mb-3">
                       {video.channel.avatar_url ? (
-                        <img
+                        <Image
                           src={video.channel.avatar_url}
                           alt={video.channel.display_name}
                           className="w-8 h-8 rounded-full object-cover"
-                        />
+                         width={0} height={0} sizes="100vw" unoptimized/>
                       ) : (
                         <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
                           <User className="w-4 h-4 text-slate-400" />

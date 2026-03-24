@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Upload, Film, AlertTriangle, CheckCircle, X, FileVideo, Loader2, RefreshCw, Search, ArrowRight } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
@@ -328,7 +329,7 @@ export default function VideoFilterPage() {
                       {/* Avatar */}
                       <div className="relative">
                         {channel.avatar_url ? (
-                          <img src={channel.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-800" />
+                          <Image src={channel.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-800" width={48} height={48} unoptimized />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-lg font-bold text-slate-400">
                              {channel.username.charAt(0).toUpperCase()}

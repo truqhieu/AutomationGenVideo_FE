@@ -1,6 +1,7 @@
 'use client';
 // Force rebuild for UI update
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -484,7 +485,7 @@ export default function FacebookChannelsPage() {
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-6">
                     <div className="relative flex-shrink-0">
-                      <img
+                      <Image
                         src={channel.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=1877F2&color=fff`}
                         alt={channel.display_name}
                         className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-50 shadow-md"
@@ -493,7 +494,7 @@ export default function FacebookChannelsPage() {
                         onError={(e) => {
                           e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=1877F2&color=fff`;
                         }}
-                      />
+                       width={0} height={0} sizes="100vw" unoptimized/>
                       <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white text-white shadow-sm">
                         <Facebook className="w-4 h-4" />
                       </div>
