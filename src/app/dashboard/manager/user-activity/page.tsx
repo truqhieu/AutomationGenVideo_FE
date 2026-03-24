@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import ActivityKPIs from './components/ActivityKPIs';
 import DashboardAnalytics from './components/DashboardAnalytics';
@@ -184,6 +184,10 @@ const UserActivityPageContent = () => {
     const CHECKLIST_PAGE_SIZE = 6;
     const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
+    // useDeferredValue: filter/sort chỉ chạy sau khi trình duyệt xử lý input xong
+    // → searchName cập nhật ngay (input box không lag), filteredReports tính sau
+    const deferredSearchName = useDeferredValue(searchName);
+
     // Time filter states
     const [timeType, setTimeType] = React.useState('today');
     const [dateRange, setDateRange] = React.useState<{ start: Date; end: Date }>(() => {
@@ -285,19 +289,19 @@ const UserActivityPageContent = () => {
     React.useEffect(() => {
         fetchReports(true);
 
-        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 10 giây
+        // Auto-refresh every 60 seconds. Backend cache TTL is 2 min but cache is immediately
+        // invalidated after a report submission, so the UI stays fresh without hammering the server.
         const intervalId = setInterval(() => {
             fetchReports(false);
-        }, 10000);
+        }, 60000);
 
         return () => clearInterval(intervalId);
     }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // fetchHistory only re-runs when tab or user changes, NOT on every searchName keystroke.
-    // When a card is clicked, searchName + activeTab are set together (batched), so the
-    // updated searchName is already available when the effect fires for activeTab change.
+    // fetchHistory chỉ chạy khi tab personal - không cần khi performance
+    // (trước đây fetch cả 2 tab gây 2 network requests song song khi page load)
     React.useEffect(() => {
-        if (activeTab === 'personal' || activeTab === 'performance') {
+        if (activeTab === 'personal') {
             fetchHistory();
         }
     }, [activeTab, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -310,8 +314,9 @@ const UserActivityPageContent = () => {
             if (searchName && (userRole === 'admin' || userRole === 'manager' || userRole === 'leader')) {
                 params.append('name', searchName);
             }
+            params.append('_t', Date.now().toString());
             const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/personal-history?${params.toString()}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
             setPersonalHistory(data);
         } catch (error) {
@@ -340,9 +345,10 @@ const UserActivityPageContent = () => {
             if (timeType) {
                 params.append('timeType', timeType);
             }
+            params.append('_t', Date.now().toString());
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/lark/user-activity?${params.toString()}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
 
             // Handle new response format { reports, summary, rankings, userRole, userTeam }
@@ -398,6 +404,7 @@ const UserActivityPageContent = () => {
                     },
                     videoCount: item.answers ? Number(item.answers[Object.keys(item.answers).find(k => k.toLowerCase().includes('50%')) || ''] || 0) : 0,
                     task_progress: item.task_progress || null,
+                    trafficToday: item.trafficToday || null,
                     questions: [
                         {
                             question: isLeaderReport ? 'ĐÃ KIỂM TRA CHẤT LƯỢNG VIDEO ĐẦU RA CỦA TEAM CHƯA?' : 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
@@ -538,6 +545,7 @@ const UserActivityPageContent = () => {
     }, [allTabs, isAdminUser]);
 
     // Memoize filtered report lists to avoid expensive re-filtering on every render
+    // Dùng deferredSearchName thay searchName → filter không chặn main thread khi gõ
     const filteredPerformanceReports = React.useMemo(() => {
         return reports.filter(r => {
             const safeUserTeam = normalize(userTeam);
@@ -548,9 +556,9 @@ const UserActivityPageContent = () => {
             const isOwnCard = isOwnName || isOwnEmail;
             const hasNoTeam = !userTeam;
             const isVisible = isAdminUser || hasNoTeam || isTeamMatch || isOwnCard;
-            return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
+            return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
         });
-    }, [reports, userTeam, isAdminUser, matchTeam, searchName, user?.full_name, user?.email]);
+    }, [reports, userTeam, isAdminUser, matchTeam, deferredSearchName, user?.full_name, user?.email]);
 
     const filteredPersonalMembers = React.useMemo(() => {
         return personalHistory.members.filter(m => {
@@ -572,24 +580,71 @@ const UserActivityPageContent = () => {
             const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
             const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
             const hasNoTeam = !userTeam;
-            const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase());
+            const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
             return (isAdminUser || hasNoTeam || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;
         });
-    }, [reports, userTeam, isAdminUser, searchName, user?.full_name, user?.email]);
+    }, [reports, userTeam, isAdminUser, deferredSearchName, user?.full_name, user?.email]);
 
     const filteredChecklistReports = React.useMemo(() => {
-        return reportOutstandings.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(searchName.toLowerCase()));
-    }, [reportOutstandings, matchTeam, searchName]);
+        return reportOutstandings.filter(r => {
+            if (!matchTeam(r.team)) return false;
+            if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
+
+            if (isAdminUser) {
+                // Admin/Manager: xem tất cả
+                return true;
+            }
+
+            if (isLeaderUser) {
+                // Leader: xem Vấn đề & Win của team mình
+                if (!userTeam) return false;
+                return normalize(r.team) === normalize(userTeam);
+            }
+
+            // Member: chỉ xem Vấn đề & Win của mình
+            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
+            const isOwnName  = r.name  && user?.full_name && normalize(r.name) === normalize(user.full_name);
+            return !!(isOwnEmail || isOwnName);
+        });
+    }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, isLeaderUser, userTeam, user]);
 
     const checklistFilteredReports = React.useMemo(() => {
-        return filteredPerformanceReports.filter(r => {
+        // Bước 1: Phân quyền theo role
+        // - admin/manager → xem tất cả (chỉ filter theo team dropdown nếu có)
+        // - leader → chỉ xem reports của team mình
+        // - member → chỉ xem card cá nhân
+        let roleFiltered = reports.filter(r => {
+            // Luôn áp filter team dropdown (nếu đang chọn team cụ thể)
+            if (!matchTeam(r.team)) return false;
+            // Áp filter search name
+            if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
+
+            if (isAdminUser) {
+                // Admin/Manager: xem tất cả
+                return true;
+            }
+
+            if (isLeaderUser) {
+                // Leader: chỉ xem team của mình
+                if (!userTeam) return false;
+                return normalize(r.team) === normalize(userTeam);
+            }
+
+            // Member: chỉ xem card cá nhân (match email hoặc tên)
+            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
+            const isOwnName  = r.name  && user?.full_name && normalize(r.name) === normalize(user.full_name);
+            return !!(isOwnEmail || isOwnName);
+        });
+
+        // Bước 2: Áp filter Leader/Member button filter
+        return roleFiltered.filter(r => {
             if (checklistRoleFilter === 'all') return true;
             const pos = (r.position || '').toLowerCase();
             const isReportLeader = pos === 'leader' || pos.includes('leader') || pos.includes('trưởng nhóm');
             if (checklistRoleFilter === 'leader') return isReportLeader;
             return !isReportLeader; // 'member'
         });
-    }, [filteredPerformanceReports, checklistRoleFilter]);
+    }, [reports, userTeam, isAdminUser, isLeaderUser, matchTeam, deferredSearchName, checklistRoleFilter, user]);
 
     return (
         <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
@@ -679,6 +734,10 @@ const UserActivityPageContent = () => {
                                         const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
                                         const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
                                         const isOwnCard = isOwnName || isOwnEmail;
+                                        const canClickCard =
+                                            isAdminUser ||
+                                            (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                            isOwnCard;
                                         return (
                                             <div
                                                 key={report.id || idx}
@@ -688,11 +747,7 @@ const UserActivityPageContent = () => {
                                                 <UserActivityCard
                                                     data={{ ...report, reportStatus: report.status }}
                                                     timeType={timeType}
-                                                    canClick={
-                                                        isAdminUser ||
-                                                        (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
-                                                        isOwnCard
-                                                    }
+                                                    canClick={canClickCard}
                                                     onClick={() => {
                                                         setSearchName(report.name);
                                                         setIsPersonalDetailed(true);
@@ -745,10 +800,26 @@ const UserActivityPageContent = () => {
                                                 <ClipboardList className="w-7 h-7 text-white" />
                                             </div>
                                             <div>
-                                                <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
-                                                    Vấn đề nổi bật & Video Win
-                                                </h3>
-                                                <p className="text-base text-slate-500 font-bold italic">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
+                                                <div className="flex items-center gap-4">
+                                                    <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                                                        Vấn đề nổi bật & Video Win
+                                                    </h3>
+                                                    {/* Badge phân quyền */}
+                                                    {isAdminUser ? (
+                                                        <span className="px-3 py-1.5 rounded-xl bg-violet-100 border border-violet-200 text-violet-700 text-xs font-black uppercase tracking-widest shadow-sm">
+                                                            Toàn công ty
+                                                        </span>
+                                                    ) : isLeaderUser ? (
+                                                        <span className="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 text-xs font-black uppercase tracking-widest shadow-sm">
+                                                            Team: {userTeam || 'Của tôi'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-3 py-1.5 rounded-xl bg-blue-100 border border-blue-200 text-blue-700 text-xs font-black uppercase tracking-widest shadow-sm">
+                                                            Cá nhân
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-base text-slate-500 font-bold italic mt-1">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
                                             </div>
                                         </div>
                                     </div>
@@ -896,29 +967,49 @@ const UserActivityPageContent = () => {
                             {/* Detailed Report Cards */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-4">
-                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                                        <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
-                                    </h3>
-                                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-                                        <button
-                                            onClick={() => { setChecklistRoleFilter('all'); setChecklistPage(1); }}
-                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            Tất cả
-                                        </button>
-                                        <button
-                                            onClick={() => { setChecklistRoleFilter('leader'); setChecklistPage(1); }}
-                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'leader' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            Leader
-                                        </button>
-                                        <button
-                                            onClick={() => { setChecklistRoleFilter('member'); setChecklistPage(1); }}
-                                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'member' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            Member
-                                        </button>
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                                            <FileText className="w-3.5 h-3.5 text-blue-600" /> Chi tiết báo cáo ngày
+                                        </h3>
+                                        {/* Badge phân quyền */}
+                                        {isAdminUser ? (
+                                            <span className="px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 text-[10px] font-black uppercase tracking-widest">
+                                                Toàn công ty
+                                            </span>
+                                        ) : isLeaderUser ? (
+                                            <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-widest">
+                                                Team: {userTeam || 'Của tôi'}
+                                            </span>
+                                        ) : (
+                                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black uppercase tracking-widest">
+                                                Cá nhân
+                                            </span>
+                                        )}
                                     </div>
+
+                                    {/* Filter All/Leader/Member — chỉ hiện với admin/manager/leader */}
+                                    {(isAdminUser || isLeaderUser) && (
+                                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                                            <button
+                                                onClick={() => { setChecklistRoleFilter('all'); setChecklistPage(1); }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Tất cả
+                                            </button>
+                                            <button
+                                                onClick={() => { setChecklistRoleFilter('leader'); setChecklistPage(1); }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'leader' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Leader
+                                            </button>
+                                            <button
+                                                onClick={() => { setChecklistRoleFilter('member'); setChecklistPage(1); }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'member' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Member
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {loading ? (

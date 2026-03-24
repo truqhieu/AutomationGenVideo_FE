@@ -1,7 +1,27 @@
 'use client';
 
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, PieChart as PieIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface TrafficToday {
+    fb: number;
+    ig: number;
+    tiktok: number;
+    yt: number;
+    thread: number;
+    lemon8: number;
+    zalo: number;
+    twitter: number;
+    total: number;
+    details?: {
+        id: string;
+        value: string;
+        channel: string;
+        platform?: string;
+        evidences?: { url: string; name: string; token: string }[];
+    }[];
+}
 
 interface EmployeeReport {
     id: string;
@@ -23,6 +43,7 @@ interface EmployeeReport {
         reportLink: boolean;
     };
     videoCount: number;
+    trafficToday?: TrafficToday | null;
     questions: {
         question: string;
         answer: string;
@@ -33,13 +54,161 @@ const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
     if (url.includes('drive.google.com')) {
-        // Extract ID from various Drive formats
         const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
         if (match && match[1]) {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
         }
     }
     return url;
+};
+
+const formatTrafficNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
+    return num.toLocaleString('vi-VN');
+};
+
+import { 
+    SiFacebook, 
+    SiInstagram, 
+    SiTiktok, 
+    SiYoutube, 
+    SiThreads, 
+    SiZalo, 
+    SiX 
+} from 'react-icons/si';
+
+const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: string; icon?: React.ElementType }> = {
+    fb: { label: 'Facebook', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.85)', icon: SiFacebook },
+    ig: { label: 'Instagram', color: '#ec4899', bgColor: 'rgba(236,72,153,0.85)', icon: SiInstagram },
+    tiktok: { label: 'TikTok', color: '#1f2937', bgColor: 'rgba(31,41,55,0.85)', icon: SiTiktok },
+    yt: { label: 'Youtube', color: '#ef4444', bgColor: 'rgba(239,68,68,0.85)', icon: SiYoutube },
+    thread: { label: 'Thread', color: '#6b7280', bgColor: 'rgba(107,114,128,0.85)', icon: SiThreads },
+    zalo: { label: 'Zalo', color: '#0ea5e9', bgColor: 'rgba(14,165,233,0.85)', icon: SiZalo },
+    lemon8: { label: 'Lemon8', color: '#eab308', bgColor: 'rgba(234,179,8,0.85)' },
+    twitter: { label: 'X', color: '#111827', bgColor: 'rgba(17,24,39,0.85)', icon: SiX },
+};
+
+const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
+    const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+    if (!trafficToday.details || trafficToday.details.length === 0) return null;
+
+    const platformTotals = Object.entries(PLATFORM_STYLES)
+        .map(([key, style]) => ({
+            key,
+            ...style,
+            value: trafficToday[key as keyof TrafficToday] as number || 0,
+        }))
+        .filter(p => p.value > 0)
+        .sort((a, b) => b.value - a.value);
+
+    // Get active data if any
+    const activeData = activeIndex !== null ? trafficToday.details[activeIndex] : null;
+    const totalTraffic = trafficToday.details.reduce((sum, e) => sum + Number(e.value || 0), 0);
+
+    return (
+        <div className="border border-purple-100 rounded-3xl p-4 bg-white/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all mt-2">
+            <div className="mt-2">
+                <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
+                    <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
+                </p>
+                
+                <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 rounded-3xl border border-slate-100/50">
+                    {/* Interactive Pie Chart - Centered */}
+                    <div className="w-full h-[260px] max-w-[260px] relative mb-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={trafficToday.details.map((entry, idx) => ({
+                                        name: entry.channel || 'Hệ thống',
+                                        value: Number(entry.value || 0),
+                                        platform: entry.platform,
+                                        id: entry.id || idx
+                                    })).filter(d => d.value > 0)}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={75}
+                                    outerRadius={110}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                    animationDuration={1500}
+                                    onMouseEnter={(_, index) => setActiveIndex(index)}
+                                    onMouseLeave={() => setActiveIndex(null)}
+                                >
+                                    {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
+                                        const platformStyle = PLATFORM_STYLES[entry.platform || ''];
+                                        return (
+                                            <Cell 
+                                                key={`cell-${idx}`} 
+                                                fill={platformStyle?.bgColor || '#8b5cf6'} 
+                                                stroke="#fff"
+                                                strokeWidth={activeIndex === idx ? 5 : 3}
+                                                className="hover:opacity-80 transition-all cursor-pointer outline-none"
+                                            />
+                                        );
+                                    })}
+                                </Pie>
+                                <Tooltip content={<></>} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        
+                        {/* Central Summary - Interactive (No more overlap!) */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 text-center px-4 animate-in fade-in duration-300">
+                            {activeData ? (
+                                <>
+                                    <span 
+                                        className="text-[10px] font-black uppercase tracking-widest mb-1 truncate w-full"
+                                        style={{ color: PLATFORM_STYLES[activeData.platform || '']?.color }}
+                                    >
+                                        {activeData.channel}
+                                    </span>
+                                    <span className="text-xl font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(Number(activeData.value || 0))}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                                    <span className="text-2xl font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(totalTraffic)}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Platform Traffic Notes (Notes màu và Tổng Traffic nền tảng) */}
+                    <div className="w-full flex flex-wrap justify-center gap-3">
+                        {platformTotals.map((p) => (
+                            <div key={p.key} className="flex items-center gap-3 bg-white px-3 py-2 rounded-2xl border border-slate-100/50 hover:shadow-sm transition-all group">
+                                <div 
+                                    className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm transition-transform group-hover:scale-125" 
+                                    style={{ backgroundColor: p.bgColor }} 
+                                />
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider leading-none">
+                                            {p.label}
+                                        </span>
+                                        {p.icon && (
+                                            <p.icon 
+                                                className="w-3 h-3 transition-colors group-hover:opacity-100 opacity-80" 
+                                                style={{ color: p.color }} 
+                                            />
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-black text-slate-800 leading-none">
+                                        {formatTrafficNumber(p.value)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const ReportCard = ({ report }: { report: EmployeeReport }) => {
@@ -50,19 +219,23 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const isPartial = statusRaw === 'CHƯA BÁO CÁO TRAFFIC' || statusRaw === 'CHƯA BÁO CÁO MEMBER';
     const isUnreported = statusRaw === 'CHƯA BÁO CÁO' || statusRaw === '' || statusRaw === 'PENDING';
     const isLate = statusRaw.includes('TRỄ') || statusRaw.includes('LATE');
+    const isOnTime = isCompleted && !isLate;
     const showTime = report.time && report.time !== 'Chưa báo cáo';
+
+    const hasTraffic = report.trafficToday && Object.entries(PLATFORM_STYLES).some(
+        ([key]) => (report.trafficToday?.[key as keyof TrafficToday] as number || 0) > 0
+    );
 
     return (
         <div
-            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${
-                isCompleted
+            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${isOnTime
                     ? 'bg-emerald-50 border-emerald-200'
-                    : isPartial || isLate
-                    ? 'bg-amber-50 border-amber-200'
-                    : isUnreported
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-white border-gray-100'
-            }`}
+                    : isLate
+                        ? 'bg-amber-50 border-amber-200'
+                        : isUnreported
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-white border-gray-100'
+                }`}
         >
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -94,18 +267,23 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </div>
 
                 <span
-                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${
-                        isCompleted
+                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${isOnTime
                             ? 'bg-emerald-500 text-white'
-                            : isPartial || isLate
-                            ? 'bg-amber-400 text-white'
-                            : isUnreported
-                            ? 'bg-red-500 text-white'
-                            : 'bg-slate-300 text-slate-800'
-                    }`}
+                            : isLate
+                                ? 'bg-amber-400 text-white'
+                                : isUnreported
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-slate-300 text-slate-800'
+                        }`}
                 >
                     <span>
-                        {statusRaw || 'TRẠNG THÁI?'}
+                        {isOnTime
+                            ? 'ĐÚNG HẠN'
+                            : isLate
+                                ? 'TRỄ HẠN'
+                                : isUnreported
+                                    ? 'CHƯA BÁO CÁO'
+                                    : report.status || 'TRẠNG THÁI?'}
                     </span>
                     {showTime && (
                         <span className="text-[11px] font-medium opacity-90">
@@ -173,11 +351,22 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                             </div>
                         ))}
                     </div>
+
+                    {/* Traffic Chart - Below questions */}
+                    {hasTraffic && report.trafficToday && (
+                        <TrafficChart trafficToday={report.trafficToday} />
+                    )}
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <span className="text-4xl mb-2">📋</span>
-                    <span className="text-sm font-medium">Chưa có báo cáo hôm nay</span>
+                <div className="flex-1 flex flex-col gap-3">
+                    {/* Show traffic chart even when work report is missing */}
+                    {hasTraffic && report.trafficToday && (
+                        <TrafficChart trafficToday={report.trafficToday} />
+                    )}
+                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                        <span className="text-4xl mb-2">📋</span>
+                        <span className="text-sm font-medium">Chưa có báo cáo hôm nay</span>
+                    </div>
                 </div>
             )}
         </div>

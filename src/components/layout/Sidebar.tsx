@@ -83,7 +83,7 @@ function SidebarContent({
   const currentTab = searchParams?.get('tab');
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isNavigatingRef = useRef(false);
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   // Detect reduced motion preference
@@ -192,29 +192,42 @@ function SidebarContent({
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    if (isNavigatingRef.current) return;
     hoverTimeoutRef.current = setTimeout(() => {
-      setIsSidebarHovered(false);
+      // Keep opened only if cursor is still hovering sidebar area.
+      const isStillHovering = sidebarRef.current?.matches(':hover');
+      if (!isStillHovering) {
+        setIsSidebarHovered(false);
+      }
     }, 150);
   }, []);
 
   const handleLinkClick = useCallback(() => {
-    isNavigatingRef.current = true;
-    setTimeout(() => { isNavigatingRef.current = false; }, 500);
-  }, []);
+    // Prevent stale "hover-open" state after fast navigation transitions.
+    if (!isPinned) {
+      setIsSidebarHovered(false);
+    }
+  }, [isPinned]);
+
+  useEffect(() => {
+    // Route changed: collapse hover drawer unless user explicitly pinned it.
+    if (!isPinned) {
+      setIsSidebarHovered(false);
+    }
+  }, [pathname, currentTab, isPinned]);
 
   const isDrawerVisible = activePlatform && (isSidebarHovered || isPinned);
 
   return (
     <>
       <aside
+        ref={sidebarRef}
         className="fixed top-0 left-0 h-screen z-[1000] flex transition-[width] duration-200 ease-in-out"
         style={{ width: isDrawerVisible ? '320px' : '80px' }}
+        onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         <div
           className="w-[80px] h-full bg-[#0f172a] border-r border-slate-800 flex flex-col items-center py-6 gap-6 z-20 relative"
-          onMouseEnter={handleMouseEnter}
         >
           <div className="w-12 h-12 rounded-xl overflow-hidden mb-4 cursor-pointer border-2 border-slate-700 shadow-lg relative group">
             <img
