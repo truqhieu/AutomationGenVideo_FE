@@ -288,7 +288,7 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                     const hasData = (entries[platform.id] || []).some(e => e.value !== '' || e.channel !== '');
                     return hasAccess || hasData || readOnly;
                 }).map((platform) => (
-                    <div key={platform.id} className="flex flex-col gap-4 p-5 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 hover:border-purple-200 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md">
+                    <div key={platform.id} className={`flex flex-col gap-4 p-5 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 transition-all duration-300 shadow-sm ${readOnly ? 'opacity-70 pointer-events-none' : 'hover:border-purple-200 hover:bg-white hover:shadow-md'}`}>
                         <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-6 bg-purple-500 rounded-full" />

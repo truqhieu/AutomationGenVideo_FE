@@ -276,8 +276,14 @@ const ChecklistContainer = ({
                 const response = await fetch(url, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
+                    
+                    // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
+                    const todayStr = new Date().toLocaleDateString('en-CA'); // Lấy YYYY-MM-DD local
+                    const isPastDate = reportDate < todayStr;
 
-                    if (data && (data.report || data.traffic)) {
+                    if (isPastDate) {
+                        setIsReadOnly(true);
+                    } else if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
                             shouldBeReadOnly = !!data.traffic;
@@ -288,7 +294,12 @@ const ChecklistContainer = ({
                             shouldBeReadOnly = !!data.report && !!data.traffic;
                         }
                         setIsReadOnly(shouldBeReadOnly);
+                    } else {
+                        // Nếu không có dữ liệu và không phải ngày quá khứ thì reset
+                        if (!isPastDate) setIsReadOnly(false);
+                    }
 
+                    if (data && (data.report || data.traffic)) {
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
 
@@ -696,10 +707,14 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {status.message && !status.is_open && !showOnlyTraffic && (
+            {((reportDate < new Date().toLocaleDateString('en-CA')) || (status.message && !status.is_open && !showOnlyTraffic)) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
-                    <p className="text-sm font-semibold">{status.message}</p>
+                    <p className="text-sm font-semibold">
+                        {reportDate < new Date().toLocaleDateString('en-CA') 
+                            ? `Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.` 
+                            : status.message}
+                    </p>
                 </div>
             )}
 
@@ -794,7 +809,7 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'BÁO CÁO ĐÃ GỬI') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}
