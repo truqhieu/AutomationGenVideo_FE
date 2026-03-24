@@ -293,80 +293,81 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </span>
             </div>
 
-            {/* Content for Submitted/Pending */}
-            {(isCompleted || isPartial || isLate || (report.questions && report.questions.length > 0)) ? (
+            {/* Content for Submitted/Pending/Traffic */}
+            {(report.questions && report.questions.length > 0) || hasTraffic ? (
                 <div className="space-y-3 flex-1">
-                    {/* Checklist Section */}
-                    <div className="border border-blue-100 rounded-xl p-3 bg-white">
-                        <h4 className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-2">
-                            <span className="text-blue-600">☑️</span> TIẾN ĐỘ CHECKLIST
-                        </h4>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                            {[
-                                { key: 'fb', label: 'FB' },
-                                { key: 'tiktok', label: 'Tiktok' },
-                                { key: 'ig', label: 'IG' },
-                                { key: 'youtube', label: 'Youtube' },
-                                { key: 'zalo', label: 'ZaloVideo' },
-                                { key: 'captionHashtag', label: 'Caption & Hashtag' },
-                                { key: 'lark', label: 'Báo cáo Lark' },
-                                { key: 'reportLink', label: 'Báo cáo Link' },
-                            ].map((item) => (
-                                <div key={item.key} className="flex items-center gap-1.5">
-                                    <div className={`w-4 h-4 rounded flex items-center justify-center ${report.checklist[item.key as keyof typeof report.checklist]
-                                        ? 'bg-green-500'
-                                        : 'bg-gray-200'
-                                        }`}>
-                                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                                    </div>
-                                    <span className="text-xs text-gray-700 font-medium">{item.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Video Count Section */}
-                    <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between border border-blue-100">
-                        <div className="flex items-center gap-2">
-                            <span className="text-blue-500 text-base">📹</span>
-                            <span className="text-xs font-bold text-blue-600 uppercase">
-                                SỐ VIDEO EDIT SỬ DỤNG &gt;50% SOURCE TỰ QUAY:
-                            </span>
-                        </div>
-                        <span className="text-2xl font-bold text-blue-600 leading-none">
-                            {report.videoCount}
-                        </span>
-                    </div>
-
-                    {/* Questions Section */}
-                    <div className="space-y-2.5">
-                        {report.questions.map((q, index) => (
-                            <div key={index} className="border border-gray-100 rounded-xl p-3 bg-white shadow-sm">
-                                <p className="text-xs text-gray-500 mb-2 uppercase font-bold tracking-wide">
-                                    {index + 1}. {q.question}
-                                </p>
-                                <p className="text-sm text-gray-900 font-medium">
-                                    {q.answer}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Traffic Chart - Below questions */}
+                    {/* Traffic Chart - Move to TOP for better visibility if report is missing */}
                     {hasTraffic && report.trafficToday && (
-                        <TrafficChart trafficToday={report.trafficToday} />
+                        <div className="mb-2">
+                             <TrafficChart trafficToday={report.trafficToday} />
+                        </div>
+                    )}
+
+                    {/* Checklist & Questions - Only show if report exists */}
+                    {report.questions && report.questions.length > 0 && (
+                        <>
+                            {/* Checklist Section */}
+                            <div className="border border-blue-100 rounded-xl p-3 bg-white">
+                                <h4 className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-2">
+                                    <span className="text-blue-600">☑️</span> TIẾN ĐỘ CHECKLIST
+                                </h4>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                    {[
+                                        { key: 'fb', label: 'FB' },
+                                        { key: 'tiktok', label: 'Tiktok' },
+                                        { key: 'ig', label: 'IG' },
+                                        { key: 'youtube', label: 'Youtube' },
+                                        { key: 'zalo', label: 'ZaloVideo' },
+                                        { key: 'captionHashtag', label: 'Caption & Hashtag' },
+                                        { key: 'lark', label: 'Báo cáo Lark' },
+                                        { key: 'reportLink', label: 'Báo cáo Link' },
+                                    ].map((item) => (
+                                        <div key={item.key} className="flex items-center gap-1.5">
+                                            <div className={`w-4 h-4 rounded flex items-center justify-center ${report.checklist[item.key as keyof typeof report.checklist]
+                                                ? 'bg-green-500'
+                                                : 'bg-gray-200'
+                                                }`}>
+                                                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                            </div>
+                                            <span className="text-xs text-gray-700 font-medium">{item.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Video Count Section */}
+                            <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between border border-blue-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-blue-500 text-base">📹</span>
+                                    <span className="text-xs font-bold text-blue-600 uppercase">
+                                        SỐ VIDEO EDIT SỬ DỤNG &gt;50% SOURCE TỰ QUAY:
+                                    </span>
+                                </div>
+                                <span className="text-2xl font-bold text-blue-600 leading-none">
+                                    {report.videoCount}
+                                </span>
+                            </div>
+
+                            {/* Questions Section */}
+                            <div className="space-y-2.5">
+                                {report.questions.map((q, index) => (
+                                    <div key={index} className="border border-gray-100 rounded-xl p-3 bg-white shadow-sm">
+                                        <p className="text-xs text-gray-500 mb-2 uppercase font-bold tracking-wide">
+                                            {index + 1}. {q.question}
+                                        </p>
+                                        <p className="text-sm text-gray-900 font-medium">
+                                            {q.answer}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col gap-3">
-                    {/* Show traffic chart even when work report is missing */}
-                    {hasTraffic && report.trafficToday && (
-                        <TrafficChart trafficToday={report.trafficToday} />
-                    )}
-                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                        <span className="text-4xl mb-2">📋</span>
-                        <span className="text-sm font-medium">Chưa có báo cáo hôm nay</span>
-                    </div>
+                <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <span className="text-4xl mb-2">📋</span>
+                    <span className="text-sm font-medium uppercase tracking-widest opacity-60">Chưa báo cáo hôm nay</span>
                 </div>
             )}
         </div>
