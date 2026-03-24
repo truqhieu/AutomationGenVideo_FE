@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useCallback } from 'react';
 import ActivityKPIs from './components/ActivityKPIs';
 import DashboardAnalytics from './components/DashboardAnalytics';
 import ActivityFilters from './components/ActivityFilters';
@@ -284,10 +284,11 @@ const UserActivityPageContent = () => {
     React.useEffect(() => {
         fetchReports(true);
 
-        // Tự động cập nhật dữ liệu (real-time realtime refresh) mỗi 10 giây
+        // Auto-refresh every 60 seconds. Backend cache TTL is 2 min but cache is immediately
+        // invalidated after a report submission, so the UI stays fresh without hammering the server.
         const intervalId = setInterval(() => {
             fetchReports(false);
-        }, 10000);
+        }, 60000);
 
         return () => clearInterval(intervalId);
     }, [dateRange, activeTeam, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -677,6 +678,10 @@ const UserActivityPageContent = () => {
                                         const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
                                         const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
                                         const isOwnCard = isOwnName || isOwnEmail;
+                                        const canClickCard =
+                                            isAdminUser ||
+                                            (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                            isOwnCard;
                                         return (
                                             <div
                                                 key={report.id || idx}
@@ -686,11 +691,7 @@ const UserActivityPageContent = () => {
                                                 <UserActivityCard
                                                     data={{ ...report, reportStatus: report.status }}
                                                     timeType={timeType}
-                                                    canClick={
-                                                        isAdminUser ||
-                                                        (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
-                                                        isOwnCard
-                                                    }
+                                                    canClick={canClickCard}
                                                     onClick={() => {
                                                         setSearchName(report.name);
                                                         setIsPersonalDetailed(true);
