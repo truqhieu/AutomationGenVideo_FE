@@ -1,8 +1,8 @@
 'use client';
 
-import Image from "next/image";
+import NextImage from "next/image";
 import { useState } from 'react';
-import { Search, Hash, Loader2, Heart, MessageCircle, Eye, ExternalLink, TrendingUp, AlertTriangle, Image, Film, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, Hash, Loader2, Heart, MessageCircle, Eye, ExternalLink, TrendingUp, AlertTriangle, Image as ImageIcon, Film, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GenerateContentButton from '@/components/content/GenerateContentButton';
 
@@ -210,7 +210,7 @@ export default function InstagramSearchPage() {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <div className="w-14 h-14 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-                            <Image className="w-8 h-8 text-white"  width={0} height={0} sizes="100vw" unoptimized/>
+                            <ImageIcon className="w-8 h-8 text-white" />
                         </div>
                         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
                             Instagram Posts Search
@@ -371,7 +371,7 @@ export default function InstagramSearchPage() {
                                         {/* Thumbnail */}
                                         <div className="relative aspect-square bg-slate-100 overflow-hidden">
                                             {post.thumbnail_url ? (
-                                                <Image
+                                                <NextImage
                                                     src={getThumbnailSrc(post.thumbnail_url)}
                                                     alt={post.description || 'Post'}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -391,7 +391,7 @@ export default function InstagramSearchPage() {
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
-                                                    <Image className="w-10 h-10"  width={0} height={0} sizes="100vw" unoptimized/>
+                                                    <ImageIcon className="w-10 h-10" />
                                                     <span className="text-xs">No image</span>
                                                 </div>
                                             )}
@@ -403,7 +403,7 @@ export default function InstagramSearchPage() {
                                             <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
                                                 {post.is_video
                                                     ? <><Film className="w-3 h-3" /> Video</>
-                                                    : <><Image className="w-3 h-3"  width={0} height={0} sizes="100vw" unoptimized/> Photo</>
+                                                    : <><ImageIcon className="w-3 h-3" /> Photo</>
                                                 }
                                             </div>
 

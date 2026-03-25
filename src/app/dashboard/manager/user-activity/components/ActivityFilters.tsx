@@ -81,9 +81,9 @@ const ActivityFilters = ({
     const isPersonalTab = activeTab === "personal";
     const isPerformanceTab = activeTab === "performance";
 
-    // Team filter: visible to everyone as requested
+    // Team filter: ALWAYS visible to everyone
     const canSeeTeamFilter = true;
-
+    
     // Team label: no longer needed since filter is always visible
     const showTeamLabel = false;
 

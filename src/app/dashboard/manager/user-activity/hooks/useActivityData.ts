@@ -95,6 +95,7 @@ const mapReportItem = (item: any) => {
             ? Number(item.answers[Object.keys(item.answers).find((k) => k.toLowerCase().includes("50%")) || ""] || 0)
             : 0,
         task_progress: item.task_progress || null,
+        trafficToday: item.trafficToday || null,
         questions: [
             {
                 question: isLeaderReport
@@ -260,7 +261,7 @@ export function useActivityData({
 
     React.useEffect(() => {
         fetchReports(true);
-        const intervalId = setInterval(() => fetchReports(false), 10000);
+        const intervalId = setInterval(() => fetchReports(false), 60000);
         return () => clearInterval(intervalId);
     }, [fetchReports]);
 

@@ -9,6 +9,7 @@ import { Send, AlertCircle, Calendar, ChevronDown, Check, ChevronLeft, ChevronRi
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
+import { toast } from 'react-hot-toast';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
@@ -36,9 +37,18 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
     const currentMonth = viewDate.getMonth();
     const currentYear = viewDate.getFullYear();
 
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
+
     const changeMonth = (offset: number) => {
         const newDate = new Date(viewDate);
         newDate.setMonth(newDate.getMonth() + offset);
+        // Không cho navigate sang tháng tương lai
+        if (newDate.getFullYear() > todayYear || (newDate.getFullYear() === todayYear && newDate.getMonth() > todayMonth)) {
+            return;
+        }
         setViewDate(newDate);
     };
 
@@ -58,7 +68,15 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
         return date.getDate() === day && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     };
 
+    const isFutureDay = (day: number) => {
+        if (currentYear > todayYear) return true;
+        if (currentYear === todayYear && currentMonth > todayMonth) return true;
+        if (currentYear === todayYear && currentMonth === todayMonth && day > todayDay) return true;
+        return false;
+    };
+
     const handleDateSelect = (day: number) => {
+        if (isFutureDay(day)) return; // Block future dates
         const year = currentYear;
         const month = String(currentMonth + 1).padStart(2, '0');
         const d = String(day).padStart(2, '0');
@@ -102,7 +120,7 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
                             <div className="text-sm font-black text-white uppercase tracking-widest leading-none">
                                 Tháng {currentMonth + 1} Năm {currentYear}
                             </div>
-                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors">
+                            <button onClick={() => changeMonth(1)} disabled={currentYear === todayYear && currentMonth === todayMonth} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <ChevronRight className="w-5 h-5" />
                             </button>
                         </div>
@@ -119,13 +137,16 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
                                     {day ? (
                                         <button
                                             type="button"
+                                            disabled={isFutureDay(day)}
                                             onClick={() => handleDateSelect(day)}
                                             className={`w-10 h-10 flex items-center justify-center text-xs font-bold rounded-xl transition-all
-                                                ${isSelected(day)
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                                                    : isToday(day)
-                                                        ? 'bg-slate-800 text-blue-400 ring-1 ring-blue-500/30'
-                                                        : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                                                ${isFutureDay(day)
+                                                    ? 'text-slate-700 cursor-not-allowed'
+                                                    : isSelected(day)
+                                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                                        : isToday(day)
+                                                            ? 'bg-slate-800 text-blue-400 ring-1 ring-blue-500/30'
+                                                            : 'hover:bg-slate-800 text-slate-400 hover:text-white'
                                                 }`}
                                         >
                                             {day}
@@ -151,14 +172,16 @@ const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (va
     );
 };
 
-const ChecklistContainer = ({ 
-    mode, 
-    showOnlyTraffic = false, 
-    showOnlyWork = false 
-}: { 
+const ChecklistContainer = ({
+    mode,
+    showOnlyTraffic = false,
+    showOnlyWork = false,
+    onSuccess
+}: {
     mode?: 'member' | 'leader',
     showOnlyTraffic?: boolean,
-    showOnlyWork?: boolean
+    showOnlyWork?: boolean,
+    onSuccess?: () => void
 }) => {
     const { user } = useAuthStore();
     const [checks, setChecks] = useState<boolean[]>(initialChecks);
@@ -166,11 +189,12 @@ const ChecklistContainer = ({
     const [leaderAnswers, setLeaderAnswers] = useState<string[]>(initialLeaderAnswers);
     const [traffic, setTraffic] = useState<TrafficData>(initialTrafficData());
     const [trafficChannels, setTrafficChannels] = useState<TrafficData>(initialTrafficChannels());
+    const [entryDetails, setEntryDetails] = useState<Record<string, any>>({});
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
+
     const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
@@ -183,7 +207,7 @@ const ChecklistContainer = ({
             if (!user?.email) return;
 
             try {
-                const apiBase = process.env.NEXT_PUBLIC_AI_API_URL || 'http://localhost:3000/api';
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const base = apiBase.replace(/\/$/, '');
                 const url = base.endsWith('/api')
                     ? `${base}/lark/user-permission?email=${encodeURIComponent(user.email)}`
@@ -241,22 +265,44 @@ const ChecklistContainer = ({
             setLeaderAnswers(initialLeaderAnswers());
             setTraffic(initialTrafficData());
             setTrafficChannels(initialTrafficChannels());
+            setEntryDetails({});
             setHistoricalEvidences({});
+
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-                const url = `${beBaseUrl}/lark/user-report-details?email=${encodeURIComponent(user.email)}&date=${reportDate}`;
+                const url = `${beBaseUrl}/lark/user-report-details?email=${encodeURIComponent(user.email)}&date=${reportDate}&_t=${Date.now()}`;
 
-                const response = await fetch(url);
+                const response = await fetch(url, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
                     
-                    if (data && (data.report || data.traffic)) {
-                        setIsReadOnly(true);
+                    // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
+                    const todayStr = new Date().toLocaleDateString('en-CA'); // Lấy YYYY-MM-DD local
+                    const isPastDate = reportDate < todayStr;
 
+                    if (isPastDate) {
+                        setIsReadOnly(true);
+                    } else if (data && (data.report || data.traffic)) {
+                        let shouldBeReadOnly = false;
+                        if (showOnlyTraffic) {
+                            shouldBeReadOnly = !!data.traffic;
+                        } else if (showOnlyWork) {
+                            shouldBeReadOnly = !!data.report;
+                        } else {
+                            // If showing both, base it on whether either exists, but allow submission of the missing part
+                            shouldBeReadOnly = !!data.report && !!data.traffic;
+                        }
+                        setIsReadOnly(shouldBeReadOnly);
+                    } else {
+                        // Nếu không có dữ liệu và không phải ngày quá khứ thì reset
+                        if (!isPastDate) setIsReadOnly(false);
+                    }
+
+                    if (data && (data.report || data.traffic)) {
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
-                            
+
                             // Restore checklist
                             const newChecks = CHECKLIST_ITEMS.map(label => !!answers[label]);
                             setChecks(newChecks);
@@ -276,7 +322,7 @@ const ChecklistContainer = ({
                             const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
 
                             const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
-                            
+
                             // Check for evidence_files fallback for older/synced records
                             let sharedEvidences: any[] = [];
                             if (data.traffic.evidence_files) {
@@ -340,7 +386,28 @@ const ChecklistContainer = ({
                             setTraffic(newTraffic);
                             setTrafficChannels(newChannels);
                             setHistoricalEvidences(newEvidences);
+                            if (data.traffic.details) {
+                                let rawDetails = (data.traffic.details as any).breakdown || data.traffic.details;
+                                if (Array.isArray(rawDetails)) {
+                                    // Group array by platform for the frontend's Record<string, TrafficEntry[]> requirement
+                                    const grouped = rawDetails.reduce((acc: any, item: any) => {
+                                        const pid = item.platform || 'unknown';
+                                        if (!acc[pid]) acc[pid] = [];
+                                        acc[pid].push({
+                                            ...item,
+                                            id: item.id || `hist_${pid}_${acc[pid].length}_${Math.random().toString(36).substr(2, 4)}`,
+                                            value: String(item.value || '')
+                                        });
+                                        return acc;
+                                    }, {} as Record<string, any[]>);
+                                    setEntryDetails(grouped);
+                                } else {
+                                    setEntryDetails(rawDetails);
+                                }
+                            }
                         }
+
+
                     }
                 }
             } catch (err) {
@@ -358,14 +425,14 @@ const ChecklistContainer = ({
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const url = new URL(`${beBaseUrl}/lark/channel`, window.location.origin);
-                
+
                 if (user.email) {
                     url.searchParams.append('email', user.email);
                 } else {
                     url.searchParams.append('owner', user.full_name || '');
                     if (user.team) url.searchParams.append('team', user.team);
                 }
-                
+
                 const res = await fetch(url.toString());
                 if (res.ok) {
                     const data = await res.json();
@@ -381,7 +448,7 @@ const ChecklistContainer = ({
     const roles = user?.roles || [];
     const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
     const isLeader = roles.includes(UserRole.LEADER) || larkRole?.toLowerCase() === 'leader';
-    const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT);
+    const isStaff = roles.includes(UserRole.EDITOR) || roles.includes(UserRole.CONTENT) || roles.includes(UserRole.MEMBER);
 
     const showForm12 = mode ? mode === 'member' : (isAdmin || isStaff);
     const showForm3 = mode ? mode === 'leader' : (isAdmin || isLeader);
@@ -447,7 +514,7 @@ const ChecklistContainer = ({
 
     const handleSubmit = async () => {
         if (!user) {
-            setMessage({ type: 'error', text: 'Vui lòng đăng nhập để gửi báo cáo.' });
+            toast.error('Vui lòng đăng nhập để gửi báo cáo.');
             return;
         }
 
@@ -455,13 +522,13 @@ const ChecklistContainer = ({
         if ((showForm12 || showForm3) && !showOnlyWork) {
             // Validate Date for Traffic Report
             if (showOnlyTraffic && !reportDate) {
-                setMessage({ type: 'error', text: 'Vui lòng chọn ngày báo cáo' });
+                toast.error('Vui lòng chọn ngày báo cáo');
                 return;
             }
 
             const hasTrafficData = Object.values(traffic).some(val => val !== '');
             if (!hasTrafficData) {
-                setMessage({ type: 'error', text: 'Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).' });
+                toast.error('Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).');
                 return;
             }
 
@@ -482,7 +549,7 @@ const ChecklistContainer = ({
                 if (val && Number(val) > 0) {
                     const evs = platformEvidences[p.id] || [];
                     if (evs.length === 0) {
-                        setMessage({ type: 'error', text: `Vui lòng tải ảnh minh chứng cho Traffic ${p.label}` });
+                        toast.error(`Vui lòng tải ảnh minh chứng cho Traffic ${p.label}`);
                         return;
                     }
                 }
@@ -494,7 +561,7 @@ const ChecklistContainer = ({
             // Kiểm tra các item xem có bị bỏ trống hay bấm "Có" mà không nhập nội dung
             const hasEmptyDetails = details.some(d => d.trim() === '');
             if (hasEmptyDetails) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
+                toast.error('Vui lòng điền đủ báo cáo');
                 return;
             }
         }
@@ -503,12 +570,11 @@ const ChecklistContainer = ({
         if (showForm3 && !showOnlyTraffic) {
             const hasEmptyLeader = leaderAnswers.some(l => l.trim() === '');
             if (hasEmptyLeader) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
+                toast.error('Vui lòng điền đủ báo cáo');
                 return;
             }
         }
 
-        setMessage(null);
         setLoading(true);
         try {
             if (!showOnlyTraffic) {
@@ -538,14 +604,21 @@ const ChecklistContainer = ({
                     const parts = [errMsg];
                     if (detail) parts.push(`Chi tiết: ${detail}`);
                     if (hint) parts.push(hint);
-                    setMessage({ type: 'error', text: parts.join(' ') });
+                    toast.error(parts.join(' '));
                     setLoading(false);
                     return;
                 }
-                setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
-                setChecks(initialChecks());
-                setDetails(initialDetails());
-                setLeaderAnswers(initialLeaderAnswers());
+                toast.success(data.message || 'Báo cáo thành công');
+                
+                // --- Xoá cache trên Backend (NestJS) lập tức để hiển thị luôn ở Checklist ---
+                try {
+                    const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                    await fetch(`${beBaseUrl}/lark/clear-activity-cache`, { method: 'POST' });
+                } catch (err) {
+                    console.log('Failed to flush cache', err);
+                }
+                
+                setIsReadOnly(true); // Khóa form ngay lập tức sau khi gửi thành công
             }
 
             // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
@@ -562,39 +635,55 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
+                        trafficDetails: {
+                            breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
+                                acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
+                                    ...entry,
+                                    evidences: (entry.evidences || []).map((ev: any) => ({
+                                        url: ev.url,
+                                        name: ev.name
+                                    }))
+                                }));
+                                return acc;
+                            }, {} as Record<string, any>),
+                            evidences: platformEvidences
+                        },
                         reportDate: reportDate, // Send custom date
                     })
+
+
                 });
-                
+
                 if (showOnlyTraffic) {
                     if (trafficRes.ok) {
-                        setMessage({ type: 'success', text: 'Báo cáo Traffic thành công' });
+                        toast.success('Báo cáo Traffic thành công');
                     } else {
                         const errData = await trafficRes.json().catch(() => ({}));
-                        setMessage({ type: 'error', text: errData.message || 'Gửi báo cáo traffic thất bại' });
+                        toast.error(errData.message || 'Gửi báo cáo traffic thất bại');
                         setLoading(false);
                         return;
                     }
                 }
-                
+
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
+                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
                 setSubmitCount(prev => prev + 1);
+                if (onSuccess) onSuccess();
             } else {
-                 if (!showOnlyWork) setMessage({ type: 'success', text: 'Báo cáo thành công' });
-                 setSubmitCount(prev => prev + 1);
+                if (!showOnlyWork) toast.success('Báo cáo thành công');
+                setIsReadOnly(true);
+                setSubmitCount(prev => prev + 1);
+                if (onSuccess) onSuccess();
             }
 
         } catch (e) {
             const err = e instanceof Error ? e : new Error(String(e));
             const isNetwork = err.message?.includes('fetch') || err.name === 'TypeError';
-            setMessage({
-                type: 'error',
-                text: isNetwork
-                    ? 'Không kết nối được backend. Kiểm tra Django đã chạy (ví dụ http://localhost:8000) và CORS.'
-                    : (err.message || 'Lỗi kết nối. Kiểm tra backend và CORS.'),
-            });
+            toast.error(isNetwork
+                ? 'Không kết nối được backend. Kiểm tra Django đã chạy (ví dụ http://localhost:8000) và CORS.'
+                : (err.message || 'Lỗi kết nối. Kiểm tra backend và CORS.'));
         } finally {
             setLoading(false);
         }
@@ -618,10 +707,14 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {status.message && !status.is_open && !showOnlyTraffic && (
+            {((reportDate < new Date().toLocaleDateString('en-CA')) || (status.message && !status.is_open && !showOnlyTraffic)) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
-                    <p className="text-sm font-semibold">{status.message}</p>
+                    <p className="text-sm font-semibold">
+                        {reportDate < new Date().toLocaleDateString('en-CA') 
+                            ? `Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.` 
+                            : status.message}
+                    </p>
                 </div>
             )}
 
@@ -647,9 +740,9 @@ const ChecklistContainer = ({
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <ChecklistSection 
-                            values={checks} 
-                            onChange={handleCheckChange} 
+                        <ChecklistSection
+                            values={checks}
+                            onChange={handleCheckChange}
                             readOnly={isReadOnly}
                         />
                     </div>
@@ -659,10 +752,10 @@ const ChecklistContainer = ({
                 {/* Show Detail Section for Member/Staff - Hide if only traffic */}
                 {showForm12 && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <DetailSection 
-                             values={details} 
-                             onChange={handleDetailChange} 
-                             readOnly={isReadOnly}
+                        <DetailSection
+                            values={details}
+                            onChange={handleDetailChange}
+                            readOnly={isReadOnly}
                         />
                     </div>
                 )}
@@ -670,55 +763,56 @@ const ChecklistContainer = ({
                 {/* Leader Section - Show for Leader mode - Hide if only traffic */}
                 {showForm3 && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <LeaderEvaluationSection 
-                            values={leaderAnswers} 
-                            onChange={handleLeaderAnswerChange} 
+                        <LeaderEvaluationSection
+                            values={leaderAnswers}
+                            onChange={handleLeaderAnswerChange}
                             readOnly={isReadOnly}
                         />
                     </div>
                 )}
-                
+
                 {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
-                        <TrafficReportSection 
+                        <TrafficReportSection
                             key={`${submitCount}-${reportDate}`}
-                            values={traffic} 
+                            values={traffic}
                             channels={trafficChannels}
                             availableChannels={availableChannels}
                             onChange={handleTrafficChange}
                             onChannelChange={handleChannelChange}
                             onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                            onEntriesChange={setEntryDetails}
                             readOnly={isReadOnly}
                             initialEvidences={historicalEvidences}
+                            initialEntries={entryDetails}
                         />
+
                     </div>
                 )}
             </div>
 
-            {message && (
-                <p className={`text-center text-sm font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                    {message.text}
-                </p>
-            )}
 
-            <div className="flex justify-center pt-8 border-t border-gray-100">
-                <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={
-                        loading || 
-                        isReadOnly ||
-                        (!status.is_open && !showOnlyTraffic) 
-                        // Tạm tắt rule chặn thời gian báo cáo Traffic
-                        // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
-                    }
-                    className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    <Send className="w-4 h-4" />
-                    {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
-                </button>
-            </div>
+
+            {!(showOnlyTraffic && availableChannels.length === 0) && (
+                <div className="flex justify-center pt-8 border-t border-gray-100">
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={
+                            loading ||
+                            isReadOnly ||
+                            (!status.is_open && !showOnlyTraffic)
+                            // Tạm tắt rule chặn thời gian báo cáo Traffic
+                            // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                        }
+                        className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <Send className="w-4 h-4" />
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

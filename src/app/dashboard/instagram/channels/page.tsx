@@ -15,7 +15,6 @@ import {
 } from '@/lib/global-hr-sync';
 import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
 import {
-  pollTrackedChannelsUntilStats,
   channelAwaitingStats,
 } from '@/lib/poll-tracked-channels-stats';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
@@ -98,22 +97,28 @@ export default function InstagramChannelsPage() {
         }
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        let list = await loadInstagramChannels();
+        const list = await loadInstagramChannels();
         if (cancelled) return;
+        // Hiển thị ngay danh sách kênh — không block UI chờ enrich
         setChannels(list);
-        if (
-          r &&
-          r.imported > 0 &&
-          list.length > 0 &&
-          list.some((c) => channelAwaitingStats(c))
-        ) {
-          setLongSyncHint(true);
-          list = await pollTrackedChannelsUntilStats(() => loadInstagramChannels());
-          if (!cancelled) setChannels(list);
-          setLongSyncHint(false);
-        }
         if (!cancelled && r && r.imported > 0) {
           toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
+        }
+        // Background refresh: nếu có kênh chưa có stats, refresh lại tối đa 5 lần (mỗi 8s)
+        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
+          let tries = 0;
+          const bgRefresh = async () => {
+            if (cancelled || tries >= 30) return;
+            tries++;
+            await new Promise((res) => setTimeout(res, 15000));
+            if (cancelled) return;
+            const updated = await loadInstagramChannels();
+            if (!cancelled) setChannels(updated);
+            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) {
+              bgRefresh();
+            }
+          };
+          bgRefresh();
         }
       } catch {
         /* ignore */
@@ -125,6 +130,7 @@ export default function InstagramChannelsPage() {
       cancelled = true;
     };
   }, []);
+
 
   const fetchTrackedChannels = async () => {
     try {
@@ -513,31 +519,40 @@ export default function InstagramChannelsPage() {
                     </div>
                   </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
-                      <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
-                      <span className="text-purple-900 font-black text-lg block">
-                        {formatNumber(channel.total_followers || 0)}
-                      </span>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
-                      <span className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
-                      <span className="text-blue-900 font-black text-lg block">
-                        {formatNumber(channel.posts_count || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Engagement Badge */}
-                  {channel.engagement_rate > 0 && (
-                    <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-green-700 font-bold uppercase">Engagement</span>
-                        <span className="text-green-900 font-black text-base">{channel.engagement_rate.toFixed(2)}%</span>
+                  {/* Stats Wrapper */}
+                  <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-4">
+                    {channelAwaitingStats(channel) && (
+                      <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
+                        <Loader2 className="w-7 h-7 text-fuchsia-500 animate-spin mb-2" />
+                        <span className="text-[10px] font-bold text-fuchsia-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-fuchsia-100">AI đang quét số liệu...</span>
+                      </div>
+                    )}
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3 border border-purple-100">
+                        <span className="text-xs text-purple-600 font-bold uppercase mb-1 flex items-center gap-1"><Users className="w-3 h-3" /> Followers</span>
+                        <span className="text-purple-900 font-black text-lg block">
+                          {formatNumber(channel.total_followers || 0)}
+                        </span>
+                      </div>
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-3 border border-blue-100">
+                        <span className="text-xs text-blue-600 font-bold uppercase mb-1 flex items-center gap-1"><Camera className="w-3 h-3" /> Posts</span>
+                        <span className="text-blue-900 font-black text-lg block">
+                          {formatNumber(channel.posts_count || 0)}
+                        </span>
                       </div>
                     </div>
-                  )}
+
+                    {/* Engagement Badge */}
+                    {channel.engagement_rate > 0 && (
+                      <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-green-700 font-bold uppercase">Engagement</span>
+                          <span className="text-green-900 font-black text-base">{channel.engagement_rate.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Action */}
                   <button

@@ -1,8 +1,8 @@
 'use client';
 
-import Image from "next/image";
+import NextImage from "next/image";
 import { useState } from 'react';
-import { Image, Film, LayoutGrid, BarChart3, X, Play, Heart, MessageCircle, Eye, Calendar, ExternalLink } from 'lucide-react';
+import { Image as ImageIcon, Film, LayoutGrid, BarChart3, X, Play, Heart, MessageCircle, Eye, Calendar, ExternalLink } from 'lucide-react';
 
 interface InstagramPostingStatsProps {
   videos: any[];
@@ -51,7 +51,7 @@ export default function InstagramPostingStats({ videos }: InstagramPostingStatsP
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                <Image className="w-5 h-5"  width={0} height={0} sizes="100vw" unoptimized/>
+                <ImageIcon className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">Posts</p>
@@ -133,7 +133,7 @@ export default function InstagramPostingStats({ videos }: InstagramPostingStatsP
                       {/* Thumbnail */}
                       <div className="relative w-32 h-32 flex-shrink-0 rounded-xl overflow-hidden bg-slate-200">
                         {item.thumbnail_url ? (
-                          <Image 
+                          <NextImage 
                             src={item.thumbnail_url} 
                             alt="" 
                             className="w-full h-full object-cover"
@@ -149,7 +149,7 @@ export default function InstagramPostingStats({ videos }: InstagramPostingStatsP
                             {(item.is_video || item.video_url) ? (
                               <Film className="w-10 h-10 text-slate-400" />
                             ) : (
-                              <Image className="w-10 h-10 text-slate-400"  width={0} height={0} sizes="100vw" unoptimized/>
+                              <ImageIcon className="w-10 h-10 text-slate-400" />
                             )}
                           </div>
                         )}

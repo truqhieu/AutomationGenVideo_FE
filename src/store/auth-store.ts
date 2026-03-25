@@ -23,7 +23,7 @@ const isTokenExpired = (token: string): boolean => {
   }
 };
 
-// Clear local auth storage only when the token is already expired.
+// Ensure local auth storage is cleared when it is no longer valid.
 if (typeof window !== 'undefined') {
   try {
     const existingToken = localStorage.getItem('auth_token');

@@ -84,7 +84,7 @@ function SidebarContent({
   const currentTab = searchParams?.get('tab');
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isNavigatingRef = useRef(false);
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   // Detect reduced motion preference
@@ -115,7 +115,9 @@ function SidebarContent({
   // Directly derive activePlatform
   const activePlatform = useMemo(() => {
     const path = pathname?.toLowerCase() || '';
-    if (path.startsWith('/dashboard/manager') || path.startsWith('/dashboard/editor-management') || path.startsWith('/dashboard/hieu-suat')) {
+    if (path === '/dashboard/manager') {
+      return 'dashboard-general';
+    } else if (path.startsWith('/dashboard/manager/user-activity') || path.startsWith('/dashboard/editor-management') || path.startsWith('/dashboard/hieu-suat')) {
       return 'user-management';
     } else if (
       pathname.startsWith('/dashboard/facebook') ||
@@ -134,7 +136,22 @@ function SidebarContent({
 
   // Platforms configuration
   const platforms = useMemo(() => {
-    return [
+    const items = [
+      ...(isManagerOrAdmin ? [
+        {
+          id: 'dashboard-general',
+          icon: LayoutGrid,
+          label: 'Dashboard Tổng',
+          menus: [
+            {
+              section: 'TỔNG QUAN',
+              items: [
+                { label: 'Trang chủ Admin', href: '/dashboard/manager', icon: LayoutGrid },
+              ]
+            }
+          ]
+        }
+      ] : []),
       {
         id: 'user-management',
         icon: Users,
@@ -146,16 +163,12 @@ function SidebarContent({
               { label: 'Hiệu suất', href: '/dashboard/manager/user-activity?tab=performance', icon: Activity },
               ...(isManagerOrAdmin ? [
                 { label: 'Tổng quan', href: '/dashboard/manager/user-activity?tab=dashboard', icon: LayoutDashboard },
-                { label: 'Dashboard Tổng', href: '/dashboard/manager', icon: LayoutGrid },
               ] : []),
               { label: 'Bảng xếp hạng', href: '/dashboard/manager/user-activity?tab=ranking', icon: Layout },
               { label: 'Tiến độ', href: '/dashboard/manager/user-activity?tab=personal', icon: User },
               { label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText },
               { label: 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: CheckSquare },
               { label: 'Vấn đề & Win', href: '/dashboard/manager/user-activity?tab=daily_outstanding', icon: ClipboardList },
-              ...(isManagement ? [
-                { label: 'Quản lý Editors', href: '/dashboard/editor-management', icon: Users },
-              ] : []),
             ]
           }
         ]
@@ -181,6 +194,7 @@ function SidebarContent({
         ]
       }
     ];
+    return items;
   }, [user?.roles, isManagement, isManagerOrAdmin]);
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
@@ -191,29 +205,42 @@ function SidebarContent({
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    if (isNavigatingRef.current) return;
     hoverTimeoutRef.current = setTimeout(() => {
-      setIsSidebarHovered(false);
+      // Keep opened only if cursor is still hovering sidebar area.
+      const isStillHovering = sidebarRef.current?.matches(':hover');
+      if (!isStillHovering) {
+        setIsSidebarHovered(false);
+      }
     }, 150);
   }, []);
 
   const handleLinkClick = useCallback(() => {
-    isNavigatingRef.current = true;
-    setTimeout(() => { isNavigatingRef.current = false; }, 500);
-  }, []);
+    // Prevent stale "hover-open" state after fast navigation transitions.
+    if (!isPinned) {
+      setIsSidebarHovered(false);
+    }
+  }, [isPinned]);
+
+  useEffect(() => {
+    // Route changed: collapse hover drawer unless user explicitly pinned it.
+    if (!isPinned) {
+      setIsSidebarHovered(false);
+    }
+  }, [pathname, currentTab, isPinned]);
 
   const isDrawerVisible = activePlatform && (isSidebarHovered || isPinned);
 
   return (
     <>
       <aside
+        ref={sidebarRef}
         className="fixed top-0 left-0 h-screen z-[1000] flex transition-[width] duration-200 ease-in-out"
         style={{ width: isDrawerVisible ? '320px' : '80px' }}
+        onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         <div
           className="w-[80px] h-full bg-[#0f172a] border-r border-slate-800 flex flex-col items-center py-6 gap-6 z-20 relative"
-          onMouseEnter={handleMouseEnter}
         >
           <div className="w-12 h-12 rounded-xl overflow-hidden mb-4 cursor-pointer border-2 border-slate-700 shadow-lg relative group">
             <Image
