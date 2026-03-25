@@ -286,6 +286,19 @@ const UserActivityPageContent = () => {
         [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
     );
 
+    const [initialTeamSet, setInitialTeamSet] = React.useState(false);
+
+    // Filter Logic: If not Admin, handle team routing
+    React.useEffect(() => {
+        if (!isAdminUser && userTeam) {
+            // Everyone (Leader or Member) - set to userTeam only initially
+            if (!initialTeamSet) {
+                setActiveTeam(userTeam);
+                setInitialTeamSet(true);
+            }
+        }
+    }, [isAdminUser, userTeam, initialTeamSet]);
+
     React.useEffect(() => {
         fetchReports(true);
 
@@ -405,7 +418,7 @@ const UserActivityPageContent = () => {
                     videoCount: item.answers ? Number(item.answers[Object.keys(item.answers).find(k => k.toLowerCase().includes('50%')) || ''] || 0) : 0,
                     task_progress: item.task_progress || null,
                     trafficToday: item.trafficToday || null,
-                    questions: [
+                    questions: item.answers ? [
                         {
                             question: isLeaderReport ? 'ĐÃ KIỂM TRA CHẤT LƯỢNG VIDEO ĐẦU RA CỦA TEAM CHƯA?' : 'NGÀY HÔM QUA CÔNG VIỆC BẠN CÓ CẢI GÌ KHIẾN BẠN TỰ HÀO VÀ THÍCH THÚ NHẤT?',
                             answer: isLeaderReport
@@ -447,7 +460,7 @@ const UserActivityPageContent = () => {
                                     item.answers?.['5. BẠN CÓ SẢN PHẨM (A4 - A5) NÀO WIN MỚI KHÔNG? (>5K VIEW - >10 CMT HỎI GIÁ?)'] ||
                                     'Không có')
                         },
-                    ]
+                    ] : []
                 };
             });
 
@@ -548,92 +561,66 @@ const UserActivityPageContent = () => {
     // Dùng deferredSearchName thay searchName → filter không chặn main thread khi gõ
     const filteredPerformanceReports = React.useMemo(() => {
         return reports.filter(r => {
-            const safeUserTeam = normalize(userTeam);
-            const safeReportTeam = normalize(r.team);
-            const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
-            const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
-            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-            const isOwnCard = isOwnName || isOwnEmail;
-            const hasNoTeam = !userTeam;
-            const isVisible = isAdminUser || hasNoTeam || isTeamMatch || isOwnCard;
-            return isVisible && matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
+            return matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
         });
-    }, [reports, userTeam, isAdminUser, matchTeam, deferredSearchName, user?.full_name, user?.email]);
+    }, [reports, matchTeam, deferredSearchName]);
 
     const filteredPersonalMembers = React.useMemo(() => {
         return personalHistory.members.filter(m => {
-            const safeUserTeam = normalize(userTeam);
-            const safeMemberTeam = normalize(m.team);
-            const isTeamMatch = safeUserTeam && safeMemberTeam === safeUserTeam;
-            const isOwnName = m.name && user?.full_name && normalize(m.name) === normalize(user.full_name);
-            const isOwnEmail = m.email && user?.email && normalize(m.email) === normalize(user.email);
-            const hasNoTeam = !userTeam;
-            return isAdminUser || hasNoTeam || isTeamMatch || isOwnName || isOwnEmail;
+            return matchTeam(m.team);
         });
-    }, [personalHistory.members, userTeam, isAdminUser, user?.full_name, user?.email]);
+    }, [personalHistory.members, matchTeam]);
 
     const filteredAllReports = React.useMemo(() => {
         return reports.filter(r => {
-            const safeUserTeam = normalize(userTeam);
-            const safeReportTeam = normalize(r.team);
-            const isTeamMatch = safeUserTeam && safeReportTeam === safeUserTeam;
-            const isOwnName = r.name && user?.full_name && normalize(r.name) === normalize(user.full_name);
-            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-            const hasNoTeam = !userTeam;
             const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
-            return (isAdminUser || hasNoTeam || isTeamMatch || isOwnName || isOwnEmail) && isSearchMatch;
+            return matchTeam(r.team) && isSearchMatch;
         });
-    }, [reports, userTeam, isAdminUser, deferredSearchName, user?.full_name, user?.email]);
+    }, [reports, matchTeam, deferredSearchName]);
 
     const filteredChecklistReports = React.useMemo(() => {
+        const uniqueKeys = new Set();
         return reportOutstandings.filter(r => {
+            // --- NEW RULES for Workflow Priority ---
+            const isMyTeam = userTeam && r.team === userTeam;
+            const rRole = (r.role || '').toLowerCase();
+            const rPos = (r.position || '').toLowerCase();
+            const isReportFromLeader = rRole.includes('leader') || rPos.includes('leader');
+            
+            if (!isAdminUser) {
+                // Non-admins (Leaders/Members) can ONLY see their own team's outstanding reports
+                if (!isMyTeam) return false;
+            }
+
+            const statusText = (r.approval_status || '').toLowerCase();
+            const isLeaderHandled = statusText.includes('leader đã duyệt') || statusText.includes('leader từ chối');
+            const isLegacyHandled = statusText === 'đã duyệt' || statusText === 'từ chối' || statusText === 'không duyệt';
+            const isAdminHandled = statusText.includes('admin đã duyệt') || statusText.includes('admin từ chối');
+            
+            if (isAdminUser) {
+                // Admin ONLY sees reports AFTER Leader handled them (or legacy or admin handled)
+                if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled) return false;
+            }
+
+            // Normal filters
             if (!matchTeam(r.team)) return false;
             if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
-
-            if (isAdminUser) {
-                // Admin/Manager: xem tất cả
-                return true;
-            }
-
-            if (isLeaderUser) {
-                // Leader: xem Vấn đề & Win của team mình
-                if (!userTeam) return false;
-                return normalize(r.team) === normalize(userTeam);
-            }
-
-            // Member: chỉ xem Vấn đề & Win của mình
-            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-            const isOwnName  = r.name  && user?.full_name && normalize(r.name) === normalize(user.full_name);
-            return !!(isOwnEmail || isOwnName);
+            
+            // Deduplicate by Name + Category + Content to prevent identical visual rows
+            const key = `${r.name}_${r.category}_${r.content}`.toLowerCase().trim();
+            if (uniqueKeys.has(key)) return false;
+            uniqueKeys.add(key);
+            
+            return true;
         });
-    }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, isLeaderUser, userTeam, user]);
+    }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, userTeam]);
 
     const checklistFilteredReports = React.useMemo(() => {
-        // Bước 1: Phân quyền theo role
-        // - admin/manager → xem tất cả (chỉ filter theo team dropdown nếu có)
-        // - leader → chỉ xem reports của team mình
-        // - member → chỉ xem card cá nhân
+        // Bước 1: Lọc theo text search và dropdown team
         let roleFiltered = reports.filter(r => {
-            // Luôn áp filter team dropdown (nếu đang chọn team cụ thể)
             if (!matchTeam(r.team)) return false;
-            // Áp filter search name
             if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
-
-            if (isAdminUser) {
-                // Admin/Manager: xem tất cả
-                return true;
-            }
-
-            if (isLeaderUser) {
-                // Leader: chỉ xem team của mình
-                if (!userTeam) return false;
-                return normalize(r.team) === normalize(userTeam);
-            }
-
-            // Member: chỉ xem card cá nhân (match email hoặc tên)
-            const isOwnEmail = r.email && user?.email && normalize(r.email) === normalize(user.email);
-            const isOwnName  = r.name  && user?.full_name && normalize(r.name) === normalize(user.full_name);
-            return !!(isOwnEmail || isOwnName);
+            return true;
         });
 
         // Bước 2: Áp filter Leader/Member button filter
@@ -644,7 +631,7 @@ const UserActivityPageContent = () => {
             if (checklistRoleFilter === 'leader') return isReportLeader;
             return !isReportLeader; // 'member'
         });
-    }, [reports, userTeam, isAdminUser, isLeaderUser, matchTeam, deferredSearchName, checklistRoleFilter, user]);
+    }, [reports, matchTeam, deferredSearchName, checklistRoleFilter]);
 
     return (
         <div id="report-view-container" className="min-h-screen bg-slate-50/20 p-2 sm:p-4 space-y-3 selection:bg-blue-500/30">
@@ -843,125 +830,186 @@ const UserActivityPageContent = () => {
                                                             Nội dung
                                                         </th>
                                                         <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
-                                                            {isAdminUser ? 'Thao tác' : 'Trạng thái'}
+                                                            Thao tác / Trạng thái
                                                         </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100 bg-white">
                                                     {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
-                                                        let isApproved = statusText.includes('đã duyệt') || (statusText.includes('duyệt') && !statusText.includes('chưa') && !statusText.includes('không'));
-                                                        let isRejected = statusText.includes('từ chối') || statusText.includes('không duyệt');
-                                                        let isPending = !isApproved && !isRejected;
+                                                        
+                                                        const isLegacyApproved = statusText === 'đã duyệt' || statusText === 'duyệt';
+                                                        const isLegacyRejected = statusText === 'từ chối' || statusText === 'không duyệt';
 
-                                                        if (isPending && r.date) {
+                                                        const isLeaderApproved = statusText.includes('leader đã duyệt');
+                                                        const isLeaderRejected = statusText.includes('leader từ chối');
+                                                        const isLeaderHandled = isLeaderApproved || isLeaderRejected;
+
+                                                        const isAdminApproved = statusText.includes('admin đã duyệt') || isLegacyApproved;
+                                                        const isAdminRejected = statusText.includes('admin từ chối') || isLegacyRejected;
+                                                        const isAdminHandled = isAdminApproved || isAdminRejected;
+
+                                                        const isReportFromLeader = (r.role || '').toLowerCase().includes('leader') || (r.position || '').toLowerCase().includes('leader');
+
+                                                        // Check if report is older than 1 day
+                                                        let isExpired = false;
+                                                        if (r.date) {
                                                             let rDateObj = new Date(r.date);
                                                             if (r.date.includes('/')) {
-                                                                  const parts = r.date.split('/');
-                                                                  if (parts.length === 3) {
-                                                                      rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-                                                                  }
-                                                              }
-                                                              if (!isNaN(rDateObj.getTime())) {
-                                                                  const msDiff = new Date().getTime() - rDateObj.getTime();
-                                                                  if (msDiff > 2592000000) {
-                                                                      isPending = false;
-                                                                      isRejected = true;
-                                                                  }
-                                                              }
-                                                          }
+                                                                const parts = r.date.split('/');
+                                                                if (parts.length === 3) {
+                                                                    rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                                                                }
+                                                            }
+                                                            if (!isNaN(rDateObj.getTime())) {
+                                                                // > 24 hours
+                                                                if (new Date().getTime() - rDateObj.getTime() > 24 * 60 * 60 * 1000) {
+                                                                    isExpired = true;
+                                                                }
+                                                            }
+                                                        }
 
-                                                          if (!isAdminUser && isRejected) return null;
+                                                        // Permissions
+                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team === userTeam && !isAdminHandled;
+                                                        const canAdminAction = !isExpired && isAdminUser; // Màn Admin có thể thao tác hết
+                                                        const isAutoRejected = isExpired && !isAdminHandled;
 
-                                                          return (
-                                                              <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
-                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
-                                                                      <span className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-black uppercase tracking-widest shadow-sm">
-                                                                          {r.role || 'Member'}
-                                                                      </span>
-                                                                  </td>
-                                                                  <td className="px-8 py-3 border-r border-slate-50">
-                                                                      <div className="font-black text-slate-900 text-[18px] mb-1">{r.name}</div>
-                                                                      <div className="flex items-center gap-2 text-[12px] text-blue-700 font-bold">
-                                                                          <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
-                                                                          <span className="text-slate-400 font-medium italic">{r.date}</span>
-                                                                      </div>
-                                                                  </td>
-                                                                  <td className="px-6 py-3 border-r border-slate-50 text-center">
-                                                                      <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${
-                                                                          r.category?.toLowerCase().includes('win') 
-                                                                          ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100' 
-                                                                          : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
-                                                                      }`}>
-                                                                          {r.category || '-'}
-                                                                      </span>
-                                                                  </td>
-                                                                  <td className="px-8 py-3 border-r border-slate-50">
-                                                                      <div className="text-[17px] text-slate-900 font-bold leading-relaxed max-w-[800px]">
-                                                                          {r.content || 'Không có nội dung'}
-                                                                      </div>
-                                                                  </td>
-                                                                  <td className="px-6 py-3.5 text-center">
-                                                                      <div className="flex justify-center flex-wrap gap-3">
-                                                                          {isAdminUser ? (
-                                                                              <div className="flex items-center gap-3">
-                                                                                  {(isPending || isApproved) && (
-                                                                                      <button
-                                                                                          onClick={() => handleUpdateStatus(r.id, isApproved ? 'Chưa duyệt' : 'Đã duyệt')}
-                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-emerald-600 text-white shadow-emerald-200/50`}
-                                                                                      >
-                                                                                          <Check className="w-4 h-4" strokeWidth={4} />
-                                                                                          {isApproved ? 'Đã duyệt' : 'Duyệt'}
-                                                                                      </button>
-                                                                                  )}
-                                                                                  {(isPending || isRejected) && (
-                                                                                      <button
-                                                                                          onClick={() => handleUpdateStatus(r.id, isRejected ? 'Chưa duyệt' : 'Từ chối')}
-                                                                                          className={`px-5 py-2.5 rounded-xl text-[12px] font-black uppercase flex items-center gap-2 transition-all shadow-md hover:scale-105 active:scale-95 bg-red-600 text-white shadow-red-200/50`}
-                                                                                      >
-                                                                                          <X className="w-4 h-4" strokeWidth={4} />
-                                                                                          {isRejected ? 'Đã từ chối' : 'Từ chối'}
-                                                                                      </button>
-                                                                                  )}
-                                                                              </div>
-                                                                          ) : (
-                                                                              <div className="flex items-center justify-center">
-                                                                                  {isApproved && (
-                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-2">
-                                                                                          <CheckCircle2 className="w-4 h-4" /> Đã duyệt
-                                                                                      </span>
-                                                                                  )}
-                                                                                  {isRejected && (
-                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-2">
-                                                                                          <AlertCircle className="w-4 h-4" /> Từ chối
-                                                                                      </span>
-                                                                                  )}
-                                                                                  {isPending && (
-                                                                                      <span className="px-4 py-2 rounded-xl text-[11px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-2 tracking-wider">
-                                                                                          <Clock className="w-4 h-4" /> Đang xem xét
-                                                                                      </span>
-                                                                                  )}
-                                                                              </div>
-                                                                          )}
-                                                                      </div>
-                                                                  </td>
-                                                              </tr>
-                                                          );
-                                                      })}
-                                                  </tbody>
-                                              </table>
-                                          </div>
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-inner">
-                                      <div className="p-4 bg-slate-50 rounded-full mb-4">
-                                          <ClipboardList className="w-8 h-8 text-slate-300" />
-                                      </div>
-                                      <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Không có vấn đề nổi bật nào trong ngày</p>
-                                  </div>
-                              )}
-                          </div>
+                                                        return (
+                                                            <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
+                                                                <td className="px-6 py-3 border-r border-slate-50 text-center">
+                                                                    <span className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-black uppercase tracking-widest shadow-sm">
+                                                                        {r.role || 'Member'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-8 py-3 border-r border-slate-50">
+                                                                    <div className="font-black text-slate-900 text-[18px] mb-1">{r.name}</div>
+                                                                    <div className="flex items-center gap-2 text-[12px] text-blue-700 font-bold">
+                                                                        <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
+                                                                        <span className="text-slate-400 font-medium italic">{r.date}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3 border-r border-slate-50 text-center">
+                                                                    <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${r.category?.toLowerCase().includes('win')
+                                                                            ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100'
+                                                                            : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
+                                                                        }`}>
+                                                                        {r.category || '-'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-8 py-3 border-r border-slate-50">
+                                                                    <div className="text-[17px] text-slate-900 font-bold leading-relaxed max-w-[800px]">
+                                                                        {r.content || 'Không có nội dung'}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3.5 text-center">
+                                                                    <div className="flex justify-center flex-col gap-2 relative">
+                                                                        {/* Trạng thái hiển thị */}
+                                                                        <div className="flex items-center justify-center gap-2">
+                                                                            {/* Member View */}
+                                                                            {(!isAdminUser && !isLeaderUser) && (
+                                                                                <>
+                                                                                    {isAdminApproved ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt</span>
+                                                                                    ) : isAdminRejected ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối</span>
+                                                                                    ) : isLeaderRejected ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Leader từ chối</span>
+                                                                                    ) : isAutoRejected ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt</span>
+                                                                                    ) : isLeaderApproved ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt (Chờ duyệt)</span>
+                                                                                    ) : (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Leader duyệt</span>
+                                                                                    )}
+                                                                                </>
+                                                                            )}
+                                                                            
+                                                                            {/* Leader View (chỉ hiện kết quả của Manager) */}
+                                                                            {(isLeaderUser && !isAdminUser) && (
+                                                                                <>
+                                                                                    {isAdminApproved ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt</span>
+                                                                                    ) : isAdminRejected ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối</span>
+                                                                                    ) : (!canLeaderAction && r.team === userTeam && !isAdminHandled) ? (
+                                                                                        isLeaderApproved ? (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt (Đã khóa)</span>
+                                                                                        ) : isLeaderRejected ? (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối (Đã khóa)</span>
+                                                                                        ) : (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt (Quá hạn)</span>
+                                                                                        )
+                                                                                    ) : null}
+                                                                                </>
+                                                                            )}
+
+                                                                            {/* Admin View */}
+                                                                            {isAdminUser && (
+                                                                                <>
+                                                                                    {isLeaderApproved ? (
+                                                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'} border flex items-center gap-1`}><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt {isExpired && '(Khóa)'}</span>
+                                                                                    ) : isLeaderRejected ? (
+                                                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-red-50 text-red-700 border-red-200'} border flex items-center gap-1`}><AlertCircle className="w-3.5 h-3.5" /> Leader từ chối {isExpired && '(Khóa)'}</span>
+                                                                                    ) : null}
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Các nút hành động */}
+                                                                        <div className="flex justify-center flex-wrap gap-2 mt-1">
+                                                                            {canLeaderAction && (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={() => handleUpdateStatus(r.id, isLeaderApproved ? 'Chưa duyệt' : 'Leader đã duyệt')}
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderApproved ? 'bg-slate-200 text-slate-700' : 'bg-emerald-600 text-white shadow-emerald-200/50'}`}
+                                                                                    >
+                                                                                        <Check className="w-3.5 h-3.5" strokeWidth={4} /> {isLeaderApproved ? 'Hủy duyệt' : 'Duyệt'}
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleUpdateStatus(r.id, isLeaderRejected ? 'Chưa duyệt' : 'Leader từ chối')}
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderRejected ? 'bg-slate-200 text-slate-700' : 'bg-red-600 text-white shadow-red-200/50'}`}
+                                                                                    >
+                                                                                        <X className="w-3.5 h-3.5" strokeWidth={4} /> {isLeaderRejected ? 'Hủy từ chối' : 'Từ chối'}
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                            
+                                                                            {canAdminAction && (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={() => handleUpdateStatus(r.id, isAdminApproved ? (isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : 'Chưa duyệt') : `Admin đã duyệt | ${isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : ''}`)}
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminApproved ? 'bg-slate-200 text-slate-700' : 'bg-blue-600 text-white shadow-blue-200/50'}`}
+                                                                                    >
+                                                                                        <Check className="w-3.5 h-3.5" strokeWidth={4} /> {isAdminApproved ? 'Hủy duyệt' : 'Duyệt'}
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleUpdateStatus(r.id, isAdminRejected ? (isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : 'Chưa duyệt') : `Admin từ chối | ${isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : ''}`)}
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminRejected ? 'bg-slate-200 text-slate-700' : 'bg-red-600 text-white shadow-red-200/50'}`}
+                                                                                    >
+                                                                                        <X className="w-3.5 h-3.5" strokeWidth={4} /> {isAdminRejected ? 'Hủy từ chối' : 'Từ chối'}
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-inner">
+                                    <div className="p-4 bg-slate-50 rounded-full mb-4">
+                                        <ClipboardList className="w-8 h-8 text-slate-300" />
+                                    </div>
+                                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Không có vấn đề nổi bật nào trong ngày</p>
+                                </div>
+                            )}
+                        </div>
                     ) : activeTab === 'daily_checklist' ? (
                         <div className="space-y-4">
                             {/* Detailed Report Cards */}

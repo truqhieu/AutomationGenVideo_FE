@@ -24,7 +24,19 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${roboto.className} antialiased`}>
         {children}
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            duration: 3000,
+            style: {
+              fontSize: '1.05rem',
+              fontWeight: '600',
+              padding: '16px 24px',
+              borderRadius: '16px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            }
+          }}
+        />
       </body>
     </html>
   );

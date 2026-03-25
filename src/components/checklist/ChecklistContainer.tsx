@@ -9,6 +9,7 @@ import { Send, AlertCircle, Calendar, ChevronDown, Check, ChevronLeft, ChevronRi
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
+import { toast } from 'react-hot-toast';
 
 const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
@@ -194,7 +195,6 @@ const ChecklistContainer = ({
     const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
@@ -276,8 +276,14 @@ const ChecklistContainer = ({
                 const response = await fetch(url, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
+                    
+                    // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
+                    const todayStr = new Date().toLocaleDateString('en-CA'); // Lấy YYYY-MM-DD local
+                    const isPastDate = reportDate < todayStr;
 
-                    if (data && (data.report || data.traffic)) {
+                    if (isPastDate) {
+                        setIsReadOnly(true);
+                    } else if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
                             shouldBeReadOnly = !!data.traffic;
@@ -288,7 +294,12 @@ const ChecklistContainer = ({
                             shouldBeReadOnly = !!data.report && !!data.traffic;
                         }
                         setIsReadOnly(shouldBeReadOnly);
+                    } else {
+                        // Nếu không có dữ liệu và không phải ngày quá khứ thì reset
+                        if (!isPastDate) setIsReadOnly(false);
+                    }
 
+                    if (data && (data.report || data.traffic)) {
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
 
@@ -503,7 +514,7 @@ const ChecklistContainer = ({
 
     const handleSubmit = async () => {
         if (!user) {
-            setMessage({ type: 'error', text: 'Vui lòng đăng nhập để gửi báo cáo.' });
+            toast.error('Vui lòng đăng nhập để gửi báo cáo.');
             return;
         }
 
@@ -511,13 +522,13 @@ const ChecklistContainer = ({
         if ((showForm12 || showForm3) && !showOnlyWork) {
             // Validate Date for Traffic Report
             if (showOnlyTraffic && !reportDate) {
-                setMessage({ type: 'error', text: 'Vui lòng chọn ngày báo cáo' });
+                toast.error('Vui lòng chọn ngày báo cáo');
                 return;
             }
 
             const hasTrafficData = Object.values(traffic).some(val => val !== '');
             if (!hasTrafficData) {
-                setMessage({ type: 'error', text: 'Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).' });
+                toast.error('Vui lòng nhập số liệu báo cáo Traffic tối thiểu 1 nền tảng (nếu không có hãy nhập số 0).');
                 return;
             }
 
@@ -538,7 +549,7 @@ const ChecklistContainer = ({
                 if (val && Number(val) > 0) {
                     const evs = platformEvidences[p.id] || [];
                     if (evs.length === 0) {
-                        setMessage({ type: 'error', text: `Vui lòng tải ảnh minh chứng cho Traffic ${p.label}` });
+                        toast.error(`Vui lòng tải ảnh minh chứng cho Traffic ${p.label}`);
                         return;
                     }
                 }
@@ -550,7 +561,7 @@ const ChecklistContainer = ({
             // Kiểm tra các item xem có bị bỏ trống hay bấm "Có" mà không nhập nội dung
             const hasEmptyDetails = details.some(d => d.trim() === '');
             if (hasEmptyDetails) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
+                toast.error('Vui lòng điền đủ báo cáo');
                 return;
             }
         }
@@ -559,12 +570,11 @@ const ChecklistContainer = ({
         if (showForm3 && !showOnlyTraffic) {
             const hasEmptyLeader = leaderAnswers.some(l => l.trim() === '');
             if (hasEmptyLeader) {
-                setMessage({ type: 'error', text: 'Vui lòng điền đủ báo cáo' });
+                toast.error('Vui lòng điền đủ báo cáo');
                 return;
             }
         }
 
-        setMessage(null);
         setLoading(true);
         try {
             if (!showOnlyTraffic) {
@@ -594,11 +604,11 @@ const ChecklistContainer = ({
                     const parts = [errMsg];
                     if (detail) parts.push(`Chi tiết: ${detail}`);
                     if (hint) parts.push(hint);
-                    setMessage({ type: 'error', text: parts.join(' ') });
+                    toast.error(parts.join(' '));
                     setLoading(false);
                     return;
                 }
-                setMessage({ type: 'success', text: data.message || 'Báo cáo thành công' });
+                toast.success(data.message || 'Báo cáo thành công');
                 
                 // --- Xoá cache trên Backend (NestJS) lập tức để hiển thị luôn ở Checklist ---
                 try {
@@ -608,9 +618,7 @@ const ChecklistContainer = ({
                     console.log('Failed to flush cache', err);
                 }
                 
-                setChecks(initialChecks());
-                setDetails(initialDetails());
-                setLeaderAnswers(initialLeaderAnswers());
+                setIsReadOnly(true); // Khóa form ngay lập tức sau khi gửi thành công
             }
 
             // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
@@ -648,10 +656,10 @@ const ChecklistContainer = ({
 
                 if (showOnlyTraffic) {
                     if (trafficRes.ok) {
-                        setMessage({ type: 'success', text: 'Báo cáo Traffic thành công' });
+                        toast.success('Báo cáo Traffic thành công');
                     } else {
                         const errData = await trafficRes.json().catch(() => ({}));
-                        setMessage({ type: 'error', text: errData.message || 'Gửi báo cáo traffic thất bại' });
+                        toast.error(errData.message || 'Gửi báo cáo traffic thất bại');
                         setLoading(false);
                         return;
                     }
@@ -660,10 +668,12 @@ const ChecklistContainer = ({
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
+                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             } else {
-                if (!showOnlyWork) setMessage({ type: 'success', text: 'Báo cáo thành công' });
+                if (!showOnlyWork) toast.success('Báo cáo thành công');
+                setIsReadOnly(true);
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             }
@@ -671,12 +681,9 @@ const ChecklistContainer = ({
         } catch (e) {
             const err = e instanceof Error ? e : new Error(String(e));
             const isNetwork = err.message?.includes('fetch') || err.name === 'TypeError';
-            setMessage({
-                type: 'error',
-                text: isNetwork
-                    ? 'Không kết nối được backend. Kiểm tra Django đã chạy (ví dụ http://localhost:8000) và CORS.'
-                    : (err.message || 'Lỗi kết nối. Kiểm tra backend và CORS.'),
-            });
+            toast.error(isNetwork
+                ? 'Không kết nối được backend. Kiểm tra Django đã chạy (ví dụ http://localhost:8000) và CORS.'
+                : (err.message || 'Lỗi kết nối. Kiểm tra backend và CORS.'));
         } finally {
             setLoading(false);
         }
@@ -700,10 +707,14 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {status.message && !status.is_open && !showOnlyTraffic && (
+            {((reportDate < new Date().toLocaleDateString('en-CA')) || (status.message && !status.is_open && !showOnlyTraffic)) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
-                    <p className="text-sm font-semibold">{status.message}</p>
+                    <p className="text-sm font-semibold">
+                        {reportDate < new Date().toLocaleDateString('en-CA') 
+                            ? `Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.` 
+                            : status.message}
+                    </p>
                 </div>
             )}
 
@@ -781,11 +792,7 @@ const ChecklistContainer = ({
                 )}
             </div>
 
-            {message && (
-                <p className={`text-center text-sm font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                    {message.text}
-                </p>
-            )}
+
 
             {!(showOnlyTraffic && availableChannels.length === 0) && (
                 <div className="flex justify-center pt-8 border-t border-gray-100">
@@ -802,7 +809,7 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? 'BÁO CÁO ĐÃ GỬI' : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}
