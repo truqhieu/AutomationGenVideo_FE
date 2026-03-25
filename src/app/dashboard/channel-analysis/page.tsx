@@ -1634,7 +1634,6 @@ export default function ChannelAnalysisHubPage() {
                       type="date"
                       value={pendingStartDate}
                       onChange={(e) => setPendingStartDate(e.target.value)}
-                      disabled={insightsLoading || metricsLoading}
                       className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
                     />
                   </div>
@@ -1644,7 +1643,6 @@ export default function ChannelAnalysisHubPage() {
                       type="date"
                       value={pendingEndDate}
                       onChange={(e) => setPendingEndDate(e.target.value)}
-                      disabled={insightsLoading || metricsLoading}
                       className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
                     />
                   </div>
@@ -1663,7 +1661,6 @@ export default function ChannelAnalysisHubPage() {
                   step="5"
                   value={pendingMaxPosts}
                   onChange={(e) => setPendingMaxPosts(Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
-                  disabled={insightsLoading || metricsLoading}
                   className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
                 />
                 <p className="text-xs text-slate-500 mt-2">
@@ -1674,8 +1671,7 @@ export default function ChannelAnalysisHubPage() {
               <div className="flex items-center justify-end gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => !(insightsLoading || metricsLoading) && setShowMaxPostsModal(false)}
-                  disabled={insightsLoading || metricsLoading}
+                  onClick={() => setShowMaxPostsModal(false)}
                   className="px-5 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 border border-slate-200"
                 >
                   Bỏ qua

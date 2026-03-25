@@ -226,6 +226,9 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
         ([key]) => (report.trafficToday?.[key as keyof TrafficToday] as number || 0) > 0
     );
 
+    const pos = (report.position || '').toLowerCase();
+    const isLeaderReport = pos === 'leader' || pos.includes('leader') || pos.includes('trưởng nhóm');
+
     return (
         <div
             className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${isOnTime
@@ -336,17 +339,19 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                             </div>
 
                             {/* Video Count Section */}
-                            <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between border border-blue-100">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-blue-500 text-base">📹</span>
-                                    <span className="text-xs font-bold text-blue-600 uppercase">
-                                        SỐ VIDEO EDIT SỬ DỤNG &gt;50% SOURCE TỰ QUAY:
+                            {!isLeaderReport && (
+                                <div className="bg-blue-50 rounded-xl p-3 flex items-center justify-between border border-blue-100">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-blue-500 text-base">📹</span>
+                                        <span className="text-xs font-bold text-blue-600 uppercase">
+                                            SỐ VIDEO EDIT SỬ DỤNG &gt;50% SOURCE TỰ QUAY:
+                                        </span>
+                                    </div>
+                                    <span className="text-2xl font-bold text-blue-600 leading-none">
+                                        {report.videoCount}
                                     </span>
                                 </div>
-                                <span className="text-2xl font-bold text-blue-600 leading-none">
-                                    {report.videoCount}
-                                </span>
-                            </div>
+                            )}
 
                             {/* Questions Section */}
                             <div className="space-y-2.5">
