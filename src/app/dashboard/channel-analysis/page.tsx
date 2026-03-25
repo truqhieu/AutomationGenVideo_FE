@@ -132,6 +132,14 @@ export default function ChannelAnalysisHubPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [larkSyncing, setLarkSyncing] = useState(false);
+  const [modalWarning, setModalWarning] = useState('');
+
+  // Clear modal warning when loading ends
+  useEffect(() => {
+    if (!insightsLoading && !metricsLoading) {
+      setModalWarning('');
+    }
+  }, [insightsLoading, metricsLoading]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -291,16 +299,30 @@ export default function ChannelAnalysisHubPage() {
       setInsights(data);
       const scanned = json.scanned_count ?? json.total_posts ?? null;
 
+      // Only overwrite scannedCount on a fresh analysis. When viewing cached data
+      // (forceRefresh=false), preserve existing stored count to avoid flickering.
       try {
-        localStorage.setItem(
-          getAnalysisKey(targetRow.platform, username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned }),
-        );
+        const key = getAnalysisKey(targetRow.platform, username);
+        const existing = localStorage.getItem(key);
+        const prev = existing ? JSON.parse(existing) : {};
+        const hasValidStored = typeof prev.scannedCount === 'number' && prev.scannedCount > 0;
+        const hasValidNew = typeof scanned === 'number' && scanned > 0;
+        const newCount = (forceRefresh && hasValidNew) ? scanned
+          : hasValidStored ? prev.scannedCount
+          : (hasValidNew ? scanned : prev.scannedCount ?? null);
+        localStorage.setItem(key, JSON.stringify({
+          ...prev,
+          status: 'completed',
+          analyzedAt: forceRefresh ? Date.now() : (prev.analyzedAt || Date.now()),
+          startDate,
+          endDate,
+          scannedCount: newCount,
+        }));
       } catch (_) {}
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
+      setInsightsError((e?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i ph\u00e2n t\u00edch k\u00eanh').toString());
       // Revert 'analyzing' on error so row doesn't stay stuck
       try {
         const key = getAnalysisKey(targetRow.platform, username);
@@ -378,6 +400,7 @@ export default function ChannelAnalysisHubPage() {
       setPendingEndDate('');
       setPendingMaxPosts(30);
     }
+    setModalWarning('');
     setShowMaxPostsModal(true);
   }, []);
 
@@ -415,19 +438,30 @@ export default function ChannelAnalysisHubPage() {
       setInsights(data);
       const scanned = json.scanned_count ?? json.total_posts ?? null;
 
-      // Mark analyzed in localStorage (table status)
+      // Only overwrite scannedCount on a fresh analysis. When viewing cached data
+      // (forceRefresh=false), preserve existing stored count to avoid flickering.
       try {
-        localStorage.setItem(
-          getAnalysisKey('FACEBOOK', username),
-          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned })
-        );
+        const key = getAnalysisKey('FACEBOOK', username);
+        const existing = localStorage.getItem(key);
+        const prev = existing ? JSON.parse(existing) : {};
+        const hasValidStored = typeof prev.scannedCount === 'number' && prev.scannedCount > 0;
+        const hasValidNew = typeof scanned === 'number' && scanned > 0;
+        const newCount = (forceRefresh && hasValidNew) ? scanned
+          : hasValidStored ? prev.scannedCount
+          : (hasValidNew ? scanned : prev.scannedCount ?? null);
+        localStorage.setItem(key, JSON.stringify({
+          ...prev,
+          status: 'completed',
+          analyzedAt: forceRefresh ? Date.now() : (prev.analyzedAt || Date.now()),
+          startDate,
+          endDate,
+          scannedCount: newCount,
+        }));
       } catch (_) {}
       setStorageTick((x) => x + 1);
-      // Refresh table to reflect status/time
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
-      // Revert 'analyzing' on error
+      setInsightsError((e?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i ph\u00e2n t\u00edch k\u00eanh').toString());
       try {
         const key = getAnalysisKey('FACEBOOK', username);
         const raw = localStorage.getItem(key);
@@ -469,19 +503,21 @@ export default function ChannelAnalysisHubPage() {
       }
       if (json.success === false && json.error) throw new Error(json.error);
       setChannelMetrics(json.metrics || null);
-      // Also persist scanned_count if insights haven't done so yet
-      const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
-      if (scanned !== null) {
-        try {
-          const key = getAnalysisKey('FACEBOOK', username);
-          const existing = localStorage.getItem(key);
-          const prev = existing ? JSON.parse(existing) : {};
-          // Only update if scannedCount not yet set or this is newer
-          if (!prev.scannedCount) {
-            localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
-            setStorageTick((x) => x + 1);
-          }
-        } catch (_) {}
+      // Only update scannedCount from metrics if this is a fresh analysis (forceRefresh=true)
+      // and scannedCount hasn't been set by insights yet — avoids race/flickering
+      if (forceRefresh) {
+        const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
+        if (scanned !== null) {
+          try {
+            const key = getAnalysisKey('FACEBOOK', username);
+            const existing = localStorage.getItem(key);
+            const prev = existing ? JSON.parse(existing) : {};
+            if (!prev.scannedCount) {
+              localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
+              setStorageTick((x) => x + 1);
+            }
+          } catch (_) {}
+        }
       }
     } catch (e: any) {
       setMetricsError((e?.message || 'Không thể tải thống kê kênh').toString());
@@ -836,11 +872,13 @@ export default function ChannelAnalysisHubPage() {
     openFacebookInsightsPopup(row, pendingStartDate, pendingEndDate);
 
     setTimeout(() => {
-      const isRerun = pendingMode === 'rerun';
+      // Always forceRefresh when triggered from the date-range modal (both 'open' and 'rerun').
+      // forceRefresh=false is only used by onView (view cached results without re-fetching).
+      const forceRefresh = true;
       if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
+        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts)]);
       } else {
-        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
+        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts)]);
       }
     }, 0);
   }, [openFacebookInsightsPopup, pendingEndDate, pendingMode, pendingRow, pendingStartDate, pendingMaxPosts, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
@@ -1600,7 +1638,7 @@ export default function ChannelAnalysisHubPage() {
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget && !(insightsLoading || metricsLoading)) {
+            if (e.target === e.currentTarget) {
               setShowMaxPostsModal(false);
             }
           }}
@@ -1617,7 +1655,7 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
               <button
-                onClick={() => !(insightsLoading || metricsLoading) && setShowMaxPostsModal(false)}
+                onClick={() => setShowMaxPostsModal(false)}
                 className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -1668,21 +1706,26 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-1">
+              {modalWarning && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                  ⚠️ {modalWarning}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowMaxPostsModal(false)}
-                  className="px-5 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 border border-slate-200"
+                  onClick={() => {
+                    if (insightsLoading || metricsLoading) {
+                      setModalWarning('Đang phân tích trang khác. Vui lòng đợi đến khi hoàn thành.');
+                      return;
+                    }
+                    confirmDateRangeAndRun();
+                  }}
+                  className="w-full px-6 py-4 rounded-xl font-black text-base text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  Bỏ qua
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDateRangeAndRun}
-                  disabled={insightsLoading || metricsLoading}
-                  className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
-                >
-                  Tiếp tục
+                  {(insightsLoading || metricsLoading) && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {insightsLoading || metricsLoading ? 'Đang phân tích kênh khác...' : 'Tiếp tục phân tích'}
                 </button>
               </div>
             </div>
