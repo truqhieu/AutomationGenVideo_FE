@@ -54,7 +54,8 @@ export default function FacebookChannelsPage() {
 
   const loadFacebookChannels = async (): Promise<ChannelProfile[]> => {
     const token = localStorage.getItem('auth_token');
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const apiUrl = baseUrl.replace(/\/$/, '');
     const response = await fetch(`${apiUrl}/tracked-channels/my-channels?platform=FACEBOOK`, {
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -118,6 +118,7 @@ export default function ChannelAnalysisHubPage() {
   const [pendingStartDate, setPendingStartDate] = useState<string>('');
   const [pendingEndDate, setPendingEndDate] = useState<string>('');
   const [pendingMaxPosts, setPendingMaxPosts] = useState<number>(30);
+  const [pendingMaxPostsStr, setPendingMaxPostsStr] = useState<string>('30');
 
   // Create Report Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -166,13 +167,13 @@ export default function ChannelAnalysisHubPage() {
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) setHiddenIds(new Set(arr.map((x) => String(x))));
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   const persistHidden = useCallback((next: Set<string>) => {
     try {
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next)));
-    } catch (_) {}
+    } catch (_) { }
     setHiddenIds(new Set(next));
     setStorageTick((x) => x + 1);
   }, []);
@@ -194,8 +195,9 @@ export default function ChannelAnalysisHubPage() {
   const hasRealInsights = useCallback((i: Record<string, string>) => {
     if (!i || Object.keys(i).length === 0) return false;
     const vals = Object.values(i);
-    const isPlaceholder = (v?: string) => {
-      const s = (v || '').trim();
+    const isPlaceholder = (v?: any) => {
+      if (typeof v !== 'string') return true;
+      const s = v.trim();
       if (!s) return true;
       return s.startsWith('Chưa đủ dữ liệu');
     };
@@ -289,7 +291,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) {}
+      } catch (_) { }
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
@@ -309,7 +311,7 @@ export default function ChannelAnalysisHubPage() {
         const hasValidNew = typeof scanned === 'number' && scanned > 0;
         const newCount = (forceRefresh && hasValidNew) ? scanned
           : hasValidStored ? prev.scannedCount
-          : (hasValidNew ? scanned : prev.scannedCount ?? null);
+            : (hasValidNew ? scanned : prev.scannedCount ?? null);
         localStorage.setItem(key, JSON.stringify({
           ...prev,
           status: 'completed',
@@ -318,7 +320,7 @@ export default function ChannelAnalysisHubPage() {
           endDate,
           scannedCount: newCount,
         }));
-      } catch (_) {}
+      } catch (_) { }
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
@@ -332,7 +334,7 @@ export default function ChannelAnalysisHubPage() {
           localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
           setStorageTick((x) => x + 1);
         }
-      } catch (_) {}
+      } catch (_) { }
     } finally {
       setInsightsLoading(false);
     }
@@ -364,7 +366,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) {}
+      } catch (_) { }
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
@@ -424,7 +426,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) {}
+      } catch (_) { }
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString();
         const friendly =
@@ -448,7 +450,7 @@ export default function ChannelAnalysisHubPage() {
         const hasValidNew = typeof scanned === 'number' && scanned > 0;
         const newCount = (forceRefresh && hasValidNew) ? scanned
           : hasValidStored ? prev.scannedCount
-          : (hasValidNew ? scanned : prev.scannedCount ?? null);
+            : (hasValidNew ? scanned : prev.scannedCount ?? null);
         localStorage.setItem(key, JSON.stringify({
           ...prev,
           status: 'completed',
@@ -457,7 +459,7 @@ export default function ChannelAnalysisHubPage() {
           endDate,
           scannedCount: newCount,
         }));
-      } catch (_) {}
+      } catch (_) { }
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
@@ -470,7 +472,7 @@ export default function ChannelAnalysisHubPage() {
           localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
           setStorageTick((x) => x + 1);
         }
-      } catch (_) {}
+      } catch (_) { }
     } finally {
       setInsightsLoading(false);
     }
@@ -496,7 +498,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) {}
+      } catch (_) { }
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
@@ -516,7 +518,7 @@ export default function ChannelAnalysisHubPage() {
               localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
               setStorageTick((x) => x + 1);
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
     } catch (e: any) {
@@ -537,7 +539,7 @@ export default function ChannelAnalysisHubPage() {
         sDate = parsed?.startDate || '';
         eDate = parsed?.endDate || '';
       }
-    } catch (_) {}
+    } catch (_) { }
 
     openFacebookInsightsPopup(row, sDate, eDate);
 
@@ -651,7 +653,7 @@ export default function ChannelAnalysisHubPage() {
         const at = parts.find((p) => p.startsWith('@'));
         if (at) return at.replace('@', '');
       }
-    } catch (_) {}
+    } catch (_) { }
     return clean.replace('@', '');
   };
 
@@ -713,7 +715,7 @@ export default function ChannelAnalysisHubPage() {
             getAnalysisKey(platform, username),
             JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, startDate: createStartDate, endDate: createEndDate, createdAt: Date.now() })
           );
-        } catch (_) {}
+        } catch (_) { }
         await fetchAll();
         setShowCreateModal(false);
         setNewInput('');
@@ -729,7 +731,7 @@ export default function ChannelAnalysisHubPage() {
         const existing = localStorage.getItem(key);
         const prev = existing ? JSON.parse(existing) : {};
         localStorage.setItem(key, JSON.stringify({ ...prev, status: prev?.status || 'not_analyzed', startDate: createStartDate, endDate: createEndDate }));
-      } catch (_) {}
+      } catch (_) { }
       setStorageTick((x) => x + 1);
 
       setShowCreateModal(false);
@@ -787,19 +789,28 @@ export default function ChannelAnalysisHubPage() {
           if (parsed?.status === 'analyzing') {
             status = 'analyzing';
             analyzingAtMs = parsed?.analyzingAt;
+            // Show the user-selected max posts count while analyzing (instead of profile total)
+            if (typeof parsed?.maxPosts === 'number' && parsed.maxPosts > 0) {
+              scannedCount = parsed.maxPosts;
+            }
           }
           if (parsed?.status === 'scheduled') {
             status = 'scheduled';
             scheduledAtMs = parsed?.scheduledAt || null;
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
-      // Build countLabel: show scannedCount (from analysis) or availableCount — never show dates
+      // Build countLabel:
+      // - completed: use actual scannedCount from backend
+      // - analyzing: use maxPosts (user's selection) to avoid showing total profile count
+      // - not_analyzed: use profile's availableCount as a hint only
       let countLabel = '-';
       if (scannedCount !== null) {
-        countLabel = `${scannedCount} bài`;
-      } else if (availableCount > 0) {
+        countLabel = status === 'analyzing'
+          ? `${scannedCount} bài (đang quét...)`
+          : `${scannedCount} bài`;
+      } else if (status === 'not_analyzed' && availableCount > 0) {
         countLabel = `${availableCount} bài`;
       }
 
@@ -840,9 +851,9 @@ export default function ChannelAnalysisHubPage() {
       if (!existing) {
         localStorage.setItem(key, JSON.stringify({ status: 'not_analyzed', analyzedAt: null }));
       }
-    } catch (_) {}
+    } catch (_) { }
 
-    try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) {}
+    try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) { }
 
     openDateRangeChooser(row, row.status === 'completed' ? 'rerun' : 'open');
   };
@@ -864,7 +875,7 @@ export default function ChannelAnalysisHubPage() {
         maxPosts: pendingMaxPosts,
         analyzingAt: Date.now(),
       }));
-    } catch (_) {}
+    } catch (_) { }
     setStorageTick((x) => x + 1);
 
     setShowMaxPostsModal(false);
@@ -912,8 +923,8 @@ export default function ChannelAnalysisHubPage() {
       return (
         <div className="relative inline-flex items-center w-36 h-6 rounded-full bg-indigo-50 border border-indigo-200 overflow-hidden shadow-sm">
           {/* Progress fill */}
-          <div 
-            className="absolute left-0 top-0 bottom-0 bg-indigo-500 transition-all duration-1000 ease-linear" 
+          <div
+            className="absolute left-0 top-0 bottom-0 bg-indigo-500 transition-all duration-1000 ease-linear"
             style={{ width: `${percent}%` }}
           />
           {/* Text overlap */}
@@ -933,24 +944,23 @@ export default function ChannelAnalysisHubPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600">
-          <BarChart3 className="w-5 h-5" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-900">Phân tích kênh</h2>
-          <p className="text-sm text-slate-500">Tổng hợp kênh theo dõi: Facebook, Instagram, TikTok</p>
-        </div>
+          <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900">Phân tích kênh</h2>
+            <p className="text-sm text-slate-500">Tổng hợp kênh theo dõi: Facebook, Instagram, TikTok</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden md:inline-flex items-center gap-1 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
             <button
               type="button"
               onClick={() => setPlatformFilter('FACEBOOK')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
-                platformFilter === 'FACEBOOK'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'FACEBOOK'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
+                }`}
               title="Lọc Facebook"
             >
               <span className="inline-flex items-center gap-2">
@@ -961,11 +971,10 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('INSTAGRAM')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
-                platformFilter === 'INSTAGRAM'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'INSTAGRAM'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
+                }`}
               title="Lọc Instagram"
             >
               <span className="inline-flex items-center gap-2">
@@ -976,11 +985,10 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('TIKTOK')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
-                platformFilter === 'TIKTOK'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'TIKTOK'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
+                }`}
               title="Lọc TikTok"
             >
               <span className="inline-flex items-center gap-2">
@@ -991,11 +999,10 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('ALL')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
-                platformFilter === 'ALL'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'ALL'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-              }`}
+                }`}
               title="Tất cả nền tảng"
             >
               Tất cả
@@ -1035,44 +1042,40 @@ export default function ChannelAnalysisHubPage() {
           <button
             type="button"
             onClick={() => setPlatformFilter('FACEBOOK')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
-              platformFilter === 'FACEBOOK'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'FACEBOOK'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-            }`}
+              }`}
           >
             FB
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('INSTAGRAM')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
-              platformFilter === 'INSTAGRAM'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'INSTAGRAM'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-            }`}
+              }`}
           >
             IG
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('TIKTOK')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
-              platformFilter === 'TIKTOK'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'TIKTOK'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-            }`}
+              }`}
           >
             TikTok
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('ALL')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
-              platformFilter === 'ALL'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'ALL'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-            }`}
+              }`}
           >
             ALL
           </button>
@@ -1159,11 +1162,10 @@ export default function ChannelAnalysisHubPage() {
                         ) : (
                           <button
                             onClick={() => onAnalyze(r)}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${
-                              r.status === 'completed' || r.status === 'scheduled'
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${r.status === 'completed' || r.status === 'scheduled'
                                 ? 'bg-slate-900 text-white hover:bg-slate-800'
                                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            }`}
+                              }`}
                           >
                             {r.status === 'completed' ? <RefreshCcw className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
                             {r.status === 'completed' ? 'Phân tích lại' : r.status === 'scheduled' ? 'Mở phân tích' : 'Phân tích'}
@@ -1243,22 +1245,20 @@ export default function ChannelAnalysisHubPage() {
                   <button
                     type="button"
                     onClick={() => setSourceMode('existing')}
-                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${
-                      sourceMode === 'existing'
+                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${sourceMode === 'existing'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     Chọn kênh có sẵn
                   </button>
                   <button
                     type="button"
                     onClick={() => setSourceMode('new')}
-                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${
-                      sourceMode === 'new'
+                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${sourceMode === 'new'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     Add kênh mới
                   </button>
@@ -1489,11 +1489,11 @@ export default function ChannelAnalysisHubPage() {
                           <p className="text-xs text-slate-500 mb-2">Số bài có hashtag #A1…#A5 trong khoảng thời gian đã quét</p>
                           <div className="h-52">
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart 
+                              <BarChart
                                 data={channelMetrics?.hashtag_stats?.length ? channelMetrics.hashtag_stats : [
-                                  {hashtag: 'A1', count: 0}, {hashtag: 'A2', count: 0}, {hashtag: 'A3', count: 0}, {hashtag: 'A4', count: 0}, {hashtag: 'A5', count: 0}
-                                ]} 
-                                layout="vertical" 
+                                  { hashtag: 'A1', count: 0 }, { hashtag: 'A2', count: 0 }, { hashtag: 'A3', count: 0 }, { hashtag: 'A4', count: 0 }, { hashtag: 'A5', count: 0 }
+                                ]}
+                                layout="vertical"
                                 margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
                               >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -1502,7 +1502,7 @@ export default function ChannelAnalysisHubPage() {
                                 <Tooltip formatter={(v: any) => [`${v} bài`, 'Số bài']} />
                                 <Bar dataKey="count" name="Số bài" radius={[0, 6, 6, 0]}>
                                   {(channelMetrics?.hashtag_stats || []).map((_: any, i: number) => (
-                                    <Cell key={i} fill={['#6366f1','#0ea5e9','#10b981','#f59e0b','#f43f5e'][i % 5]} />
+                                    <Cell key={i} fill={['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e'][i % 5]} />
                                   ))}
                                 </Bar>
                               </BarChart>
@@ -1541,21 +1541,21 @@ export default function ChannelAnalysisHubPage() {
                         {(channelMetrics?.top_viral_posts || [])
                           .slice(0, viralShowAll ? 10 : 5)
                           .map((p: any, idx: number) => (
-                          <div key={p?.id || p?.url || idx} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-700">#{idx + 1}</p>
-                              <a href={p?.url} target="_blank" className="text-sm text-blue-600 hover:underline break-all line-clamp-2">
-                                {p?.url}
-                              </a>
-                              {p?.text ? <p className="text-xs text-slate-600 mt-1 line-clamp-2">{p.text}</p> : null}
+                            <div key={p?.id || p?.url || idx} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-700">#{idx + 1}</p>
+                                <a href={p?.url} target="_blank" className="text-sm text-blue-600 hover:underline break-all line-clamp-2">
+                                  {p?.url}
+                                </a>
+                                {p?.text ? <p className="text-xs text-slate-600 mt-1 line-clamp-2">{p.text}</p> : null}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs text-slate-600">Like: {p?.likes || 0}</p>
+                                <p className="text-xs text-slate-600">Cmt: {p?.comments || 0}</p>
+                                <p className="text-xs text-slate-600">Share: {p?.shares || 0}</p>
+                              </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-xs text-slate-600">Like: {p?.likes || 0}</p>
-                              <p className="text-xs text-slate-600">Cmt: {p?.comments || 0}</p>
-                              <p className="text-xs text-slate-600">Share: {p?.shares || 0}</p>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                       {(channelMetrics?.top_viral_posts || []).length > 5 && (
                         <div className="pt-3 flex justify-end">
@@ -1697,8 +1697,18 @@ export default function ChannelAnalysisHubPage() {
                   min="5"
                   max="100"
                   step="5"
-                  value={pendingMaxPosts}
-                  onChange={(e) => setPendingMaxPosts(Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
+                  value={pendingMaxPostsStr}
+                  onChange={(e) => {
+                    // Allow empty string while typing so backspace works
+                    setPendingMaxPostsStr(e.target.value);
+                  }}
+                  onBlur={(e) => {
+                    // On blur: clamp to [5, 100], fallback to 30 if empty
+                    const parsed = parseInt(e.target.value);
+                    const clamped = Number.isNaN(parsed) ? 30 : Math.min(100, Math.max(5, parsed));
+                    setPendingMaxPosts(clamped);
+                    setPendingMaxPostsStr(String(clamped));
+                  }}
                   className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
                 />
                 <p className="text-xs text-slate-500 mt-2">
