@@ -38,13 +38,14 @@ interface SidebarProps {
 function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
   const { token } = useAuthStore();
   const [allowedMenuIds, setAllowedMenuIds] = useState<string[]>([]);
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
 
   // Fetch dynamic permissions
   useEffect(() => {
     const fetchPermissions = async () => {
       if (!token) return;
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/role-permissions/my-tabs`, {
+        const response = await fetch(`${apiBaseUrl}/role-permissions/my-tabs`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.ok) {
@@ -56,7 +57,7 @@ function SmartSidebar({ user, onLogout, isPinned, onTogglePin }: SidebarProps) {
       }
     };
     fetchPermissions();
-  }, [token]);
+  }, [token, apiBaseUrl]);
 
   return (
     <Suspense fallback={<div className="w-[80px] bg-[#0f172a]" />}>
