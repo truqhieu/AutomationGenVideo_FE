@@ -145,15 +145,22 @@ export default function DailyReportWorkspace() {
                 <div className="grid grid-cols-4 gap-3 items-start">
                   {PLATFORMS.map((p) => {
                     const isActive = activePlatforms.includes(p.id);
-                    const hasData = traffic[p.id] || videoLinks[p.id];
                     return (
                       <div key={p.id} className="flex flex-col gap-2">
                         <button
                           type="button"
-                          onClick={() => setActivePlatforms(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])}
-                          className={`relative rounded-xl border p-4 text-center transition-all flex flex-col items-center justify-center ${isActive || hasData ? 'border-[#10B981] bg-[#F0FDF4] shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+                          onClick={() => {
+                            if (isActive) {
+                              setActivePlatforms(prev => prev.filter(id => id !== p.id));
+                              setTraffic(prev => { const n = {...prev}; delete n[p.id]; return n; });
+                              setVideoLinks(prev => { const n = {...prev}; delete n[p.id]; return n; });
+                            } else {
+                              setActivePlatforms(prev => [...prev, p.id]);
+                            }
+                          }}
+                          className={`relative rounded-xl border p-4 text-center transition-all flex flex-col items-center justify-center ${isActive ? 'border-[#10B981] bg-[#F0FDF4] shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
                         >
-                          {(isActive || hasData) && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-[#10B981]" />}
+                          {isActive && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-[#10B981]" />}
                           <p className={`font-black text-[28px] mb-1 ${!isActive && p.id === 'tt' ? 'text-slate-800' : ''}`} style={isActive || p.id !== 'tt' ? { color: p.color } : {}}>{p.symbol}</p>
                           <p className="text-[11px] text-slate-600 font-medium">{p.label}</p>
                         </button>
@@ -162,7 +169,7 @@ export default function DailyReportWorkspace() {
                           <div className="mt-1 border border-[#6EE7B7] rounded-xl p-3 bg-white shadow-sm relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                             <label className="text-[11px] text-[#047857] font-bold mb-1.5 block">Traffic (lượt xem)</label>
                             <input
-                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none"
+                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 font-bold bg-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none"
                               placeholder="Nhập số liệu traffic"
                               value={traffic[p.id] || ''}
                               onChange={(e) => setTraffic((prev) => ({ ...prev, [p.id]: e.target.value }))}
@@ -170,7 +177,7 @@ export default function DailyReportWorkspace() {
 
                             <label className="text-[11px] text-[#047857] font-bold mt-4 mb-1.5 block">Link video báo cáo</label>
                             <input
-                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none"
+                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 font-bold bg-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none"
                               placeholder="Link Google Sheets, Docs..."
                               value={videoLinks[p.id] || ''}
                               onChange={(e) => setVideoLinks((prev) => ({ ...prev, [p.id]: e.target.value }))}
