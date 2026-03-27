@@ -2,8 +2,6 @@
 
 import { CalendarDays, ClipboardList } from "lucide-react";
 import { useMemo, useState } from "react";
-import { TEAM_REGION_OPTIONS } from "../admin/admin-team-perf-data";
-import { useAdminOverviewFilters } from "../admin/AdminOverviewFiltersContext";
 import { DashboardFilters } from "../shared/DashboardFilters";
 import { LeaderDailyKpiTable } from "./LeaderDailyKpiTable";
 import { LeaderGaugeCards } from "./LeaderGaugeCards";
@@ -13,7 +11,6 @@ function calendarMonthKey(d = new Date()) {
 }
 
 export function LeaderKpiTab() {
-  const f = useAdminOverviewFilters();
   const [kpiMonth, setKpiMonth] = useState(calendarMonthKey);
 
   const monthLabel = useMemo(() => {
@@ -45,13 +42,9 @@ export function LeaderKpiTab() {
       <DashboardFilters
         accent="amber"
         className="mb-4"
+        showTeamFallback={false}
         showPlatformChannelFallback={false}
         monthPicker={{ value: kpiMonth, onChange: setKpiMonth }}
-        adminTeamRegion={{
-          teamRegionId: f.teamRegionId,
-          onTeamRegionIdChange: f.setTeamRegionId,
-          options: TEAM_REGION_OPTIONS,
-        }}
       />
 
       <LeaderGaugeCards />
