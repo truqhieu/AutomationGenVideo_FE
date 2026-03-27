@@ -305,10 +305,17 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </span>
             </div>
 
-            {/* Content for Submitted/Pending/Traffic */}
-            {(report.questions && report.questions.length > 0) || hasTraffic ? (
+            {/* Content: Nếu chưa báo cáo thì CHỈ hiển thị card nhỏ gọn, không render data trống */}
+            {isUnreported ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-8 text-gray-400 bg-red-50/50 rounded-xl border-2 border-dashed border-red-200">
+                    <span className="text-3xl mb-2">📋</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-red-400">
+                        Chưa báo cáo hôm nay
+                    </span>
+                </div>
+            ) : (report.questions && report.questions.length > 0) || hasTraffic ? (
                 <div className="space-y-3 flex-1">
-                    {/* Traffic Chart - Move to TOP for better visibility if report is missing */}
+                    {/* Traffic Chart */}
                     {hasTraffic && report.trafficToday && (
                         <div className="mb-2">
                             <TrafficChart trafficToday={report.trafficToday} />
@@ -383,10 +390,10 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     )}
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <span className="text-4xl mb-2">📋</span>
-                    <span className="text-sm font-medium uppercase tracking-widest opacity-60">
-                        Chưa báo cáo hôm nay
+                <div className="flex-1 flex flex-col items-center justify-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <span className="text-3xl mb-2">📋</span>
+                    <span className="text-xs font-black uppercase tracking-widest opacity-60">
+                        Chưa có dữ liệu
                     </span>
                 </div>
             )}

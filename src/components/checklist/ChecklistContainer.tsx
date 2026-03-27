@@ -199,7 +199,9 @@ const ChecklistContainer = ({
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
     const [isReadOnly, setIsReadOnly] = useState(false);
-    const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({});
+    const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({} as any);
+    const [hasFetchedReport, setHasFetchedReport] = useState(false);   // đã fetch xong chưa?
+    const [hasReportData, setHasReportData] = useState(false);          // có dữ liệu báo cáo chưa?
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -259,6 +261,8 @@ const ChecklistContainer = ({
             if (!user?.email || !reportDate) return;
 
             // Reset current form before fetching
+            setHasFetchedReport(false);
+            setHasReportData(false);
             setIsReadOnly(false);
             setChecks(initialChecks());
             setDetails(initialDetails());
@@ -266,8 +270,7 @@ const ChecklistContainer = ({
             setTraffic(initialTrafficData());
             setTrafficChannels(initialTrafficChannels());
             setEntryDetails({});
-            setHistoricalEvidences({});
-
+            setHistoricalEvidences({} as any);
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -300,6 +303,7 @@ const ChecklistContainer = ({
                     }
 
                     if (data && (data.report || data.traffic)) {
+                        setHasReportData(true);
                         if (data.report) {
                             const answers = (data.report.answers || {}) as Record<string, any>;
 
@@ -412,6 +416,8 @@ const ChecklistContainer = ({
                 }
             } catch (err) {
                 console.error('Failed to fetch report details:', err);
+            } finally {
+                setHasFetchedReport(true);
             }
         };
 
@@ -707,13 +713,12 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {((reportDate < new Date().toLocaleDateString('en-CA')) || (status.message && !status.is_open && !showOnlyTraffic)) && (
+            {/* Chỉ hiện cảnh báo khi xem ngày quá khứ - đã bỏ check khung giờ */}
+            {(reportDate < new Date().toLocaleDateString('en-CA')) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
-                        {reportDate < new Date().toLocaleDateString('en-CA') 
-                            ? `Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.` 
-                            : status.message}
+                        {`Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.`}
                     </p>
                 </div>
             )}
@@ -737,6 +742,29 @@ const ChecklistContainer = ({
             */}
 
             <div className="grid grid-cols-1 gap-4 items-stretch">
+
+                {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && !showOnlyTraffic && (
+                    <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                        <span className="text-2xl">📋</span>
+                        <div>
+                            <p className="text-sm font-black text-orange-700 uppercase tracking-tight">Chưa báo cáo</p>
+                            <p className="text-xs text-orange-500 font-medium">Bạn chưa gửi báo cáo công việc hôm nay. Hãy điền vào form bên dưới nhé!</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Số liệu traffic chưa báo cáo */}
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && showOnlyTraffic && (
+                    <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                        <span className="text-2xl">📊</span>
+                        <div>
+                            <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic</p>
+                            <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
                 {(showForm12 || showForm3) && !showOnlyTraffic && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
@@ -801,10 +829,9 @@ const ChecklistContainer = ({
                         onClick={handleSubmit}
                         disabled={
                             loading ||
-                            isReadOnly ||
-                            (!status.is_open && !showOnlyTraffic)
-                            // Tạm tắt rule chặn thời gian báo cáo Traffic
-                            // || (showOnlyTraffic && !isAdmin && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (new Date().getHours() < 17 || new Date().getHours() >= 18))
+                            isReadOnly
+                            // ⚠️ TẠM BỎ CHECK KHUNG GIỜ - bật lại bằng cách uncommnet dòng dưới
+                            // || (!status.is_open && !showOnlyTraffic)
                         }
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
