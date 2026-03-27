@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Loader2, Video, RotateCcw, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,10 +13,7 @@ import {
   isGlobalHrSyncBusy,
   waitUntilGlobalHrIdle,
 } from '@/lib/global-hr-sync';
-import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
-import {
-  channelAwaitingStats,
-} from '@/lib/poll-tracked-channels-stats';
+import { enrichTrackedChannelApify, enrichStaleChannelsIfNeeded } from '@/lib/enrich-tracked-channel-apify';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
@@ -51,6 +48,9 @@ export default function TrackedChannelsPage() {
   const [listLoading, setListLoading] = useState(true);
   const [longSyncHint, setLongSyncHint] = useState(false);
   const [globalHrBusy, setGlobalHrBusy] = useState(false);
+  // Track only channels that were NEWLY imported in this session — only these show Apify loading spinner
+  const [newlyImportedUsernames, setNewlyImportedUsernames] = useState<Set<string>>(new Set());
+  const bgRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadPlatformChannels = async (): Promise<ChannelProfile[]> => {
     try {
@@ -83,26 +83,65 @@ export default function TrackedChannelsPage() {
           setLongSyncHint(false);
           return;
         }
+
+        // BƯỚC 1: Hiện data cũ ngay lập tức
+        const existingList = await loadPlatformChannels();
+        if (cancelled) return;
+        setChannels(existingList);
+        setListLoading(false); // Xong — bỏ spinner toàn trang
+
+        // BƯỚC 2: Sync Lark nền (chỉ khi cooldown cho phép)
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        const list = await loadPlatformChannels();
-        if (cancelled) return;
-        setChannels(list);
-        if (!cancelled && r && r.imported > 0) {
-          toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
-        }
-        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
-          let tries = 0;
-          const bgRefresh = async () => {
-            if (cancelled || tries >= 30) return;
-            tries++;
-            await new Promise((res) => setTimeout(res, 15000));
-            if (cancelled) return;
-            const updated = await loadPlatformChannels();
-            if (!cancelled) setChannels(updated);
-            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) bgRefresh();
-          };
-          bgRefresh();
+
+        if (r && r.imported > 0) {
+          const updatedList = await loadPlatformChannels();
+          if (cancelled) return;
+
+          const existingUsernames = new Set(existingList.map((c) => c.username));
+          const newUsernames = new Set(
+            updatedList
+              .filter((c) => !existingUsernames.has(c.username))
+              .map((c) => c.username)
+          );
+
+          setChannels(updatedList);
+          if (newUsernames.size > 0) {
+            setNewlyImportedUsernames(newUsernames);
+            toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark) — đang lấy số liệu...`, { duration: 5000 });
+
+            let tries = 0;
+            const pollNewChannels = async () => {
+              if (cancelled || tries >= 20) {
+                setNewlyImportedUsernames(new Set());
+                return;
+              }
+              tries++;
+              await new Promise((res) => setTimeout(res, 15000));
+              if (cancelled) return;
+              const latest = await loadPlatformChannels();
+              if (!cancelled) setChannels(latest);
+              const stillPending = latest.filter(
+                (c) => newUsernames.has(c.username) && !c.total_followers && !c.total_likes && !c.total_videos
+              );
+              if (!cancelled && stillPending.length > 0) {
+                bgRefreshRef.current = setTimeout(pollNewChannels, 0);
+              } else {
+                setNewlyImportedUsernames(new Set());
+              }
+            };
+            pollNewChannels();
+          }
+        } else {
+          // Auto-enrich các kênh cũ chưa có data (cooldown 30 phút)
+          const staleResult = await enrichStaleChannelsIfNeeded();
+          if (!cancelled && staleResult && staleResult.enriched > 0) {
+            const fresh = await loadPlatformChannels();
+            if (!cancelled) {
+              setChannels(fresh);
+              toast.success(`Đã cập nhật số liệu ${staleResult.enriched} kênh`, { duration: 3000 });
+            }
+          }
         }
       } catch {
         /* ignore */
@@ -112,6 +151,7 @@ export default function TrackedChannelsPage() {
     })();
     return () => {
       cancelled = true;
+      if (bgRefreshRef.current) clearTimeout(bgRefreshRef.current);
     };
   }, [platform]);
 
@@ -502,9 +542,9 @@ export default function TrackedChannelsPage() {
                   </button>
                 </div>
 
-                {/* Stats Wrapper */}
+                {/* Stats Wrapper — chỉ hiện spinner nếu kênh này MỚI được import trong session này */}
                 <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-5">
-                  {channelAwaitingStats(channel) && (
+                  {newlyImportedUsernames.has(channel.username) && (
                     <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
                       <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
                       <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-200">AI đang quét số liệu...</span>

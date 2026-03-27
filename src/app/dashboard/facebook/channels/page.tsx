@@ -1,7 +1,7 @@
 'use client';
 // Force rebuild for UI update
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,10 +13,7 @@ import {
   isGlobalHrSyncBusy,
   waitUntilGlobalHrIdle,
 } from '@/lib/global-hr-sync';
-import { enrichTrackedChannelApify } from '@/lib/enrich-tracked-channel-apify';
-import {
-  channelAwaitingStats,
-} from '@/lib/poll-tracked-channels-stats';
+import { enrichTrackedChannelApify, enrichStaleChannelsIfNeeded } from '@/lib/enrich-tracked-channel-apify';
 import ChannelsPlatformSwitcher from '@/components/channels/ChannelsPlatformSwitcher';
 
 interface ChannelProfile {
@@ -51,6 +48,9 @@ export default function FacebookChannelsPage() {
   const [hrSyncing, setHrSyncing] = useState(false);
   const [longSyncHint, setLongSyncHint] = useState(false);
   const [globalHrBusy, setGlobalHrBusy] = useState(false);
+  // Track only channels that were NEWLY imported in this session — only these show Apify loading spinner
+  const [newlyImportedUsernames, setNewlyImportedUsernames] = useState<Set<string>>(new Set());
+  const bgRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadFacebookChannels = async (): Promise<ChannelProfile[]> => {
     const token = localStorage.getItem('auth_token');
@@ -86,26 +86,139 @@ export default function FacebookChannelsPage() {
           setLongSyncHint(false);
           return;
         }
+
+        // BƯỚC 1: Hiện data cũ ngay lập tức
+        const existingList = await loadFacebookChannels();
+        if (cancelled) return;
+        setChannels(existingList);
+        setLoadingInitial(false);
+
+        // BƯỚC 2: Sync Lark nền
         const r = await syncFromLarkAssignmentIfStale();
         if (cancelled) return;
-        const list = await loadFacebookChannels();
-        if (cancelled) return;
-        setChannels(list);
-        if (!cancelled && r && r.imported > 0) {
-          toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark)`, { duration: 4000 });
-        }
-        if (r && r.imported > 0 && list.some((c) => channelAwaitingStats(c))) {
-          let tries = 0;
-          const bgRefresh = async () => {
-            if (cancelled || tries >= 30) return;
-            tries++;
-            await new Promise((res) => setTimeout(res, 15000));
-            if (cancelled) return;
-            const updated = await loadFacebookChannels();
-            if (!cancelled) setChannels(updated);
-            if (!cancelled && updated.some((c) => channelAwaitingStats(c))) bgRefresh();
-          };
-          bgRefresh();
+
+        if (r && r.imported > 0) {
+          // Có kênh mới: load lại list và đánh dấu kênh mới để hiện spinner chờ Apify
+          const updatedList = await loadFacebookChannels();
+          if (cancelled) return;
+
+          // Tìm các kênh mới xuất hiện sau sync
+          const existingUsernames = new Set(existingList.map((c) => c.username));
+          const newUsernames = new Set(
+            updatedList
+              .filter((c) => !existingUsernames.has(c.username))
+              .map((c) => c.username)
+          );
+
+          setChannels(updatedList);
+          if (newUsernames.size > 0) {
+            setNewlyImportedUsernames(newUsernames);
+            toast.success(`Đã thêm ${r.imported} kênh từ HR (Lark) — đang lấy số liệu...`, { duration: 5000 });
+
+            // Chỉ poll cho các kênh mới — dừng khi tất cả đã có data
+            let tries = 0;
+            const pollNewChannels = async () => {
+              if (cancelled || tries >= 20) {
+                setNewlyImportedUsernames(new Set()); // Xoá spinner sau tối đa 5 phút
+                return;
+              }
+              tries++;
+              await new Promise((res) => setTimeout(res, 15000));
+              if (cancelled) return;
+              const latest = await loadFacebookChannels();
+              if (!cancelled) setChannels(latest);
+              // Dừng poll khi không còn kênh nào cần chờ
+              const stillPending = latest.filter(
+                (c) => newUsernames.has(c.username) && !c.total_followers && !c.total_likes && !c.total_videos
+              );
+              if (!cancelled && stillPending.length > 0) {
+                bgRefreshRef.current = setTimeout(pollNewChannels, 0);
+              } else {
+                setNewlyImportedUsernames(new Set()); // Xong → bỏ spinner
+              }
+            };
+            pollNewChannels();
+          } else {
+            setChannels(updatedList);
+          }
+        } else {
+          // BƯỚC 3: Auto-enrich các kênh cũ nhưng có data bị 0
+          // Sử dụng Polling để dù bạn có chuyển trang và chuyển lại thì vẫn duy trì spinner nếu nó chưa làm xong
+          const zeroStatsCh = existingList.filter((c: any) => !c.total_followers && !c.total_likes && !c.total_videos);
+          if (zeroStatsCh.length > 0) {
+            const historyMapStr = sessionStorage.getItem('auto_0stats_run_map') || '{}';
+            const historyMap = JSON.parse(historyMapStr);
+            const now = Date.now();
+            
+            const toRun: any[] = [];
+            const idsToSpin: string[] = [];
+            
+            zeroStatsCh.forEach((c: any) => {
+              const lastRun = historyMap[c.username];
+              // Chạy lại nếu chưa từng chạy, hoặc chạy quá 5 phút chưa xong (bị lỗi / kẹt)
+              if (!lastRun || now - lastRun > 5 * 60 * 1000) { 
+                toRun.push(c);
+                idsToSpin.push(c.username);
+                historyMap[c.username] = now;
+              } else {
+                idsToSpin.push(c.username); // Chỉ hiển thị quay, không cào lại vì vẫn đang do tiến trình Apify xử lý
+              }
+            });
+
+            if (idsToSpin.length > 0) {
+              setNewlyImportedUsernames(prev => new Set([...Array.from(prev), ...idsToSpin]));
+              sessionStorage.setItem('auto_0stats_run_map', JSON.stringify(historyMap));
+
+              // Dùng cơ chế Polling định kỳ để update UI
+              let pollTries = 0;
+              let currentSpinIds = [...idsToSpin];
+              const pollZeroChannels = async () => {
+                if (cancelled || pollTries >= 40) { // Timeout sau 40 lần * 10s = ~6 phút
+                  setNewlyImportedUsernames(prev => {
+                    const ns = new Set(prev);
+                    currentSpinIds.forEach(u => ns.delete(u));
+                    return ns;
+                  });
+                  return;
+                }
+                pollTries++;
+                await new Promise((res) => setTimeout(res, 10000));
+                if (cancelled) return;
+                
+                const latest = await loadFacebookChannels();
+                if (cancelled) return;
+                setChannels(latest);
+                
+                // Kiểm tra xem kênh nào đã có số liệu rồi thì tháo spinner cho kênh đó
+                const stillPending = latest.filter((c: any) => currentSpinIds.includes(c.username) && !c.total_followers && !c.total_likes && !c.total_videos);
+                if (stillPending.length < currentSpinIds.length) {
+                  const pendingIds = stillPending.map((c: any) => c.username);
+                  const finishedIds = currentSpinIds.filter(u => !pendingIds.includes(u));
+                  currentSpinIds = pendingIds;
+                  
+                  setNewlyImportedUsernames(prev => {
+                    const ns = new Set(prev);
+                    finishedIds.forEach(u => ns.delete(u));
+                    return ns;
+                  });
+                }
+                
+                if (currentSpinIds.length > 0 && !cancelled) {
+                  bgRefreshRef.current = setTimeout(pollZeroChannels, 0) as any;
+                }
+              };
+              pollZeroChannels();
+            }
+
+            if (toRun.length > 0 && !cancelled) {
+              toast.success(`Hệ thống đang phục hồi lấy số liệu cho ${toRun.length} kênh bị trắng...`, { duration: 5000 });
+              toRun.forEach((c: any, idx: number) => {
+                setTimeout(() => {
+                  if (!cancelled && c.id) enrichTrackedChannelApify(c.id).catch(() => {});
+                }, idx * 10000); // Lên lịch cào cách nhau 10s. Polling loop phía trên sẽ lo việc cập nhật UI.
+              });
+            }
+          }
         }
       } catch {
         /* ignore */
@@ -115,6 +228,7 @@ export default function FacebookChannelsPage() {
     })();
     return () => {
       cancelled = true;
+      if (bgRefreshRef.current) clearTimeout(bgRefreshRef.current);
     };
   }, []);
 
@@ -174,7 +288,8 @@ export default function FacebookChannelsPage() {
         body: JSON.stringify({
           platform: 'facebook',
           username: username,
-          max_results: 3 // Quick scan for profile info
+          max_results: 3, // Quick scan for profile info
+          force_refresh: true // Bắt buộc lấy mới, không dùng cache (tránh lỗi 0 follower)
         })
       });
 
@@ -509,9 +624,9 @@ export default function FacebookChannelsPage() {
                     </div>
                   </div>
 
-                  {/* Stats Wrapper */}
+                  {/* Stats Wrapper — hiển thị spinner khi mới import hoặc đang click refresh */}
                   <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-4">
-                    {channelAwaitingStats(channel) && (
+                    {(newlyImportedUsernames.has(channel.username) || refreshingIds.has(channel.username)) && (
                       <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
                         <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
                         <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-100">AI đang quét số liệu...</span>
