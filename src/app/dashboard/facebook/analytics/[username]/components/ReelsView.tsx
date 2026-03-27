@@ -31,12 +31,17 @@ export const ReelsAnalytics: React.FC<ReelsAnalyticsProps> = ({ data, loading })
       ? ((totalLikes + totalComments + totalShares) / totalViews) * 100 
       : 0;
     
+    const totalEngagement = totalLikes + totalComments + totalShares;
+    const avgEngagement = totalItems > 0 ? totalEngagement / totalItems : 0;
+
     return {
       totalLikes,
       totalComments,
       totalViews,
       totalShares,
       totalItems,
+      totalEngagement,
+      avgEngagement: avgEngagement.toFixed(1),
       engagementRate: engagementRate.toFixed(2)
     };
   }, [filteredData]);
@@ -95,19 +100,19 @@ export const ReelsAnalytics: React.FC<ReelsAnalyticsProps> = ({ data, loading })
             </div>
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                  <div className="flex items-center gap-3 mb-3">
-                     <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><MessageCircle className="w-5 h-5" /></div>
-                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Bình luận</span>
+                     <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><TrendingUp className="w-5 h-5" /></div>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Tổng Tương tác</span>
                 </div>
-                <div className="text-3xl font-black text-amber-600 tracking-tight">{stats.totalComments.toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 mt-1">Tổng bình luận video</div>
+                <div className="text-3xl font-black text-amber-600 tracking-tight">{stats.totalEngagement.toLocaleString()}</div>
+                 <div className="text-[10px] text-slate-400 mt-1">Tổng Likes+Cmt+Share video</div>
             </div>
              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                  <div className="flex items-center gap-3 mb-3">
-                     <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Share2 className="w-5 h-5" /></div>
-                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Lượt chia sẻ</span>
+                     <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><BarChart3 className="w-5 h-5" /></div>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Tương tác / Video</span>
                 </div>
-                <div className="text-3xl font-black text-purple-600 tracking-tight">{stats.totalShares.toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 mt-1">Tổng chia sẻ video</div>
+                <div className="text-3xl font-black text-indigo-600 tracking-tight">{stats.avgEngagement}</div>
+                 <div className="text-[10px] text-slate-400 mt-1">Trung bình tương tác mỗi video</div>
             </div>
         </div>
 
@@ -148,6 +153,15 @@ export const ReelsAnalytics: React.FC<ReelsAnalyticsProps> = ({ data, loading })
                             />
                             <Tooltip 
                                 contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.15)'}}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="views" 
+                                stroke="#10b981" 
+                                strokeWidth={2}
+                                fillOpacity={0.05} 
+                                fill="#10b981" 
+                                name="Lượt xem"
                             />
                             <Area 
                                 type="monotone" 
@@ -221,10 +235,11 @@ export const ReelsAnalytics: React.FC<ReelsAnalyticsProps> = ({ data, loading })
                                         </a>
                                     </div>
 
-                                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-semibold z-10">
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex items-center gap-1"><ThumbsUp className="w-3.5 h-3.5" /> {item.likes}</span>
-                                            <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {item.comments}</span>
+                                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-bold z-10 drop-shadow-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex items-center gap-1 bg-black/20 backdrop-blur-sm px-1.5 py-0.5 rounded-md"><Video className="w-3 h-3" /> {item.views.toLocaleString()}</span>
+                                            <span className="flex items-center gap-1 bg-black/20 backdrop-blur-sm px-1.5 py-0.5 rounded-md"><ThumbsUp className="w-3 h-3" /> {item.likes}</span>
+                                            <span className="flex items-center gap-1 bg-black/20 backdrop-blur-sm px-1.5 py-0.5 rounded-md"><MessageCircle className="w-3 h-3" /> {item.comments}</span>
                                         </div>
                                     </div>
 
