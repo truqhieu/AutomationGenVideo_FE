@@ -13,6 +13,8 @@ import {
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DashboardFilters } from "../shared/DashboardFilters";
+import { TEAM_REGION_OPTIONS } from "./admin-team-perf-data";
+import { useAdminOverviewFilters } from "./AdminOverviewFiltersContext";
 
 function calendarMonthKey(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -31,6 +33,7 @@ const initialTargets: { vn: A5Vals; global: A5Vals } = {
 };
 
 export function AdminKpiTab() {
+  const f = useAdminOverviewFilters();
   const [kpiMonth, setKpiMonth] = useState(calendarMonthKey);
   const [targets, setTargets] = useState(initialTargets);
 
@@ -76,7 +79,13 @@ export function AdminKpiTab() {
       <DashboardFilters
         accent="indigo"
         className="mb-4"
+        showPlatformChannelFallback={false}
         monthPicker={{ value: kpiMonth, onChange: setKpiMonth }}
+        adminTeamRegion={{
+          teamRegionId: f.teamRegionId,
+          onTeamRegionIdChange: f.setTeamRegionId,
+          options: TEAM_REGION_OPTIONS,
+        }}
       />
 
       {!isCurrentMonth ? (

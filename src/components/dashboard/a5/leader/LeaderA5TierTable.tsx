@@ -1,4 +1,8 @@
+"use client";
+
 import { BarChart3, Circle } from "lucide-react";
+import { useMemo } from "react";
+import { useAdminOverviewFilters } from "../admin/AdminOverviewFiltersContext";
 
 function TierLabel({ tier, colorClass }: { tier: string; colorClass: string }) {
   return (
@@ -9,13 +13,48 @@ function TierLabel({ tier, colorClass }: { tier: string; colorClass: string }) {
   );
 }
 
+const BASE_ROWS: {
+  tier: string;
+  colorClass: string;
+  video: number;
+  vs: string;
+  trafficK: number;
+  eff: string;
+}[] = [
+  { tier: "A1", colorClass: "text-a1", video: 72, vs: "+8", trafficK: 680, eff: "9,444/v" },
+  { tier: "A2", colorClass: "text-a2", video: 57, vs: "+5", trafficK: 210, eff: "3,684/v" },
+  { tier: "A3", colorClass: "text-a3", video: 37, vs: "-2", trafficK: 125, eff: "3,378/v" },
+  { tier: "A4", colorClass: "text-a4", video: 26, vs: "+6", trafficK: 65, eff: "2,500/v" },
+  { tier: "A5", colorClass: "text-a5", video: 16, vs: "-1", trafficK: 20, eff: "1,250/v" },
+];
+
+function formatTrafficK(k: number) {
+  if (k >= 1000) return `${(k / 1000).toFixed(2)}M`;
+  return `${Math.round(k)}K`;
+}
+
 export function LeaderA5TierTable() {
+  const { growthChartScaleFactor: sf } = useAdminOverviewFilters();
+
+  const rows = useMemo(
+    () =>
+      BASE_ROWS.map((r) => ({
+        ...r,
+        videoDisp: Math.max(0, Math.round(r.video * sf)),
+        trafficDisp: formatTrafficK(r.trafficK * sf),
+      })),
+    [sf],
+  );
+
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center gap-2 text-base font-bold">
         <BarChart3 className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
         Hiệu suất 5A — Team VN
       </div>
+      <p className="mb-3 text-xs text-gray-500">
+        Video &amp; traffic nhân theo tỉ lệ bộ lọc Team + nền tảng + kênh.
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] text-sm">
           <thead>
@@ -28,51 +67,21 @@ export function LeaderA5TierTable() {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-50">
-              <td className="py-2">
-                <TierLabel tier="A1" colorClass="text-a1" />
-              </td>
-              <td className="text-center font-semibold">72</td>
-              <td className="text-center text-emerald-600">+8</td>
-              <td>680K</td>
-              <td className="text-right font-semibold">9,444/v</td>
-            </tr>
-            <tr className="border-b border-gray-50">
-              <td className="py-2">
-                <TierLabel tier="A2" colorClass="text-a2" />
-              </td>
-              <td className="text-center font-semibold">57</td>
-              <td className="text-center text-emerald-600">+5</td>
-              <td>210K</td>
-              <td className="text-right font-semibold">3,684/v</td>
-            </tr>
-            <tr className="border-b border-gray-50">
-              <td className="py-2">
-                <TierLabel tier="A3" colorClass="text-a3" />
-              </td>
-              <td className="text-center font-semibold">37</td>
-              <td className="text-center text-red-500">-2</td>
-              <td>125K</td>
-              <td className="text-right font-semibold">3,378/v</td>
-            </tr>
-            <tr className="border-b border-gray-50">
-              <td className="py-2">
-                <TierLabel tier="A4" colorClass="text-a4" />
-              </td>
-              <td className="text-center font-semibold">26</td>
-              <td className="text-center text-emerald-600">+6</td>
-              <td>65K</td>
-              <td className="text-right font-semibold">2,500/v</td>
-            </tr>
-            <tr className="border-b border-gray-50">
-              <td className="py-2">
-                <TierLabel tier="A5" colorClass="text-a5" />
-              </td>
-              <td className="text-center font-semibold">16</td>
-              <td className="text-center text-red-500">-1</td>
-              <td>20K</td>
-              <td className="text-right font-semibold">1,250/v</td>
-            </tr>
+            {rows.map((r) => (
+              <tr key={r.tier} className="border-b border-gray-50">
+                <td className="py-2">
+                  <TierLabel tier={r.tier} colorClass={r.colorClass} />
+                </td>
+                <td className="text-center font-semibold">{r.videoDisp}</td>
+                <td
+                  className={`text-center ${r.vs.startsWith("-") ? "text-red-500" : "text-emerald-600"}`}
+                >
+                  {r.vs}
+                </td>
+                <td>{r.trafficDisp}</td>
+                <td className="text-right font-semibold">{r.eff}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

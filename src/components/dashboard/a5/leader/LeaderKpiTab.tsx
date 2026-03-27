@@ -1,9 +1,26 @@
-import { CalendarDays, ClipboardList, TrendingUp } from "lucide-react";
-import { GrowthChart5A } from "../shared/GrowthChart5A";
+"use client";
+
+import { CalendarDays, ClipboardList } from "lucide-react";
+import { useMemo, useState } from "react";
+import { TEAM_REGION_OPTIONS } from "../admin/admin-team-perf-data";
+import { useAdminOverviewFilters } from "../admin/AdminOverviewFiltersContext";
+import { DashboardFilters } from "../shared/DashboardFilters";
 import { LeaderDailyKpiTable } from "./LeaderDailyKpiTable";
 import { LeaderGaugeCards } from "./LeaderGaugeCards";
 
+function calendarMonthKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function LeaderKpiTab() {
+  const f = useAdminOverviewFilters();
+  const [kpiMonth, setKpiMonth] = useState(calendarMonthKey);
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = kpiMonth.split("-");
+    return `tháng ${Number(m)}/${y}`;
+  }, [kpiMonth]);
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -11,7 +28,7 @@ export function LeaderKpiTab() {
           <div className="flex items-start gap-2 text-base font-bold text-amber-900">
             <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden />
             <span>
-              KPI tháng từ Admin: <span className="text-amber-700">300 video</span> (A1:90 · A2:75 · A3:75 ·
+              KPI {monthLabel} từ Admin: <span className="text-amber-700">300 video</span> (A1:90 · A2:75 · A3:75 ·
               A4:45 · A5:15)
             </span>
           </div>
@@ -25,44 +42,20 @@ export function LeaderKpiTab() {
         </span>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-gray-500">Lọc:</span>
-        <select className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-amber-400">
-          <option>Tất cả Team</option>
-          <option>Nội dung VN</option>
-          <option>Toàn cầu</option>
-        </select>
-      </div>
+      <DashboardFilters
+        accent="amber"
+        className="mb-4"
+        showPlatformChannelFallback={false}
+        monthPicker={{ value: kpiMonth, onChange: setKpiMonth }}
+        adminTeamRegion={{
+          teamRegionId: f.teamRegionId,
+          onTeamRegionIdChange: f.setTeamRegionId,
+          options: TEAM_REGION_OPTIONS,
+        }}
+      />
 
       <LeaderGaugeCards />
       <LeaderDailyKpiTable />
-      <GrowthChart5A
-        accent="leader"
-        title="Tăng trưởng KPI theo tháng"
-        footer={
-          <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
-            <span>
-              Tổng T3: <b className="text-gray-900">317 video</b>
-            </span>
-            <span>·</span>
-            <span className="inline-flex items-center gap-0.5">
-              vs T2:{" "}
-              <b className="inline-flex items-center gap-0.5 text-emerald-600">
-                <TrendingUp className="h-3 w-3 shrink-0" aria-hidden />
-                +41 video (+15%)
-              </b>
-            </span>
-            <span>·</span>
-            <span className="inline-flex items-center gap-0.5">
-              vs T1:{" "}
-              <b className="inline-flex items-center gap-0.5 text-emerald-600">
-                <TrendingUp className="h-3 w-3 shrink-0" aria-hidden />
-                +89 video (+39%)
-              </b>
-            </span>
-          </div>
-        }
-      />
     </div>
   );
 }

@@ -1,10 +1,14 @@
-import { Grid3x3, Info } from "lucide-react";
+"use client";
 
-const ROWS = [
-  { w: "Tuần 1", cells: ["18", "14", "8", "5", "3"] },
-  { w: "Tuần 2", cells: ["22", "16", "10", "7", "4"] },
-  { w: "Tuần 3", cells: ["26", "20", "12", "9", "5"] },
-  { w: "Tuần 4", cells: ["23", "23", "14", "12", "6"] },
+import { Grid3x3, Info } from "lucide-react";
+import { useMemo } from "react";
+import { useAdminOverviewFilters } from "../admin/AdminOverviewFiltersContext";
+
+const ROWS_BASE = [
+  { w: "Tuần 1", cells: [18, 14, 8, 5, 3] },
+  { w: "Tuần 2", cells: [22, 16, 10, 7, 4] },
+  { w: "Tuần 3", cells: [26, 20, 12, 9, 5] },
+  { w: "Tuần 4", cells: [23, 23, 14, 12, 6] },
 ];
 
 const CELL_CLASS: [string, string, string, string, string][] = [
@@ -15,12 +19,24 @@ const CELL_CLASS: [string, string, string, string, string][] = [
 ];
 
 export function LeaderHeatmap() {
+  const { growthChartScaleFactor: sf } = useAdminOverviewFilters();
+
+  const rows = useMemo(
+    () =>
+      ROWS_BASE.map((row) => ({
+        w: row.w,
+        cells: row.cells.map((c) => String(Math.max(0, Math.round(c * sf)))),
+      })),
+    [sf],
+  );
+
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2 text-base font-bold">
         <Grid3x3 className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
         Heatmap sản xuất 4 tuần
       </div>
+      <p className="mb-3 text-xs text-gray-500">Ô số theo tỉ lệ bộ lọc hiện tại.</p>
       <table className="w-full text-center text-sm">
         <thead>
           <tr>
@@ -33,7 +49,7 @@ export function LeaderHeatmap() {
           </tr>
         </thead>
         <tbody>
-          {ROWS.map((row, ri) => (
+          {rows.map((row, ri) => (
             <tr key={row.w}>
               <td className="py-2 text-left text-xs text-gray-500">{row.w}</td>
               {row.cells.map((c, ci) => (
