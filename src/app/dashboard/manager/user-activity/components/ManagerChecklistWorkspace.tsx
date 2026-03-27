@@ -50,21 +50,24 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
 
   const OUTSTANDING_ISSUES = [
-    { n: 'Nguyễn Văn A', c: 3, init: 'N', bg: 'bg-amber-500', t: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.',
+    {
+      n: 'Nguyễn Văn A', c: 3, init: 'N', bg: 'bg-amber-500', t: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.',
       details: [
         { q: 'Hôm nay bạn đã làm gì?', a: 'Sản xuất 3 video TikTok về kiến thức nghiệp vụ. Gặp một số khó khăn với tool render AI.' },
         { q: 'Vấn đề cần hỗ trợ?', a: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.' },
         { q: 'Kế hoạch ngày mai?', a: 'Xin team production hỗ trợ quay chung nội dung.' }
       ]
     },
-    { n: 'Hoàng Văn D', c: 2, init: 'H', bg: 'bg-orange-500', t: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.',
+    {
+      n: 'Hoàng Văn D', c: 2, init: 'H', bg: 'bg-orange-500', t: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.',
       details: [
         { q: 'Hôm nay bạn đã làm gì?', a: 'Sản xuất 2 video YouTube ngắn gọn.' },
         { q: 'Vấn đề cần hỗ trợ?', a: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.' },
         { q: 'Video nào đạt trên 50% source?', a: 'Video series kiến thức cơ bản đạt 60% source gốc.' }
       ]
     },
-    { n: 'Nguyễn Văn B', c: 5, init: 'N', bg: 'bg-amber-500', t: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.',
+    {
+      n: 'Nguyễn Văn B', c: 5, init: 'N', bg: 'bg-amber-500', t: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.',
       details: [
         { q: 'Hôm nay bạn đã làm gì?', a: 'Brainstorm ý tưởng concept mới.' },
         { q: 'Ý tưởng content mới?', a: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.' }
@@ -82,16 +85,16 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
 
   // Dummy data for tables as in mockup
   const DUMMY_REPORTS = [
-    { id: 1, name: 'Nguyễn Văn A', position: 'Content Creator', time: '17:23', status: 'Đang làm', progress: 7, video: 6, traffic: '125K', a1:3, a2:2, a3:1, a4:1, a5:1 },
-    { id: 2, name: 'Phạm Thị C', position: 'Content Creator', time: '17:45', status: 'Đang làm', progress: 9, video: 4, traffic: '89K', a1:2, a2:2, a3:1, a4:1, a5:0 },
-    { id: 3, name: 'Trần Văn F', position: 'Content Creator', time: '18:30', status: 'Hoàn thành', progress: 10, video: 5, traffic: '112K', a1:2, a2:2, a3:1, a4:1, a5:1 },
-    { id: 4, name: 'Đặng Thị G', position: 'Content Creator', time: '19:05', status: 'Hoàn thành', progress: 10, video: 8, traffic: '156K', a1:3, a2:2, a3:2, a4:1, a5:1 },
-    { id: 5, name: 'Ngô Văn I', position: 'Content Creator', time: '19:45', status: 'Đang làm', progress: 6, video: 3, traffic: '78K', a1:2, a2:1, a3:1, a4:1, a5:0 },
-    { id: 6, name: 'Hoàng Văn D', position: 'Content Creator', time: '20:15', status: 'Trễ hạn', progress: 4, video: 2, traffic: '45K', a1:1, a2:1, a3:1, a4:1, a5:0 },
-    { id: 7, name: 'Phan Văn K', position: 'Content Creator', time: '20:30', status: 'Trễ hạn', progress: 3, video: 1, traffic: '20K', a1:1, a2:0, a3:0, a4:0, a5:0 },
-    { id: 8, name: 'Lê Thị E', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1:0, a2:0, a3:0, a4:0, a5:0 },
-    { id: 9, name: 'Bùi Văn H', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1:0, a2:0, a3:0, a4:0, a5:0 },
-    { id: 10, name: 'Trương Thị M', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1:0, a2:0, a3:0, a4:0, a5:0 },
+    { id: 1, name: 'Nguyễn Văn A', position: 'Content Creator', time: '17:23', status: 'Đang làm', progress: 7, video: 6, traffic: '125K', a1: 3, a2: 2, a3: 1, a4: 1, a5: 1 },
+    { id: 2, name: 'Phạm Thị C', position: 'Content Creator', time: '17:45', status: 'Đang làm', progress: 9, video: 4, traffic: '89K', a1: 2, a2: 2, a3: 1, a4: 1, a5: 0 },
+    { id: 3, name: 'Trần Văn F', position: 'Content Creator', time: '18:30', status: 'Hoàn thành', progress: 10, video: 5, traffic: '112K', a1: 2, a2: 2, a3: 1, a4: 1, a5: 1 },
+    { id: 4, name: 'Đặng Thị G', position: 'Content Creator', time: '19:05', status: 'Hoàn thành', progress: 10, video: 8, traffic: '156K', a1: 3, a2: 2, a3: 2, a4: 1, a5: 1 },
+    { id: 5, name: 'Ngô Văn I', position: 'Content Creator', time: '19:45', status: 'Đang làm', progress: 6, video: 3, traffic: '78K', a1: 2, a2: 1, a3: 1, a4: 1, a5: 0 },
+    { id: 6, name: 'Hoàng Văn D', position: 'Content Creator', time: '20:15', status: 'Trễ hạn', progress: 4, video: 2, traffic: '45K', a1: 1, a2: 1, a3: 1, a4: 1, a5: 0 },
+    { id: 7, name: 'Phan Văn K', position: 'Content Creator', time: '20:30', status: 'Trễ hạn', progress: 3, video: 1, traffic: '20K', a1: 1, a2: 0, a3: 0, a4: 0, a5: 0 },
+    { id: 8, name: 'Lê Thị E', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1: 0, a2: 0, a3: 0, a4: 0, a5: 0 },
+    { id: 9, name: 'Bùi Văn H', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1: 0, a2: 0, a3: 0, a4: 0, a5: 0 },
+    { id: 10, name: 'Trương Thị M', position: 'Content Creator', time: '--', status: 'Chưa nộp', progress: 0, video: 0, traffic: '--', a1: 0, a2: 0, a3: 0, a4: 0, a5: 0 },
   ];
 
   const displayReports = reports.length > 0 ? reports.map((r, i) => {
@@ -121,32 +124,20 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
       <PortalToHeader>
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setActiveTab('checklist')}
               className={`${activeTab === 'checklist' ? 'bg-[#2563EB] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'} px-5 py-2.5 rounded-xl font-bold text-[14px] flex items-center gap-2.5 shadow-sm transition-colors`}
             >
               <span className="text-base">📋</span> Checklist nhóm {activeTab === 'checklist' && <span className="bg-[#3B82F6] text-white text-[10px] px-2 py-0.5 rounded-md font-black tracking-wider ml-1 shadow-inner">ACTIVE</span>}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('leader')}
               className={`${activeTab === 'leader' ? 'bg-[#2563EB] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'} px-5 py-2.5 rounded-xl font-bold text-[14px] flex items-center gap-2.5 shadow-sm transition-colors`}
             >
               <span className="text-base">👑</span> Đánh giá Leader {activeTab === 'leader' && <span className="bg-[#3B82F6] text-white text-[10px] px-2 py-0.5 rounded-md font-black tracking-wider ml-1 shadow-inner">ACTIVE</span>}
             </button>
           </div>
-          {activeTab === 'leader' && (
-            <div className="flex items-center gap-4 fixed right-[280px]">
-               <div className="flex items-center gap-2 text-[12px] font-bold text-slate-500">
-                  <Clock className="w-4 h-4 text-[#3B82F6]" /> Đánh giá ngày: <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-md">23/03/2026</span>
-               </div>
-               <div className="flex items-center gap-2 text-[12px] font-bold text-slate-500 border-l border-slate-200 pl-4">
-                  Trạng thái: <span className="bg-[#F97316] text-white px-2.5 py-1 rounded shadow-sm flex items-center gap-1.5 uppercase text-[10px] tracking-wider"><Bell className="w-3 h-3" /> CHƯA GỬI</span>
-               </div>
-               <div className="flex items-center gap-1.5 text-[12px] font-bold text-slate-500 border-l border-slate-200 pl-4">
-                  <AlertCircle className="w-4 h-4 text-red-500" /> Hạn gửi: 23:59 hôm nay
-               </div>
-            </div>
-          )}
+
         </div>
       </PortalToHeader>
 
@@ -174,7 +165,7 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                 <h2 className="text-4xl font-black text-slate-800">{avgProgress}<span className="text-xl text-slate-400">/10</span></h2>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5">
-                <div className="bg-[#3B82F6] h-1.5 rounded-full" style={{ width: `${(avgProgress/10)*100}%` }}></div>
+                <div className="bg-[#3B82F6] h-1.5 rounded-full" style={{ width: `${(avgProgress / 10) * 100}%` }}></div>
               </div>
               <p className="text-[10px] text-slate-400 mt-1 font-medium">{avgProgress * 10}% đã hoàn thành</p>
             </div>
@@ -197,16 +188,16 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
               </div>
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input 
-                  type="text" 
-                  placeholder="Tìm theo tên..." 
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-md outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] w-full sm:w-56 transition-all" 
+                  className="pl-8 pr-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-md outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] w-full sm:w-56 transition-all"
                 />
               </div>
             </div>
-            
+
             <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
               <table className="w-full text-xs relative">
                 <thead className="bg-[#F8FAFC] sticky top-0 z-10 shadow-sm">
@@ -232,7 +223,7 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                       <td className="py-3 px-4 text-center text-slate-400 font-medium">{i + 1}</td>
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white ${r.status==='Chưa nộp'?'bg-slate-400':'bg-amber-500'}`}>{r.name.charAt(0)}</div>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white ${r.status === 'Chưa nộp' ? 'bg-slate-400' : 'bg-amber-500'}`}>{r.name.charAt(0)}</div>
                           <div>
                             <p className="font-bold text-[13px] text-slate-800">{r.name}</p>
                             <p className="text-[10px] text-slate-400">{r.position}</p>
@@ -241,21 +232,19 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                       </td>
                       <td className="py-3 px-2 text-[11px] font-medium text-slate-500">{r.time}</td>
                       <td className="py-3 px-2">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          r.status === 'Đang làm' || r.status === 'Hoàn thành' ? 'bg-[#ECFDF5] text-[#059669]' : 
-                          r.status === 'Trễ hạn' ? 'bg-[#FFF7ED] text-[#C2410C]' : 'bg-[#FEF2F2] text-[#DC2626]'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            r.status === 'Đang làm' || r.status === 'Hoàn thành' ? 'bg-[#10B981]' : 
-                            r.status === 'Trễ hạn' ? 'bg-[#F97316]' : 'bg-[#EF4444]'
-                          }`}></span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${r.status === 'Đang làm' || r.status === 'Hoàn thành' ? 'bg-[#ECFDF5] text-[#059669]' :
+                            r.status === 'Trễ hạn' ? 'bg-[#FFF7ED] text-[#C2410C]' : 'bg-[#FEF2F2] text-[#DC2626]'
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${r.status === 'Đang làm' || r.status === 'Hoàn thành' ? 'bg-[#10B981]' :
+                              r.status === 'Trễ hạn' ? 'bg-[#F97316]' : 'bg-[#EF4444]'
+                            }`}></span>
                           {r.status}
                         </span>
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-full ${r.progress>=10?'bg-[#10B981]':r.progress===0?'bg-transparent':r.progress<7?'bg-[#F97316]':'bg-[#3B82F6]'}`} style={{ width: `${(r.progress/10)*100}%` }}></div>
+                            <div className={`h-full ${r.progress >= 10 ? 'bg-[#10B981]' : r.progress === 0 ? 'bg-transparent' : r.progress < 7 ? 'bg-[#F97316]' : 'bg-[#3B82F6]'}`} style={{ width: `${(r.progress / 10) * 100}%` }}></div>
                           </div>
                           <span className="text-[11px] font-bold text-slate-700 w-8">{r.progress}/10</span>
                         </div>
@@ -344,8 +333,8 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                 <div className="mt-6">
                   <p className="text-[10px] font-bold text-slate-400 mb-2">So sánh KPI tháng 3:</p>
                   <div className="h-4 flex rounded-sm overflow-hidden gap-0.5">
-                    <div className="bg-[#818CF8]" style={{width: '40%'}}></div>
-                    <div className="bg-[#A78BFA]" style={{width: '20%'}}></div>
+                    <div className="bg-[#818CF8]" style={{ width: '40%' }}></div>
+                    <div className="bg-[#A78BFA]" style={{ width: '20%' }}></div>
                   </div>
                 </div>
               </div>
@@ -456,7 +445,7 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                     <Send className="w-4 h-4" /> Nhắc tất cả chưa nộp (2)
                   </button>
                 </div>
-                
+
                 <div className="mt-5 space-y-2 text-[10px] text-slate-500 italic">
                   <p className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-300 rounded-full"></div> Chụp tổng hợp</p>
                   <p className="flex items-center gap-1.5"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Số nhóm — Dashboard real-time</p>
@@ -469,172 +458,184 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
           </div>
         </div>
       ) : (
-        <div className="animate-in fade-in duration-300 max-w-[920px] mx-auto">
-           {/* Leader Form */}
-           <div className="rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden mt-6 relative z-10">
-              <div className="bg-gradient-to-r from-[#3B82F6] to-[#6366F1] px-6 py-5">
-                 <h2 className="text-white font-black text-[22px] flex items-center gap-2 mb-1.5"><span className="text-2xl">👑</span> Đánh giá tổng thể nhóm Nội dung VN</h2>
-                 <p className="text-blue-100 text-[13px] font-medium tracking-wide">Leader trả lời 5 câu đánh giá cuối ngày. Có 2 câu bắt buộc (L1, L4).</p>
+        <div className="animate-in fade-in duration-300 max-w-[1300px] mx-auto">
+          {/* Leader Form */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden mt-6 relative z-10">
+            <div className="bg-gradient-to-r from-[#3B82F6] to-[#6366F1] px-6 py-5">
+              <h2 className="text-white font-black text-[22px] flex items-center gap-2 mb-1.5"><span className="text-2xl">👑</span> Đánh giá tổng thể nhóm Nội dung VN</h2>
+              <p className="text-blue-100 text-[16px] font-medium tracking-wide">Leader trả lời 5 câu đánh giá cuối ngày. Có 2 câu bắt buộc (L1, L4).</p>
+            </div>
+            {/* Status bar */}
+            <div className="flex items-center gap-6 flex-wrap px-8 py-4 border-b border-slate-200 bg-slate-50/60">
+              <div className="flex items-center gap-2.5 text-[16px] font-bold text-slate-600">
+                <Clock className="w-5 h-5 text-[#3B82F6]" /> Đánh giá ngày: <span className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-black tracking-tight">23/03/2026</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-[16px] font-bold text-slate-600 border-l border-slate-200 pl-6">
+                Trạng thái: <span className="bg-[#F97316] text-white px-3 py-1.5 rounded-xl shadow-md flex items-center gap-2 uppercase text-[12px] tracking-widest font-black"><Bell className="w-4 h-4" /> CHƯA GỬI</span>
+              </div>
+              <div className="flex items-center gap-2 text-[16px] font-bold text-slate-600 border-l border-slate-200 pl-6">
+                <AlertCircle className="w-5 h-5 text-red-500" /> Hạn gửi: <span className="text-red-600 font-black">23:59 hôm nay</span>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6 bg-slate-50/30">
+              {/* L1 */}
+              <div className={`rounded-xl border ${l1.length === 0 ? 'border-red-300 bg-red-50/40' : 'border-red-200 bg-white'} shadow-sm p-5`}>
+                <div className="flex flex-col mb-3">
+                  <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[11px] font-black">L1</span>
+                    Đánh giá tổng thể tiến độ nhóm hôm nay ⭐
+                  </h3>
+                  <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded font-bold w-fit mt-1 ml-8">⭑ Bắt buộc</span>
+                </div>
+                <textarea
+                  value={l1}
+                  onChange={e => setL1(e.target.value)}
+                  className="w-full min-h-[100px] border border-slate-200 rounded-lg bg-white p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium leading-relaxed"
+                  placeholder="Nhập đánh giá tiến độ của nhóm hiện tại..."
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-[11px] text-amber-500 font-bold flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> Thông tin này sẽ được hiển thị trong Dashboard tổng quan</p>
+                  <p className="text-[10px] text-slate-400 font-bold">{l1.length}/500</p>
+                </div>
               </div>
 
-              <div className="p-6 space-y-6 bg-slate-50/30">
-                 {/* L1 */}
-                 <div className={`rounded-xl border ${l1.length===0 ? 'border-red-300 bg-red-50/40' : 'border-red-200 bg-white'} shadow-sm p-5`}>
-                    <div className="flex flex-col mb-3">
-                       <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[11px] font-black">L1</span>
-                          Đánh giá tổng thể tiến độ nhóm hôm nay ⭐
-                       </h3>
-                       <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded font-bold w-fit mt-1 ml-8">⭑ Bắt buộc</span>
-                    </div>
-                    <textarea 
-                       value={l1}
-                       onChange={e => setL1(e.target.value)}
-                       className="w-full min-h-[100px] border border-slate-200 rounded-lg bg-white p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium leading-relaxed" 
-                       placeholder="Nhập đánh giá tiến độ của nhóm hiện tại..."
+              {/* L2 */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
+                      <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L2</span>
+                      Có vấn đề nào cần escalate lên Manager không?
+                    </h3>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
+                  </div>
+                  <ToggleOption value={l2} onChange={setL2} />
+                </div>
+                {l2 && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
+                    <textarea
+                      value={l2Text}
+                      onChange={e => setL2Text(e.target.value)}
+                      className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium"
+                      placeholder="Nhập chi tiết vấn đề cần báo cáo..."
+                      autoFocus
                     />
-                    <div className="flex items-center justify-between mt-2">
-                       <p className="text-[11px] text-amber-500 font-bold flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> Thông tin này sẽ được hiển thị trong Dashboard tổng quan</p>
-                       <p className="text-[10px] text-slate-400 font-bold">{l1.length}/500</p>
-                    </div>
-                 </div>
+                  </div>
+                )}
+              </div>
 
-                 {/* L2 */}
-                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                       <div>
-                          <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
-                             <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L2</span>
-                             Có vấn đề nào cần escalate lên Manager không?
-                          </h3>
-                          <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
-                       </div>
-                       <ToggleOption value={l2} onChange={setL2} />
-                    </div>
-                    {l2 && (
-                       <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
-                          <textarea 
-                             value={l2Text}
-                             onChange={e => setL2Text(e.target.value)}
-                             className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium" 
-                             placeholder="Nhập chi tiết vấn đề cần báo cáo..."
-                             autoFocus
-                          />
-                       </div>
-                    )}
-                 </div>
-
-                 {/* L3 */}
-                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                       <div>
-                          <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
-                             <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L3</span>
-                             Nhân viên nào cần hỗ trợ đặc biệt?
-                          </h3>
-                          <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
-                       </div>
-                       <ToggleOption value={l3} onChange={setL3} />
-                    </div>
-                    {l3 && (
-                       <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
-                          <textarea 
-                             value={l3Text}
-                             onChange={e => setL3Text(e.target.value)}
-                             className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium" 
-                             placeholder="Ghi rõ tên nhân viên và vấn đề cần hỗ trợ..."
-                             autoFocus
-                          />
-                       </div>
-                    )}
-                 </div>
-
-                 {/* L4 */}
-                 <div className={`rounded-xl border ${l4.length===0 ? 'border-red-300 bg-red-50/40' : 'border-red-200 bg-white'} shadow-sm p-5`}>
-                    <div className="flex flex-col mb-3">
-                       <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[11px] font-black">L4</span>
-                          Kế hoạch content cho ngày mai ⭐
-                       </h3>
-                       <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded font-bold w-fit mt-1 ml-8">⭑ Bắt buộc</span>
-                    </div>
-                    <textarea 
-                       value={l4}
-                       onChange={e => setL4(e.target.value)}
-                       className="w-full min-h-[140px] border border-slate-200 rounded-lg bg-white p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium leading-relaxed" 
-                       placeholder="Liệt kê kế hoạch content..."
+              {/* L3 */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
+                      <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L3</span>
+                      Nhân viên nào cần hỗ trợ đặc biệt?
+                    </h3>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
+                  </div>
+                  <ToggleOption value={l3} onChange={setL3} />
+                </div>
+                {l3 && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
+                    <textarea
+                      value={l3Text}
+                      onChange={e => setL3Text(e.target.value)}
+                      className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium"
+                      placeholder="Ghi rõ tên nhân viên và vấn đề cần hỗ trợ..."
+                      autoFocus
                     />
-                    <div className="flex items-center justify-between mt-2">
-                       <p className="text-[11px] text-amber-500 font-bold flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> Thông tin này sẽ được hiển thị trong Dashboard tổng quan</p>
-                       <p className="text-[10px] text-slate-400 font-bold">{l4.length}/500</p>
-                    </div>
-                 </div>
-
-                 {/* L5 */}
-                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                       <div>
-                          <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
-                             <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L5</span>
-                             Đề xuất cải thiện quy trình
-                          </h3>
-                          <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
-                       </div>
-                       <ToggleOption value={l5} onChange={setL5} />
-                    </div>
-                    {l5 && (
-                       <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
-                          <textarea 
-                             value={l5Text}
-                             onChange={e => setL5Text(e.target.value)}
-                             className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium" 
-                             placeholder="Nhập đề xuất hệ thống, quy định hoặc cải thiện năng suất..."
-                             autoFocus
-                          />
-                       </div>
-                    )}
-                 </div>
+                  </div>
+                )}
               </div>
 
-              {/* Bottom Submit Area */}
-              <div className="bg-white border-t border-slate-200 p-6 pt-5">
-                 <div onClick={() => setConfirmed(!confirmed)} className="flex items-center gap-3 cursor-pointer mb-6 group w-fit">
-                    <div className={`w-[22px] h-[22px] rounded border-[2.5px] flex items-center justify-center transition-colors ${confirmed ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300 group-hover:border-purple-400'}`}>
-                       {confirmed && <Check className="w-3.5 h-3.5 text-white stroke-[4px]" />}
-                    </div>
-                    <span className="text-[14px] font-bold text-slate-700 select-none">Tôi xác nhận đánh giá trên là chính xác và đầy đủ</span>
-                 </div>
-
-                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <p className="text-[13px] text-slate-500 font-bold flex items-center gap-2"><span className="text-[16px]">💾</span> Tự động lưu nháp lúc 21:15</p>
-                    <div className="flex items-center gap-3">
-                       <button className="px-6 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-600 text-[14px] hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2 shadow-sm">
-                         <span className="text-base">📄</span> Lưu nháp
-                       </button>
-                       <button 
-                          onClick={handleSubmitEval}
-                          disabled={!confirmed}
-                          className={`px-8 py-2.5 rounded-xl font-bold text-white text-[14px] flex items-center gap-2 transition-all shadow-sm ${confirmed ? 'bg-[#10B981] hover:bg-[#059669]' : 'bg-slate-300 cursor-not-allowed'}`}
-                       >
-                         <Send className="w-4 h-4" /> Gửi đánh giá
-                       </button>
-                    </div>
-                 </div>
+              {/* L4 */}
+              <div className={`rounded-xl border ${l4.length === 0 ? 'border-red-300 bg-red-50/40' : 'border-red-200 bg-white'} shadow-sm p-5`}>
+                <div className="flex flex-col mb-3">
+                  <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[11px] font-black">L4</span>
+                    Kế hoạch content cho ngày mai ⭐
+                  </h3>
+                  <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded font-bold w-fit mt-1 ml-8">⭑ Bắt buộc</span>
+                </div>
+                <textarea
+                  value={l4}
+                  onChange={e => setL4(e.target.value)}
+                  className="w-full min-h-[140px] border border-slate-200 rounded-lg bg-white p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium leading-relaxed"
+                  placeholder="Liệt kê kế hoạch content..."
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-[11px] text-amber-500 font-bold flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> Thông tin này sẽ được hiển thị trong Dashboard tổng quan</p>
+                  <p className="text-[10px] text-slate-400 font-bold">{l4.length}/500</p>
+                </div>
               </div>
-           </div>
+
+              {/* L5 */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-[15px] text-slate-800 flex items-center gap-2 mb-1">
+                      <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[11px] font-black">L5</span>
+                      Đề xuất cải thiện quy trình
+                    </h3>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded font-bold w-fit ml-8">Không bắt buộc</span>
+                  </div>
+                  <ToggleOption value={l5} onChange={setL5} />
+                </div>
+                {l5 && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2 pl-8">
+                    <textarea
+                      value={l5Text}
+                      onChange={e => setL5Text(e.target.value)}
+                      className="w-full min-h-[80px] border border-slate-200 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-medium"
+                      placeholder="Nhập đề xuất hệ thống, quy định hoặc cải thiện năng suất..."
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Submit Area */}
+            <div className="bg-white border-t border-slate-200 p-6 pt-5">
+              <div onClick={() => setConfirmed(!confirmed)} className="flex items-center gap-3 cursor-pointer mb-6 group w-fit">
+                <div className={`w-[22px] h-[22px] rounded border-[2.5px] flex items-center justify-center transition-colors ${confirmed ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300 group-hover:border-purple-400'}`}>
+                  {confirmed && <Check className="w-3.5 h-3.5 text-white stroke-[4px]" />}
+                </div>
+                <span className="text-[14px] font-bold text-slate-700 select-none">Tôi xác nhận đánh giá trên là chính xác và đầy đủ</span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <p className="text-[13px] text-slate-500 font-bold flex items-center gap-2"><span className="text-[16px]">💾</span> Tự động lưu nháp lúc 21:15</p>
+                <div className="flex items-center gap-3">
+                  <button className="px-6 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-600 text-[14px] hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2 shadow-sm">
+                    <span className="text-base">📄</span> Lưu nháp
+                  </button>
+                  <button
+                    onClick={handleSubmitEval}
+                    disabled={!confirmed}
+                    className={`px-8 py-2.5 rounded-xl font-bold text-white text-[14px] flex items-center gap-2 transition-all shadow-sm ${confirmed ? 'bg-[#10B981] hover:bg-[#059669]' : 'bg-slate-300 cursor-not-allowed'}`}
+                  >
+                    <Send className="w-4 h-4" /> Gửi đánh giá
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Success Toast */}
       {showToast && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none bg-black/10 transition-all">
-            <div className="bg-emerald-600 text-white px-8 py-6 rounded-3xl shadow-2xl flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
-               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-inner">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-               </div>
-               <span className="font-black text-2xl tracking-wide">Gửi Đánh Giá Thành Công!</span>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none bg-black/10 transition-all">
+          <div className="bg-emerald-600 text-white px-8 py-6 rounded-3xl shadow-2xl flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
             </div>
-         </div>
+            <span className="font-black text-2xl tracking-wide">Gửi Đánh Giá Thành Công!</span>
+          </div>
+        </div>
       )}
 
       {selectedIssue && (
@@ -652,7 +653,7 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto bg-slate-50">
               {selectedIssue.details.map((d: any, idx: number) => (
                 <div key={idx} className="relative z-10">
@@ -672,8 +673,8 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
             </div>
 
             <div className="p-4 border-t border-slate-100 flex justify-end bg-white">
-              <button 
-                className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#10B981] shadow-sm hover:bg-[#059669] transition" 
+              <button
+                className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#10B981] shadow-sm hover:bg-[#059669] transition"
                 onClick={() => setSelectedIssue(null)}
               >
                 Đã hiểu
@@ -687,22 +688,22 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
 }
 
 function ToggleOption({ value, onChange }: { value: boolean, onChange: (v: boolean) => void }) {
-   return (
-      <div className="flex bg-slate-100 rounded-xl p-1 shadow-inner h-[38px]">
-         <button 
-            type="button" 
-            onClick={() => onChange(false)}
-            className={`px-4 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${!value ? 'bg-slate-200/80 text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-         >
-            <X className="w-3.5 h-3.5 stroke-[3px]" /> Không
-         </button>
-         <button 
-            type="button" 
-            onClick={() => onChange(true)}
-            className={`px-5 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${value ? 'bg-white text-slate-800 shadow-sm border border-slate-200/50' : 'text-slate-400 hover:text-slate-600'}`}
-         >
-            <Check className="w-3.5 h-3.5 stroke-[3px] text-emerald-500" /> Có
-         </button>
-      </div>
-   );
+  return (
+    <div className="flex bg-slate-100 rounded-xl p-1 shadow-inner h-[38px]">
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`px-4 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${!value ? 'bg-slate-200/80 text-slate-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+      >
+        <X className="w-3.5 h-3.5 stroke-[3px]" /> Không
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`px-5 text-[12px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${value ? 'bg-white text-slate-800 shadow-sm border border-slate-200/50' : 'text-slate-400 hover:text-slate-600'}`}
+      >
+        <Check className="w-3.5 h-3.5 stroke-[3px] text-emerald-500" /> Có
+      </button>
+    </div>
+  );
 }
