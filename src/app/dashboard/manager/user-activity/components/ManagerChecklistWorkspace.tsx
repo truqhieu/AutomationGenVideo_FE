@@ -47,6 +47,31 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
     }, 2000);
   };
 
+  const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
+
+  const OUTSTANDING_ISSUES = [
+    { n: 'Nguyễn Văn A', c: 3, init: 'N', bg: 'bg-amber-500', t: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.',
+      details: [
+        { q: 'Hôm nay bạn đã làm gì?', a: 'Sản xuất 3 video TikTok về kiến thức nghiệp vụ. Gặp một số khó khăn với tool render AI.' },
+        { q: 'Vấn đề cần hỗ trợ?', a: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.' },
+        { q: 'Kế hoạch ngày mai?', a: 'Xin team production hỗ trợ quay chung nội dung.' }
+      ]
+    },
+    { n: 'Hoàng Văn D', c: 2, init: 'H', bg: 'bg-orange-500', t: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.',
+      details: [
+        { q: 'Hôm nay bạn đã làm gì?', a: 'Sản xuất 2 video YouTube ngắn gọn.' },
+        { q: 'Vấn đề cần hỗ trợ?', a: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.' },
+        { q: 'Video nào đạt trên 50% source?', a: 'Video series kiến thức cơ bản đạt 60% source gốc.' }
+      ]
+    },
+    { n: 'Nguyễn Văn B', c: 5, init: 'N', bg: 'bg-amber-500', t: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.',
+      details: [
+        { q: 'Hôm nay bạn đã làm gì?', a: 'Brainstorm ý tưởng concept mới.' },
+        { q: 'Ý tưởng content mới?', a: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.' }
+      ]
+    }
+  ];
+
   // Aggregate basic stats
   const totalMembers = reports.length || 42;
   const totalTraffic = useMemo(() => {
@@ -278,17 +303,13 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
               <Flame className="w-4 h-4 text-orange-500 fill-orange-500" /> Vấn đề nổi bật từ báo cáo hôm nay
             </h3>
             <div className="space-y-4">
-              {[
-                { n: 'Nguyễn Văn A', c: 3, init: 'N', t: 'Video về câu trả lời A2 kiến thức nghiệp, cần team quay hỗ trợ cùng vào ngày mai. Ngoài ra, tool edit AI bị lỗi khi render video - 3 phút.' },
-                { n: 'Hoàng Văn D', c: 2, init: 'H', bg: 'bg-orange-500', t: 'Video về câu trả lời A1 kiến thức nghiệp - Tool edit AI bị lỗi khi render video dài - 3 phút — ảnh hưởng 3 ngày trong nhóm, cần IT kiểm tra.' },
-                { n: 'Nguyễn Văn A', c: 5, init: 'N', t: '9 tháng content mới? — Series "Mỗi ngày của CEO" — hậu trường làm việc thật, phù hợp A3 Trust Content. Dự kiến 5 tập, quay trong 2 tuần tới.' }
-              ].map((item, i) => (
+              {OUTSTANDING_ISSUES.map((item, i) => (
                 <div key={i} className="flex gap-3">
                   <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-black text-white ${item.bg || 'bg-amber-500'}`}>{item.init}</div>
                   <div className="flex-1 border-b border-slate-50 pb-4">
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-bold text-[13px] text-slate-800 flex items-center gap-2">{item.n} <span className="text-[10px] text-slate-400 font-medium">• {item.c} câu hỏi</span></p>
-                      <button className="text-[11px] font-bold text-[#3B82F6] hover:underline">Xem chi tiết</button>
+                      <button className="text-[11px] font-bold text-[#3B82F6] hover:underline" onClick={() => setSelectedIssue(item)}>Xem chi tiết</button>
                     </div>
                     <p className="text-[13px] text-slate-600 leading-relaxed">{item.t}</p>
                   </div>
@@ -614,6 +635,52 @@ export default function ManagerChecklistWorkspace({ reports = [] }: { reports?: 
                <span className="font-black text-2xl tracking-wide">Gửi Đánh Giá Thành Công!</span>
             </div>
          </div>
+      )}
+
+      {selectedIssue && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-[560px] bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white relative">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-lg shadow-sm ${selectedIssue.bg || 'bg-amber-500'}`}>{selectedIssue.init}</div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-[18px] leading-tight">{selectedIssue.n}</h3>
+                  <p className="text-[13px] text-slate-500 font-medium">{selectedIssue.c} câu trả lời chi tiết hôm nay</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedIssue(null)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto bg-slate-50">
+              {selectedIssue.details.map((d: any, idx: number) => (
+                <div key={idx} className="relative z-10">
+                  <h4 className="flex items-center gap-2 text-[14px] font-bold text-[#3B82F6] mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]"></span> {d.q}
+                  </h4>
+                  <div className="text-[14px] font-medium text-slate-700 leading-relaxed bg-white p-4 rounded-2xl border border-slate-200 shadow-sm ml-3">
+                    {d.a.split('\\n').map((line: string, i: number) => (
+                      <React.Fragment key={i}>
+                        {line}
+                        {i < d.a.split('\\n').length - 1 && <br />}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-white">
+              <button 
+                className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#10B981] shadow-sm hover:bg-[#059669] transition" 
+                onClick={() => setSelectedIssue(null)}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

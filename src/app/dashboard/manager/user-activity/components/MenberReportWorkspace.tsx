@@ -33,8 +33,11 @@ export default function DailyReportWorkspace() {
   const [issues, setIssues] = useState('');
   const [hasIssues, setHasIssues] = useState(false);
   const [nextPlan, setNextPlan] = useState(false);
+  const [nextPlanText, setNextPlanText] = useState('');
   const [hasOwnSource, setHasOwnSource] = useState(false);
+  const [ownSourceText, setOwnSourceText] = useState('');
   const [hasNewIdea, setHasNewIdea] = useState(false);
+  const [newIdeaText, setNewIdeaText] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [toastMessage, setToastMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
@@ -256,7 +259,7 @@ export default function DailyReportWorkspace() {
                       <textarea 
                         value={didToday} 
                         onChange={(e) => setDidToday(e.target.value)} 
-                        className="w-full min-h-[110px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400" 
+                        className="w-full min-h-[110px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] text-slate-800 font-bold focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400 placeholder:font-medium" 
                         placeholder="Sản xuất 3 video TikTok..." 
                       />
                       <div className="absolute bottom-2 right-3 text-[10px] text-slate-400 font-semibold flex items-center gap-1">
@@ -279,7 +282,7 @@ export default function DailyReportWorkspace() {
                         <textarea 
                           value={issues} 
                           onChange={(e) => setIssues(e.target.value)} 
-                          className="w-full min-h-[90px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all" 
+                          className="w-full min-h-[90px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] text-slate-800 font-bold focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400 placeholder:font-medium" 
                         />
                         <div className="absolute bottom-2 right-3 text-[10px] text-slate-400 font-semibold flex items-center gap-1">
                           {issues.length}/500
@@ -291,11 +294,32 @@ export default function DailyReportWorkspace() {
                   </div>
 
                   <div className="space-y-1 relative">
-                    <ToggleRow label="Kế hoạch ngày mai?" value={nextPlan} onChange={setNextPlan} />
+                    <ToggleRow label="Kế hoạch ngày mai?" value={nextPlan} onChange={setNextPlan}>
+                      <textarea 
+                        value={nextPlanText} 
+                        onChange={(e) => setNextPlanText(e.target.value)} 
+                        className="w-full min-h-[70px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] text-slate-800 font-bold focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                        placeholder="Kế hoạch là gì..." 
+                      />
+                    </ToggleRow>
                     <div className="pl-4"><div className="border-t border-dashed border-slate-200" /></div>
-                    <ToggleRow label="Video nào đạt trên 50% source?" value={hasOwnSource} onChange={setHasOwnSource} />
+                    <ToggleRow label="Video nào đạt trên 50% source?" value={hasOwnSource} onChange={setHasOwnSource}>
+                      <textarea 
+                        value={ownSourceText} 
+                        onChange={(e) => setOwnSourceText(e.target.value)} 
+                        className="w-full min-h-[70px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] text-slate-800 font-bold focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                        placeholder="Link hoặc tên video..." 
+                      />
+                    </ToggleRow>
                     <div className="pl-4"><div className="border-t border-dashed border-slate-200" /></div>
-                    <ToggleRow label="Ý tưởng content mới?" value={hasNewIdea} onChange={setHasNewIdea} />
+                    <ToggleRow label="Ý tưởng content mới?" value={hasNewIdea} onChange={setHasNewIdea}>
+                      <textarea 
+                        value={newIdeaText} 
+                        onChange={(e) => setNewIdeaText(e.target.value)} 
+                        className="w-full min-h-[70px] rounded-xl border border-slate-200 bg-[#F8FAFC] p-3.5 text-[13px] text-slate-800 font-bold focus:border-[#3B82F6] focus:bg-white focus:ring-1 focus:ring-[#3B82F6] outline-none resize-none transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                        placeholder="Chi tiết ý tưởng..." 
+                      />
+                    </ToggleRow>
                   </div>
                 </div>
               </div>
@@ -440,7 +464,7 @@ export default function DailyReportWorkspace() {
             <h3 className="font-bold text-[15px] mb-4 text-slate-800">Ghi chú đối soát</h3>
             <div className="relative">
               <textarea 
-                className="w-full min-h-[120px] rounded-xl border border-slate-200 bg-slate-50 p-4 text-[13px] text-slate-700 font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 resize-none transition-colors"
+                className="w-full min-h-[120px] rounded-xl border border-slate-200 bg-slate-50 p-4 text-[13px] text-slate-800 font-bold outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 resize-none transition-colors"
                 placeholder="Nhập ghi chú hoặc giải trình về số liệu nếu có..."
                 defaultValue="TikTok tăng 0.8% do video viral được cộng view muộn sau 48h. Facebook giảm 2.1% do platform điều chỉnh cách tính view tháng 3. YouTube tăng 3.3% do video A5 Hành trình kim cương đạt 200K view sau 2 tuần."
               />
@@ -534,28 +558,37 @@ function ToggleRow({
   label,
   value,
   onChange,
+  children
 }: {
   label: string;
   value: boolean;
   onChange: (next: boolean) => void;
+  children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between pl-4 border-l-2 border-[#3B82F6] relative py-2.5 gap-2">
-      <h4 className="font-bold text-[13px] text-slate-800">{label}</h4>
-      <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit">
-        <button 
-          type="button" 
-          className={`px-4 py-1.5 text-[11px] rounded-md font-bold transition-all ${!value ? 'bg-[#10B981] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`} 
-          onClick={() => onChange(false)}>
-          Không
-        </button>
-        <button 
-          type="button" 
-          className={`px-4 py-1.5 text-[11px] rounded-md font-bold transition-all ${value ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`} 
-          onClick={() => onChange(true)}>
-          Có
-        </button>
+    <div className="flex flex-col pl-4 border-l-2 border-[#3B82F6] relative py-2.5 gap-2 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h4 className="font-bold text-[13px] text-slate-800">{label}</h4>
+        <div className="flex bg-slate-100 rounded-lg p-0.5 w-fit shrink-0">
+          <button 
+            type="button" 
+            className={`px-4 py-1.5 text-[11px] rounded-md font-bold transition-all ${!value ? 'bg-[#10B981] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`} 
+            onClick={() => onChange(false)}>
+            Không
+          </button>
+          <button 
+            type="button" 
+            className={`px-4 py-1.5 text-[11px] rounded-md font-bold transition-all ${value ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`} 
+            onClick={() => onChange(true)}>
+            Có
+          </button>
+        </div>
       </div>
+      {value && children && (
+        <div className="mt-1 animate-in fade-in zoom-in-95 duration-200 w-full relative">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
