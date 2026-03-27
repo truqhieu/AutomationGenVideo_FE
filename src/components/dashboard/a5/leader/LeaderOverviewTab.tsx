@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminDonut5A } from "../admin/AdminDonut5A";
-import { AdminGrowthBars5AMonthly } from "../admin/AdminGrowthBars5AMonthly";
+import dynamic from "next/dynamic";
+import { ChartBlockSkeleton } from "@/components/dashboard/shared/ChartBlockSkeleton";
 import { PLATFORM_OPTIONS } from "../admin/admin-platform-channel-data";
 import { TEAM_REGION_OPTIONS } from "../admin/admin-team-perf-data";
 import { useAdminOverviewFilters } from "../admin/AdminOverviewFiltersContext";
@@ -11,6 +11,16 @@ import { KpiTripleCards } from "../shared/KpiTripleCards";
 import { LeaderA5TierTable } from "./LeaderA5TierTable";
 import { LeaderHeatmap } from "./LeaderHeatmap";
 import { LeaderMemberTable } from "./LeaderMemberTable";
+
+const AdminDonut5A = dynamic(
+  () => import("../admin/AdminDonut5A").then((m) => m.AdminDonut5A),
+  { ssr: false, loading: () => <ChartBlockSkeleton className="min-h-[300px]" /> },
+);
+
+const AdminGrowthBars5AMonthly = dynamic(
+  () => import("../admin/AdminGrowthBars5AMonthly").then((m) => m.AdminGrowthBars5AMonthly),
+  { ssr: false, loading: () => <ChartBlockSkeleton className="min-h-[360px]" /> },
+);
 
 export function LeaderOverviewTab() {
   const f = useAdminOverviewFilters();

@@ -583,6 +583,8 @@ const ChecklistContainer = ({
 
         setLoading(true);
         try {
+            let combinedTrafficHandled = false;
+
             if (!showOnlyTraffic) {
                 const payload = buildPayload();
                 // Thêm thông tin user vào payload
@@ -615,21 +617,62 @@ const ChecklistContainer = ({
                     return;
                 }
                 toast.success(data.message || 'Báo cáo thành công');
-                
-                // --- Xoá cache trên Backend (NestJS) lập tức để hiển thị luôn ở Checklist ---
-                try {
-                    const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-                    await fetch(`${beBaseUrl}/lark/clear-activity-cache`, { method: 'POST' });
-                } catch (err) {
+
+                const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                const hasTrafficData = Object.values(traffic).some((val) => val !== '');
+                const clearCacheP = fetch(`${beBaseUrl}/lark/clear-activity-cache`, { method: 'POST' }).catch((err) => {
                     console.log('Failed to flush cache', err);
+                });
+
+                const trafficBody = {
+                    email: user.email,
+                    name: user.full_name,
+                    roles: user.roles,
+                    traffic: traffic,
+                    channels: trafficChannels,
+                    platformEvidences: platformEvidences,
+                    trafficDetails: {
+                        breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
+                            acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
+                                ...entry,
+                                evidences: (entry.evidences || []).map((ev: any) => ({
+                                    url: ev.url,
+                                    name: ev.name,
+                                })),
+                            }));
+                            return acc;
+                        }, {} as Record<string, any>),
+                        evidences: platformEvidences,
+                    },
+                    reportDate: reportDate,
+                };
+
+                if (hasTrafficData && !showOnlyWork) {
+                    await Promise.all([
+                        clearCacheP,
+                        fetch(`${beBaseUrl}/lark/traffic-report`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(trafficBody),
+                        }),
+                    ]);
+                    combinedTrafficHandled = true;
+
+                    setTraffic(initialTrafficData());
+                    setTrafficChannels(initialTrafficChannels());
+                    setPlatformEvidences({});
+                    setIsReadOnly(true);
+                    setSubmitCount((prev) => prev + 1);
+                    if (onSuccess) onSuccess();
+                } else {
+                    await clearCacheP;
+                    setIsReadOnly(true);
                 }
-                
-                setIsReadOnly(true); // Khóa form ngay lập tức sau khi gửi thành công
             }
 
-            // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
-            const hasTrafficData = Object.values(traffic).some(val => val !== '');
-            if (hasTrafficData && !showOnlyWork) {
+            // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic (chỉ showOnlyTraffic — form đầy đã xử lý ở trên)
+            const hasTrafficData = Object.values(traffic).some((val) => val !== '');
+            if (hasTrafficData && !showOnlyWork && !combinedTrafficHandled) {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const trafficRes = await fetch(`${beBaseUrl}/lark/traffic-report`, {
                     method: 'POST',
@@ -647,17 +690,15 @@ const ChecklistContainer = ({
                                     ...entry,
                                     evidences: (entry.evidences || []).map((ev: any) => ({
                                         url: ev.url,
-                                        name: ev.name
-                                    }))
+                                        name: ev.name,
+                                    })),
                                 }));
                                 return acc;
                             }, {} as Record<string, any>),
-                            evidences: platformEvidences
+                            evidences: platformEvidences,
                         },
-                        reportDate: reportDate, // Send custom date
-                    })
-
-
+                        reportDate: reportDate,
+                    }),
                 });
 
                 if (showOnlyTraffic) {
@@ -674,13 +715,13 @@ const ChecklistContainer = ({
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
-                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
-                setSubmitCount(prev => prev + 1);
+                setIsReadOnly(true);
+                setSubmitCount((prev) => prev + 1);
                 if (onSuccess) onSuccess();
-            } else {
+            } else if (!combinedTrafficHandled && !(hasTrafficData && !showOnlyWork)) {
                 if (!showOnlyWork) toast.success('Báo cáo thành công');
                 setIsReadOnly(true);
-                setSubmitCount(prev => prev + 1);
+                setSubmitCount((prev) => prev + 1);
                 if (onSuccess) onSuccess();
             }
 

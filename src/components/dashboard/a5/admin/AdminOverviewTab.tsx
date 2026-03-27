@@ -1,13 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { DashboardFilters } from "../shared/DashboardFilters";
+import { ChartBlockSkeleton } from "@/components/dashboard/shared/ChartBlockSkeleton";
 import { Funnel5A } from "../shared/Funnel5A";
 import { KpiTripleCards } from "../shared/KpiTripleCards";
 import { PLATFORM_OPTIONS } from "./admin-platform-channel-data";
 import { TEAM_REGION_OPTIONS } from "./admin-team-perf-data";
-import { AdminDonut5A } from "./AdminDonut5A";
-import { AdminGrowthBars5AMonthly } from "./AdminGrowthBars5AMonthly";
 import { useAdminOverviewFilters } from "./AdminOverviewFiltersContext";
+
+const AdminDonut5A = dynamic(
+  () => import("./AdminDonut5A").then((m) => m.AdminDonut5A),
+  { ssr: false, loading: () => <ChartBlockSkeleton className="min-h-[300px]" /> },
+);
+
+const AdminGrowthBars5AMonthly = dynamic(
+  () => import("./AdminGrowthBars5AMonthly").then((m) => m.AdminGrowthBars5AMonthly),
+  { ssr: false, loading: () => <ChartBlockSkeleton className="min-h-[360px]" /> },
+);
 import { AdminPlatformTable } from "./AdminPlatformTable";
 import { AdminTeamTable } from "./AdminTeamTable";
 
