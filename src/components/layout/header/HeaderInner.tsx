@@ -32,12 +32,17 @@ export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderPr
     const isManagement = user?.roles?.some((r) =>
         [UserRole.ADMIN, UserRole.MANAGER, UserRole.LEADER].includes(r),
     );
+    const isAdmin = user?.roles?.includes(UserRole.ADMIN);
+    const isLeader = user?.roles?.includes(UserRole.LEADER);
 
     const userInitial = user?.full_name
         ? (user.full_name.trim().split(" ").pop()?.[0]?.toUpperCase() ?? "?")
         : "?";
 
-    const navMenus = useNavMenus(!!isManagerOrAdmin, !!isManagement);
+    const navMenus = useNavMenus(!!isManagerOrAdmin, !!isManagement, {
+        isAdmin: !!isAdmin,
+        isLeader: !!isLeader,
+    });
 
     // allowedMenuIds chứa tab-level permissions, không phải nav menu IDs.
     // Hiển thị tất cả nav menus, role-based visibility đã được xử lý bởi isManagerOrAdmin / isManagement.

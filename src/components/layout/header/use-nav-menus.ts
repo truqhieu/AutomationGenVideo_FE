@@ -12,10 +12,16 @@ import {
     Search,
     BarChart3,
     Calendar,
+    Crown,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
-export function useNavMenus(isManagerOrAdmin: boolean, isManagement: boolean): NavMenu[] {
+export function useNavMenus(
+    isManagerOrAdmin: boolean,
+    isManagement: boolean,
+    options?: { isAdmin?: boolean; isLeader?: boolean },
+): NavMenu[] {
+    const { isAdmin, isLeader } = options ?? {};
     return useMemo<NavMenu[]>(
         () => [
             {
@@ -25,12 +31,34 @@ export function useNavMenus(isManagerOrAdmin: boolean, isManagement: boolean): N
                     "/dashboard/manager",
                     "/dashboard/editor-management",
                     "/dashboard/hieu-suat",
+                    "/dashboard/admin",
+                    "/dashboard/leader",
                 ],
                 sections: [
                     {
                         section: "TỔNG QUAN",
                         color: "blue",
                         items: [
+                            ...(isAdmin
+                                ? [
+                                      {
+                                          label: "Dashboard Admin",
+                                          href: "/dashboard/admin",
+                                          icon: BarChart3,
+                                          description: "Biểu đồ tổng quan toàn hệ thống",
+                                      },
+                                  ]
+                                : []),
+                            ...(isLeader || isAdmin
+                                ? [
+                                      {
+                                          label: "Dashboard Leader",
+                                          href: "/dashboard/leader",
+                                          icon: Crown,
+                                          description: "Biểu đồ theo góc nhìn Leader",
+                                      },
+                                  ]
+                                : []),
                             {
                                 label: "Hiệu suất",
                                 href: "/dashboard/manager/user-activity?tab=performance",
@@ -176,6 +204,6 @@ export function useNavMenus(isManagerOrAdmin: boolean, isManagement: boolean): N
                 ],
             },
         ],
-        [isManagerOrAdmin, isManagement],
+        [isManagerOrAdmin, isManagement, isAdmin, isLeader],
     );
 }
