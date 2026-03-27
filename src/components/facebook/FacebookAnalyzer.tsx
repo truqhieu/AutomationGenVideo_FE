@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/ui/button';
@@ -185,11 +186,11 @@ export default function FacebookAnalyzer() {
               {/* Thumbnail */}
               {post.thumbnail && (
                 <div className="relative mb-3 rounded-lg overflow-hidden bg-gray-100">
-                  <img
+                  <Image
                     src={post.thumbnail}
                     alt="Post thumbnail"
                     className="w-full h-48 object-cover"
-                  />
+                   width={0} height={0} sizes="100vw" unoptimized/>
                   {('isVideo' in post && post.isVideo) && (
                     <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1">
                       <Video className="h-3 w-3" />
@@ -310,11 +311,11 @@ export default function FacebookAnalyzer() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-3">
                     {result.metadata.user_profile_pic && (
-                      <img
+                      <Image
                         src={result.metadata.user_profile_pic}
                         alt={result.name}
                         className="w-12 h-12 rounded-full"
-                      />
+                       width={0} height={0} sizes="100vw" unoptimized/>
                     )}
                     <div>
                       <div>{result.name || 'N/A'}</div>

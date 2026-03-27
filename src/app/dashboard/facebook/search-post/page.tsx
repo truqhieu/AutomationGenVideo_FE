@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useCallback } from 'react';
 import { Search, Loader2, Facebook, FileText, ThumbsUp, MessageCircle, Hash, AlertTriangle, Eye, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -325,18 +326,18 @@ export default function FacebookSearchPostPage() {
                                         {/* Ảnh sản phẩm */}
                                         <div className="relative aspect-square bg-slate-100 overflow-hidden">
                                             {post.thumbnail_url && !failedImages.has(post.video_id || String(index)) ? (
-                                                <img
+                                                <Image
                                                     src={getThumbnailSrc(post.thumbnail_url)}
                                                     alt={post.description}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                     loading="lazy"
                                                     referrerPolicy="no-referrer"
                                                     onError={() => handleImageError(post.video_id || String(index))}
-                                                />
+                                                 width={0} height={0} sizes="100vw" unoptimized/>
                                             ) : (
                                                 <div className="w-full h-full relative">
                                                     {/* Fallback: dùng avatar làm nền mờ */}
-                                                    <img
+                                                    <Image
                                                         src={getAvatarUrl(post)}
                                                         alt={post.author_name || post.author_username}
                                                         className="w-full h-full object-cover blur-sm scale-110"
@@ -345,7 +346,7 @@ export default function FacebookSearchPostPage() {
                                                             const target = e.target as HTMLImageElement;
                                                             target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author_name || post.author_username || '?')}&background=1877F2&color=fff`;
                                                         }}
-                                                    />
+                                                     width={0} height={0} sizes="100vw" unoptimized/>
                                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-2 px-3 text-center bg-black/40">
                                                         <FileText className="w-10 h-10 opacity-80" />
                                                         <span className="text-xs">Ảnh bị chặn. Nhấn &quot;Xem&quot; để xem bài viết trên Facebook</span>

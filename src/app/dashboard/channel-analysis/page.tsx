@@ -1,138 +1,155 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import apiClient from '@/lib/api-client';
-import toast from 'react-hot-toast';
+import { useEffect, useMemo, useState, useCallback } from "react";
+import apiClient from "@/lib/api-client";
+import toast from "react-hot-toast";
 import {
-  syncFromLarkAssignment,
-  syncFromLarkAssignmentIfStale,
-  clearLarkSyncCooldown,
-} from '@/lib/sync-lark-tracked-channels';
-import { BarChart3, Facebook, Instagram, Music2, RefreshCcw, Wand2, Plus, X, Link as LinkIcon, Loader2, Trash2, Eye, EyeOff, RotateCcw, DownloadCloud } from 'lucide-react';
-import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+    syncFromLarkAssignment,
+    syncFromLarkAssignmentIfStale,
+    clearLarkSyncCooldown,
+} from "@/lib/sync-lark-tracked-channels";
+import {
+    BarChart3,
+    Facebook,
+    Instagram,
+    Music2,
+    RefreshCcw,
+    Wand2,
+    Plus,
+    X,
+    Link as LinkIcon,
+    Loader2,
+    Trash2,
+    Eye,
+    EyeOff,
+    RotateCcw,
+    DownloadCloud,
+} from "lucide-react";
+import dynamic from "next/dynamic";
 
-type PlatformKey = 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK';
-type PlatformFilter = PlatformKey | 'ALL';
+const ChannelMetricsCharts = dynamic(() => import("./ChannelMetricsCharts"), { ssr: false });
+
+type PlatformKey = "FACEBOOK" | "INSTAGRAM" | "TIKTOK";
+type PlatformFilter = PlatformKey | "ALL";
 
 type TrackedChannel = {
-  id: string;
-  platform: PlatformKey;
-  username: string;
-  display_name?: string;
-  avatar_url?: string;
-  posts_count?: number | null;
-  total_videos?: number | null;
-  last_synced_at?: string | null;
-  created_at?: string | null;
+    id: string;
+    platform: PlatformKey;
+    username: string;
+    display_name?: string;
+    avatar_url?: string;
+    posts_count?: number | null;
+    total_videos?: number | null;
+    last_synced_at?: string | null;
+    created_at?: string | null;
 };
 
 type Row = {
-  id: string;
-  name: string;
-  url: string;
-  platform: PlatformKey;
-  countLabel: string;
-  maxAvailable: number;
-  status: 'not_analyzed' | 'scheduled' | 'analyzing' | 'completed';
-  timeLabel: string;
-  username: string;
-  analyzingAt?: number;
+    id: string;
+    name: string;
+    url: string;
+    platform: PlatformKey;
+    countLabel: string;
+    maxAvailable: number;
+    status: "not_analyzed" | "scheduled" | "analyzing" | "completed";
+    timeLabel: string;
+    username: string;
+    analyzingAt?: number;
 };
 
 function platformIcon(p: PlatformKey) {
-  if (p === 'FACEBOOK') return <Facebook className="w-4 h-4 text-blue-600" />;
-  if (p === 'INSTAGRAM') return <Instagram className="w-4 h-4 text-pink-600" />;
-  return <Music2 className="w-4 h-4 text-black" />;
+    if (p === "FACEBOOK") return <Facebook className="w-4 h-4 text-blue-600" />;
+    if (p === "INSTAGRAM") return <Instagram className="w-4 h-4 text-pink-600" />;
+    return <Music2 className="w-4 h-4 text-black" />;
 }
 
 function buildChannelUrl(platform: PlatformKey, username: string) {
-  const u = (username || '').replace(/^@/, '').trim();
-  if (!u) return '';
-  if (platform === 'FACEBOOK') return `https://www.facebook.com/${encodeURIComponent(u)}`;
-  if (platform === 'INSTAGRAM') return `https://www.instagram.com/${encodeURIComponent(u)}/`;
-  return `https://www.tiktok.com/@${encodeURIComponent(u)}`;
+    const u = (username || "").replace(/^@/, "").trim();
+    if (!u) return "";
+    if (platform === "FACEBOOK") return `https://www.facebook.com/${encodeURIComponent(u)}`;
+    if (platform === "INSTAGRAM") return `https://www.instagram.com/${encodeURIComponent(u)}/`;
+    return `https://www.tiktok.com/@${encodeURIComponent(u)}`;
 }
 
 function getAnalysisKey(platform: PlatformKey, username: string) {
-  const u = (username || '').replace(/^@/, '').trim();
-  return `channel_analysis_${platform.toLowerCase()}_${u}`;
+    const u = (username || "").replace(/^@/, "").trim();
+    return `channel_analysis_${platform.toLowerCase()}_${u}`;
 }
 
-const HIDDEN_KEY = 'channel_analysis_hidden_channels_v1';
+const HIDDEN_KEY = "channel_analysis_hidden_channels_v1";
 function getHiddenId(platform: PlatformKey, username: string) {
-  const u = (username || '').replace(/^@/, '').trim().toLowerCase();
-  return `${platform}:${u}`;
+    const u = (username || "").replace(/^@/, "").trim().toLowerCase();
+    return `${platform}:${u}`;
 }
-
 
 function formatTimeLabel(ts?: number | null, fallbackIso?: string | null) {
-  if (ts && ts > 0) {
-    const d = new Date(ts);
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
-  }
-  if (fallbackIso) {
-    const d = new Date(fallbackIso);
-    if (!Number.isNaN(d.getTime())) {
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    if (ts && ts > 0) {
+        const d = new Date(ts);
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
     }
-  }
-  return '-';
+    if (fallbackIso) {
+        const d = new Date(fallbackIso);
+        if (!Number.isNaN(d.getTime())) {
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2, "0");
+            const min = String(d.getMinutes()).padStart(2, "0");
+            return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+        }
+    }
+    return "-";
 }
 
 export default function ChannelAnalysisHubPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [channels, setChannels] = useState<TrackedChannel[]>([]);
-  const [storageTick, setStorageTick] = useState(0); // trigger rerender when localStorage updates
-  const [showHidden, setShowHidden] = useState(false);
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [channels, setChannels] = useState<TrackedChannel[]>([]);
+    const [storageTick, setStorageTick] = useState(0); // trigger rerender when localStorage updates
+    const [showHidden, setShowHidden] = useState(false);
+    const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+    const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
 
-  // Insights Popup (Facebook)
-  const [showInsightsModal, setShowInsightsModal] = useState(false);
-  const [insightsRow, setInsightsRow] = useState<Row | null>(null);
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState('');
-  const [insights, setInsights] = useState<Record<string, string>>({});
-  const [insightsStartDate, setInsightsStartDate] = useState<string>('');
-  const [insightsEndDate, setInsightsEndDate] = useState<string>('');
-  const [metricsLoading, setMetricsLoading] = useState(false);
-  const [metricsError, setMetricsError] = useState('');
-  const [channelMetrics, setChannelMetrics] = useState<any>(null);
-  const [viralShowAll, setViralShowAll] = useState(false);
+    // Insights Popup (Facebook)
+    const [showInsightsModal, setShowInsightsModal] = useState(false);
+    const [insightsRow, setInsightsRow] = useState<Row | null>(null);
+    const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsError, setInsightsError] = useState("");
+    const [insights, setInsights] = useState<Record<string, string>>({});
+    const [insightsStartDate, setInsightsStartDate] = useState<string>("");
+    const [insightsEndDate, setInsightsEndDate] = useState<string>("");
+    const [metricsLoading, setMetricsLoading] = useState(false);
+    const [metricsError, setMetricsError] = useState("");
+    const [channelMetrics, setChannelMetrics] = useState<any>(null);
+    const [viralShowAll, setViralShowAll] = useState(false);
 
-  // Date range chooser (before running analysis)
-  const [showMaxPostsModal, setShowMaxPostsModal] = useState(false);
-  const [pendingRow, setPendingRow] = useState<Row | null>(null);
-  const [pendingMode, setPendingMode] = useState<'open' | 'rerun'>('open');
-  const [pendingStartDate, setPendingStartDate] = useState<string>('');
-  const [pendingEndDate, setPendingEndDate] = useState<string>('');
-  const [pendingMaxPosts, setPendingMaxPosts] = useState<number>(30);
+    // Date range chooser (before running analysis)
+    const [showMaxPostsModal, setShowMaxPostsModal] = useState(false);
+    const [pendingRow, setPendingRow] = useState<Row | null>(null);
+    const [pendingMode, setPendingMode] = useState<"open" | "rerun">("open");
+    const [pendingStartDate, setPendingStartDate] = useState<string>("");
+    const [pendingEndDate, setPendingEndDate] = useState<string>("");
+    const [pendingMaxPosts, setPendingMaxPosts] = useState<number>(30);
   const [pendingMaxPostsStr, setPendingMaxPostsStr] = useState<string>('30');
 
-  // Create Report Modal
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>('FACEBOOK');
-  const [sourceMode, setSourceMode] = useState<'existing' | 'new'>('existing');
-  const [existingUsername, setExistingUsername] = useState('');
-  const [newInput, setNewInput] = useState('');
-  const [createStartDate, setCreateStartDate] = useState<string>('');
-  const [createEndDate, setCreateEndDate] = useState<string>('');
-  const [runMode, setRunMode] = useState<'now' | 'schedule'>('now');
-  const [scheduleAt, setScheduleAt] = useState(''); // yyyy-MM-ddTHH:mm
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
-  const [larkSyncing, setLarkSyncing] = useState(false);
+    // Create Report Modal
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>("FACEBOOK");
+    const [sourceMode, setSourceMode] = useState<"existing" | "new">("existing");
+    const [existingUsername, setExistingUsername] = useState("");
+    const [newInput, setNewInput] = useState("");
+    const [createStartDate, setCreateStartDate] = useState<string>("");
+    const [createEndDate, setCreateEndDate] = useState<string>("");
+    const [runMode, setRunMode] = useState<"now" | "schedule">("now");
+    const [scheduleAt, setScheduleAt] = useState(""); // yyyy-MM-ddTHH:mm
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState("");
+    const [larkSyncing, setLarkSyncing] = useState(false);
   const [modalWarning, setModalWarning] = useState('');
 
   // Clear modal warning when loading ends
@@ -142,189 +159,182 @@ export default function ChannelAnalysisHubPage() {
     }
   }, [insightsLoading, metricsLoading]);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const platforms: PlatformKey[] = ['FACEBOOK', 'INSTAGRAM', 'TIKTOK'];
-      const res = await Promise.all(
-        platforms.map((p) => apiClient.get(`/tracked-channels?platform=${p}`))
-      );
-      const merged: TrackedChannel[] = res.flatMap((r: any) => r?.data || []);
-      setChannels(merged);
-    } catch (e: any) {
-      setError((e?.message || 'Không thể tải danh sách kênh').toString());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    const fetchAll = useCallback(async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const platforms: PlatformKey[] = ["FACEBOOK", "INSTAGRAM", "TIKTOK"];
+            const res = await Promise.all(platforms.map((p) => apiClient.get(`/tracked-channels?platform=${p}`)));
+            const merged: TrackedChannel[] = res.flatMap((r: any) => r?.data || []);
+            setChannels(merged);
+        } catch (e: any) {
+            setError((e?.message || "Không thể tải danh sách kênh").toString());
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-  // Load hidden set once
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HIDDEN_KEY);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setHiddenIds(new Set(arr.map((x) => String(x))));
-      }
-    } catch (_) { }
-  }, []);
+    // Load hidden set once
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(HIDDEN_KEY);
+            if (raw) {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) setHiddenIds(new Set(arr.map((x) => String(x))));
+            }
+        } catch (_) { }
+    }, []);
 
   const persistHidden = useCallback((next: Set<string>) => {
     try {
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next)));
-    } catch (_) { }
+    } catch (_) {}
     setHiddenIds(new Set(next));
     setStorageTick((x) => x + 1);
   }, []);
 
-  const softHide = useCallback((row: Row) => {
-    const id = getHiddenId(row.platform, row.username);
-    const next = new Set(hiddenIds);
-    next.add(id);
-    persistHidden(next);
-  }, [hiddenIds, persistHidden]);
+    const softHide = useCallback(
+        (row: Row) => {
+            const id = getHiddenId(row.platform, row.username);
+            const next = new Set(hiddenIds);
+            next.add(id);
+            persistHidden(next);
+        },
+        [hiddenIds, persistHidden],
+    );
 
-  const restoreHidden = useCallback((row: Row) => {
-    const id = getHiddenId(row.platform, row.username);
-    const next = new Set(hiddenIds);
-    next.delete(id);
-    persistHidden(next);
-  }, [hiddenIds, persistHidden]);
+    const restoreHidden = useCallback(
+        (row: Row) => {
+            const id = getHiddenId(row.platform, row.username);
+            const next = new Set(hiddenIds);
+            next.delete(id);
+            persistHidden(next);
+        },
+        [hiddenIds, persistHidden],
+    );
 
-  const hasRealInsights = useCallback((i: Record<string, string>) => {
-    if (!i || Object.keys(i).length === 0) return false;
-    const vals = Object.values(i);
-    const isPlaceholder = (v?: any) => {
-      if (typeof v !== 'string') return true;
-      const s = v.trim();
-      if (!s) return true;
-      return s.startsWith('Chưa đủ dữ liệu');
-    };
-    return vals.some((v) => !isPlaceholder(v));
-  }, []);
+    const hasRealInsights = useCallback((i: Record<string, string>) => {
+        if (!i || Object.keys(i).length === 0) return false;
+        const vals = Object.values(i);
+        const isPlaceholder = (v?: string) => {
+            const s = (v || "").trim();
+            if (!s) return true;
+            return s.startsWith("Chưa đủ dữ liệu");
+        };
+        return vals.some((v) => !isPlaceholder(v));
+    }, []);
 
-  const renderInsightContent = useCallback((raw: string) => {
-    const text = (raw || '').toString().trim();
-    if (!text) return <span className="text-slate-500">Chưa đủ dữ liệu.</span>;
+    const renderInsightContent = useCallback((raw: string) => {
+        const text = (raw || "").toString().trim();
+        if (!text) return <span className="text-slate-500">Chưa đủ dữ liệu.</span>;
 
-    // Prefer explicit bullet lines first
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const bulletLine = (l: string) => /^(-|•|\u2022)\s+/.test(l) || /^\d+[.)]\s+/.test(l);
-    const bulletLines = lines.filter(bulletLine);
+        // Prefer explicit bullet lines first
+        const lines = text
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean);
+        const bulletLine = (l: string) => /^(-|•|\u2022)\s+/.test(l) || /^\d+[.)]\s+/.test(l);
+        const bulletLines = lines.filter(bulletLine);
 
-    const toItem = (l: string) =>
-      l
-        .replace(/^(-|•|\u2022)\s+/, '')
-        .replace(/^\d+[.)]\s+/, '')
-        .trim();
+        const toItem = (l: string) =>
+            l
+                .replace(/^(-|•|\u2022)\s+/, "")
+                .replace(/^\d+[.)]\s+/, "")
+                .trim();
 
-    // If Gemini already returned bullet lines -> render list
-    if (bulletLines.length >= 2) {
-      const items = lines.map((l) => (bulletLine(l) ? toItem(l) : l)).filter(Boolean);
-      return (
-        <ul className="list-disc pl-5 space-y-2 text-[15px] md:text-base leading-7 text-slate-700">
-          {items.map((it, idx) => (
-            <li key={`${idx}-${it.slice(0, 12)}`}>{it}</li>
-          ))}
-        </ul>
-      );
-    }
+        // If Gemini already returned bullet lines -> render list
+        if (bulletLines.length >= 2) {
+            const items = lines.map((l) => (bulletLine(l) ? toItem(l) : l)).filter(Boolean);
+            return (
+                <ul className="list-disc pl-5 space-y-2 text-[15px] md:text-base leading-7 text-slate-700">
+                    {items.map((it, idx) => (
+                        <li key={`${idx}-${it.slice(0, 12)}`}>{it}</li>
+                    ))}
+                </ul>
+            );
+        }
 
-    // Fallback: split by common separators if it looks like multiple points
-    const parts = text
-      .split(/(?:\s*;\s*|\s*\.\s+(?=[A-ZÀ-Ỹ0-9])|\s*\n\s*)/g)
-      .map((p) => p.trim())
-      .filter(Boolean);
+        // Fallback: split by common separators if it looks like multiple points
+        const parts = text
+            .split(/(?:\s*;\s*|\s*\.\s+(?=[A-ZÀ-Ỹ0-9])|\s*\n\s*)/g)
+            .map((p) => p.trim())
+            .filter(Boolean);
 
-    if (parts.length >= 3) {
-      return (
-        <ul className="list-disc pl-5 space-y-2 text-[15px] md:text-base leading-7 text-slate-700">
-          {parts.map((p, idx) => (
-            <li key={`${idx}-${p.slice(0, 12)}`}>{p}</li>
-          ))}
-        </ul>
-      );
-    }
+        if (parts.length >= 3) {
+            return (
+                <ul className="list-disc pl-5 space-y-2 text-[15px] md:text-base leading-7 text-slate-700">
+                    {parts.map((p, idx) => (
+                        <li key={`${idx}-${p.slice(0, 12)}`}>{p}</li>
+                    ))}
+                </ul>
+            );
+        }
 
-    // Otherwise keep as paragraph
-    return <div className="text-[15px] md:text-base leading-7 text-slate-700 whitespace-pre-wrap">{text}</div>;
-  }, []);
+        // Otherwise keep as paragraph
+        return <div className="text-[15px] md:text-base leading-7 text-slate-700 whitespace-pre-wrap">{text}</div>;
+    }, []);
 
-  const openFacebookInsightsPopup = useCallback((row: Row, startDate?: string, endDate?: string) => {
-    setInsightsRow(row);
-    setInsights({});
-    setInsightsError('');
-    setChannelMetrics(null);
-    setMetricsError('');
-    setViralShowAll(false);
-    if (startDate) setInsightsStartDate(startDate);
-    if (endDate) setInsightsEndDate(endDate);
-    setStorageTick((x) => x + 1);
-    setShowInsightsModal(true);
-  }, []);
+    const openFacebookInsightsPopup = useCallback((row: Row, startDate?: string, endDate?: string) => {
+        setInsightsRow(row);
+        setInsights({});
+        setInsightsError("");
+        setChannelMetrics(null);
+        setMetricsError("");
+        setViralShowAll(false);
+        if (startDate) setInsightsStartDate(startDate);
+        if (endDate) setInsightsEndDate(endDate);
+        setStorageTick((x) => x + 1);
+        setShowInsightsModal(true);
+    }, []);
 
-  const runGenericInsights = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
-    if (!targetRow) return;
-    const username = (targetRow.username || '').replace(/^@/, '').trim();
-    if (!username) return;
+    const runGenericInsights = useCallback(
+        async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+            if (!targetRow) return;
+            const username = (targetRow.username || "").replace(/^@/, "").trim();
+            if (!username) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/channel/insights`;
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+            const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/channel/insights`;
 
-    setInsightsLoading(true);
-    setInsightsError('');
-    try {
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: targetRow.platform.toLowerCase(),
-          username,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
-          language: 'vi',
-          force_refresh: forceRefresh,
-          max_posts: maxPosts,
-        }),
-      });
-      let json: any = {};
+            setInsightsLoading(true);
+            setInsightsError("");
+            try {
+                const res = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        platform: targetRow.platform.toLowerCase(),
+                        username,
+                        start_date: startDate || undefined,
+                        end_date: endDate || undefined,
+                        language: "vi",
+                        force_refresh: forceRefresh,
+                        max_posts: maxPosts,
+                    }),
+                });
+                let json: any = {};
+                try {
+                    if (res.headers.get("content-type")?.includes("json")) json = await res.json();
+                } catch (_) { }
+                if (!res.ok) {
+                    const msg = (json.error || json.message || "").toString() || `Lỗi ${res.status}`;
+                    throw new Error(msg);
+                }
+                if (json.success === false && json.error) throw new Error(json.error);
+                const data = (json.insights || {}) as Record<string, string>;
+                setInsights(data);
+                const scanned = json.scanned_count ?? json.total_posts ?? null;
+
       try {
-        if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) { }
-      if (!res.ok) {
-        const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
-        throw new Error(msg);
-      }
-      if (json.success === false && json.error) throw new Error(json.error);
-      const data = (json.insights || {}) as Record<string, string>;
-      setInsights(data);
-      const scanned = json.scanned_count ?? json.total_posts ?? null;
-
-      // Only overwrite scannedCount on a fresh analysis. When viewing cached data
-      // (forceRefresh=false), preserve existing stored count to avoid flickering.
-      try {
-        const key = getAnalysisKey(targetRow.platform, username);
-        const existing = localStorage.getItem(key);
-        const prev = existing ? JSON.parse(existing) : {};
-        const hasValidStored = typeof prev.scannedCount === 'number' && prev.scannedCount > 0;
-        const hasValidNew = typeof scanned === 'number' && scanned > 0;
-        const newCount = (forceRefresh && hasValidNew) ? scanned
-          : hasValidStored ? prev.scannedCount
-            : (hasValidNew ? scanned : prev.scannedCount ?? null);
-        localStorage.setItem(key, JSON.stringify({
-          ...prev,
-          status: 'completed',
-          analyzedAt: forceRefresh ? Date.now() : (prev.analyzedAt || Date.now()),
-          startDate,
-          endDate,
-          scannedCount: newCount,
-        }));
-      } catch (_) { }
+        localStorage.setItem(
+          getAnalysisKey(targetRow.platform, username),
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned }),
+        );
+      } catch (_) {}
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i ph\u00e2n t\u00edch k\u00eanh').toString());
+      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
       // Revert 'analyzing' on error so row doesn't stay stuck
       try {
         const key = getAnalysisKey(targetRow.platform, username);
@@ -334,19 +344,20 @@ export default function ChannelAnalysisHubPage() {
           localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
           setStorageTick((x) => x + 1);
         }
-      } catch (_) { }
+      } catch (_) {}
     } finally {
       setInsightsLoading(false);
     }
   }, [fetchAll]);
 
-  const runGenericMetrics = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
-    if (!targetRow) return;
-    const username = (targetRow.username || '').replace(/^@/, '').trim();
-    if (!username) return;
+    const runGenericMetrics = useCallback(
+        async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+            if (!targetRow) return;
+            const username = (targetRow.username || "").replace(/^@/, "").trim();
+            if (!username) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/channel/metrics`;
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+            const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/channel/metrics`;
 
     setMetricsLoading(true);
     setMetricsError('');
@@ -366,7 +377,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) { }
+      } catch (_) {}
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
@@ -402,18 +413,18 @@ export default function ChannelAnalysisHubPage() {
       setPendingEndDate('');
       setPendingMaxPosts(30);
     }
-    setModalWarning('');
     setShowMaxPostsModal(true);
   }, []);
 
-  const runFacebookInsights = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
-    if (!targetRow) return;
-    const username = (targetRow.username || '').replace(/^@/, '').trim();
-    if (!username) return;
+    const runFacebookInsights = useCallback(
+        async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+            if (!targetRow) return;
+            const username = (targetRow.username || "").replace(/^@/, "").trim();
+            if (!username) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/facebook/insights`;
-    const url = `https://www.facebook.com/${encodeURIComponent(username)}`;
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+            const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/facebook/insights`;
+            const url = `https://www.facebook.com/${encodeURIComponent(username)}`;
 
     setInsightsLoading(true);
     setInsightsError('');
@@ -426,7 +437,7 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) { }
+      } catch (_) {}
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString();
         const friendly =
@@ -440,30 +451,19 @@ export default function ChannelAnalysisHubPage() {
       setInsights(data);
       const scanned = json.scanned_count ?? json.total_posts ?? null;
 
-      // Only overwrite scannedCount on a fresh analysis. When viewing cached data
-      // (forceRefresh=false), preserve existing stored count to avoid flickering.
+      // Mark analyzed in localStorage (table status)
       try {
-        const key = getAnalysisKey('FACEBOOK', username);
-        const existing = localStorage.getItem(key);
-        const prev = existing ? JSON.parse(existing) : {};
-        const hasValidStored = typeof prev.scannedCount === 'number' && prev.scannedCount > 0;
-        const hasValidNew = typeof scanned === 'number' && scanned > 0;
-        const newCount = (forceRefresh && hasValidNew) ? scanned
-          : hasValidStored ? prev.scannedCount
-            : (hasValidNew ? scanned : prev.scannedCount ?? null);
-        localStorage.setItem(key, JSON.stringify({
-          ...prev,
-          status: 'completed',
-          analyzedAt: forceRefresh ? Date.now() : (prev.analyzedAt || Date.now()),
-          startDate,
-          endDate,
-          scannedCount: newCount,
-        }));
-      } catch (_) { }
+        localStorage.setItem(
+          getAnalysisKey('FACEBOOK', username),
+          JSON.stringify({ status: 'completed', analyzedAt: Date.now(), startDate, endDate, scannedCount: scanned })
+        );
+      } catch (_) {}
       setStorageTick((x) => x + 1);
+      // Refresh table to reflect status/time
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i ph\u00e2n t\u00edch k\u00eanh').toString());
+      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
+      // Revert 'analyzing' on error
       try {
         const key = getAnalysisKey('FACEBOOK', username);
         const raw = localStorage.getItem(key);
@@ -472,20 +472,21 @@ export default function ChannelAnalysisHubPage() {
           localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
           setStorageTick((x) => x + 1);
         }
-      } catch (_) { }
+      } catch (_) {}
     } finally {
       setInsightsLoading(false);
     }
   }, [fetchAll]);
 
-  const runFacebookMetrics = useCallback(async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
-    if (!targetRow) return;
-    const username = (targetRow.username || '').replace(/^@/, '').trim();
-    if (!username) return;
+    const runFacebookMetrics = useCallback(
+        async (targetRow: Row, startDate: string, endDate: string, forceRefresh = false, maxPosts = 30) => {
+            if (!targetRow) return;
+            const username = (targetRow.username || "").replace(/^@/, "").trim();
+            if (!username) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const apiUrl = `${baseUrl.replace(/\/$/, '')}/ai/facebook/channel-metrics`;
-    const url = `https://www.facebook.com/${encodeURIComponent(username)}`;
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+            const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/facebook/channel-metrics`;
+            const url = `https://www.facebook.com/${encodeURIComponent(username)}`;
 
     setMetricsLoading(true);
     setMetricsError('');
@@ -498,28 +499,26 @@ export default function ChannelAnalysisHubPage() {
       let json: any = {};
       try {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
-      } catch (_) { }
+      } catch (_) {}
       if (!res.ok) {
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
       }
       if (json.success === false && json.error) throw new Error(json.error);
       setChannelMetrics(json.metrics || null);
-      // Only update scannedCount from metrics if this is a fresh analysis (forceRefresh=true)
-      // and scannedCount hasn't been set by insights yet — avoids race/flickering
-      if (forceRefresh) {
-        const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
-        if (scanned !== null) {
-          try {
-            const key = getAnalysisKey('FACEBOOK', username);
-            const existing = localStorage.getItem(key);
-            const prev = existing ? JSON.parse(existing) : {};
-            if (!prev.scannedCount) {
-              localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
-              setStorageTick((x) => x + 1);
-            }
-          } catch (_) { }
-        }
+      // Also persist scanned_count if insights haven't done so yet
+      const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
+      if (scanned !== null) {
+        try {
+          const key = getAnalysisKey('FACEBOOK', username);
+          const existing = localStorage.getItem(key);
+          const prev = existing ? JSON.parse(existing) : {};
+          // Only update if scannedCount not yet set or this is newer
+          if (!prev.scannedCount) {
+            localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
+            setStorageTick((x) => x + 1);
+          }
+        } catch (_) {}
       }
     } catch (e: any) {
       setMetricsError((e?.message || 'Không thể tải thống kê kênh').toString());
@@ -539,89 +538,97 @@ export default function ChannelAnalysisHubPage() {
         sDate = parsed?.startDate || '';
         eDate = parsed?.endDate || '';
       }
-    } catch (_) { }
+    } catch (_) {}
 
-    openFacebookInsightsPopup(row, sDate, eDate);
+            openFacebookInsightsPopup(row, sDate, eDate);
 
-    setTimeout(() => {
-      if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(row, sDate, eDate, false), runFacebookMetrics(row, sDate, eDate, false)]);
-      } else {
-        void Promise.all([runGenericInsights(row, sDate, eDate, false), runGenericMetrics(row, sDate, eDate, false)]);
-      }
-    }, 0);
-  }, [openFacebookInsightsPopup, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
+            setTimeout(() => {
+                if (row.platform === "FACEBOOK") {
+                    void Promise.all([
+                        runFacebookInsights(row, sDate, eDate, false),
+                        runFacebookMetrics(row, sDate, eDate, false),
+                    ]);
+                } else {
+                    void Promise.all([
+                        runGenericInsights(row, sDate, eDate, false),
+                        runGenericMetrics(row, sDate, eDate, false),
+                    ]);
+                }
+            }, 0);
+        },
+        [openFacebookInsightsPopup, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics],
+    );
 
-  useEffect(() => {
-    let alive = true;
-    const init = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const r = await syncFromLarkAssignmentIfStale();
-        if (alive && r && r.imported > 0) {
-          toast.success(`Đã thêm ${r.imported} kênh được phân công (HR/Lark)`, { duration: 4500 });
+    useEffect(() => {
+        let alive = true;
+        const init = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const r = await syncFromLarkAssignmentIfStale();
+                if (alive && r && r.imported > 0) {
+                    toast.success(`Đã thêm ${r.imported} kênh được phân công (HR/Lark)`, { duration: 4500 });
+                }
+            } catch {
+                /* vẫn tải danh sách */
+            }
+            if (!alive) return;
+            await fetchAll();
+        };
+        init();
+        return () => {
+            alive = false;
+        };
+    }, [fetchAll]);
+
+    const handleSyncLarkChannels = async () => {
+        setLarkSyncing(true);
+        try {
+            clearLarkSyncCooldown();
+            const r = await syncFromLarkAssignment();
+            await fetchAll();
+            if (r.imported > 0) {
+                toast.success(`Đã đồng bộ ${r.imported} kênh từ HR/Lark`, { duration: 5000 });
+            } else if ((r.skipped_no_identity ?? 0) > 0 && r.imported === 0) {
+                toast(
+                    `Chưa thêm kênh mới. ${r.skipped_no_identity} dòng thiếu link/ID hợp lệ trên Lark — kiểm tra bảng Channel.`,
+                    { duration: 6000, icon: "ℹ️" },
+                );
+            } else if ((r.skipped_no_user ?? 0) > 0 && r.imported === 0) {
+                toast("Chưa có dòng Channel nào khớp email/tên bạn trên Lark.", { duration: 5000 });
+            } else {
+                toast.success("Danh sách kênh đã cập nhật.", { duration: 3000 });
+            }
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || e?.message || "Không đồng bộ được. Thử lại sau.");
+        } finally {
+            setLarkSyncing(false);
         }
-      } catch {
-        /* vẫn tải danh sách */
-      }
-      if (!alive) return;
-      await fetchAll();
     };
-    init();
-    return () => {
-      alive = false;
-    };
-  }, [fetchAll]);
 
-  const handleSyncLarkChannels = async () => {
-    setLarkSyncing(true);
-    try {
-      clearLarkSyncCooldown();
-      const r = await syncFromLarkAssignment();
-      await fetchAll();
-      if (r.imported > 0) {
-        toast.success(`Đã đồng bộ ${r.imported} kênh từ HR/Lark`, { duration: 5000 });
-      } else if ((r.skipped_no_identity ?? 0) > 0 && r.imported === 0) {
-        toast(
-          `Chưa thêm kênh mới. ${r.skipped_no_identity} dòng thiếu link/ID hợp lệ trên Lark — kiểm tra bảng Channel.`,
-          { duration: 6000, icon: 'ℹ️' },
-        );
-      } else if ((r.skipped_no_user ?? 0) > 0 && r.imported === 0) {
-        toast('Chưa có dòng Channel nào khớp email/tên bạn trên Lark.', { duration: 5000 });
-      } else {
-        toast.success('Danh sách kênh đã cập nhật.', { duration: 3000 });
-      }
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || e?.message || 'Không đồng bộ được. Thử lại sau.');
-    } finally {
-      setLarkSyncing(false);
-    }
-  };
+    const channelsByPlatform = useMemo(() => {
+        const m: Record<PlatformKey, TrackedChannel[]> = { FACEBOOK: [], INSTAGRAM: [], TIKTOK: [] };
+        for (const ch of channels || []) {
+            if (ch?.platform && m[ch.platform as PlatformKey]) m[ch.platform as PlatformKey].push(ch);
+        }
+        // sort by most recently synced first
+        (Object.keys(m) as PlatformKey[]).forEach((p) => {
+            m[p] = (m[p] || []).sort((a, b) => {
+                const ta = new Date(a.last_synced_at || a.created_at || 0).getTime();
+                const tb = new Date(b.last_synced_at || b.created_at || 0).getTime();
+                return tb - ta;
+            });
+        });
+        return m;
+    }, [channels]);
 
-  const channelsByPlatform = useMemo(() => {
-    const m: Record<PlatformKey, TrackedChannel[]> = { FACEBOOK: [], INSTAGRAM: [], TIKTOK: [] };
-    for (const ch of channels || []) {
-      if (ch?.platform && m[ch.platform as PlatformKey]) m[ch.platform as PlatformKey].push(ch);
-    }
-    // sort by most recently synced first
-    (Object.keys(m) as PlatformKey[]).forEach((p) => {
-      m[p] = (m[p] || []).sort((a, b) => {
-        const ta = new Date(a.last_synced_at || a.created_at || 0).getTime();
-        const tb = new Date(b.last_synced_at || b.created_at || 0).getTime();
-        return tb - ta;
-      });
-    });
-    return m;
-  }, [channels]);
-
-  const channelsByPlatformVisible = useMemo(() => {
-    const m: Record<PlatformKey, TrackedChannel[]> = { FACEBOOK: [], INSTAGRAM: [], TIKTOK: [] };
-    (Object.keys(channelsByPlatform) as PlatformKey[]).forEach((p) => {
-      m[p] = (channelsByPlatform[p] || []).filter((ch) => !hiddenIds.has(getHiddenId(ch.platform, ch.username)));
-    });
-    return m;
-  }, [channelsByPlatform, hiddenIds, storageTick]);
+    const channelsByPlatformVisible = useMemo(() => {
+        const m: Record<PlatformKey, TrackedChannel[]> = { FACEBOOK: [], INSTAGRAM: [], TIKTOK: [] };
+        (Object.keys(channelsByPlatform) as PlatformKey[]).forEach((p) => {
+            m[p] = (channelsByPlatform[p] || []).filter((ch) => !hiddenIds.has(getHiddenId(ch.platform, ch.username)));
+        });
+        return m;
+    }, [channelsByPlatform, hiddenIds, storageTick]);
 
   const extractUsername = (platform: PlatformKey, input: string): string => {
     let clean = (input || '').trim();
@@ -653,56 +660,56 @@ export default function ChannelAnalysisHubPage() {
         const at = parts.find((p) => p.startsWith('@'));
         if (at) return at.replace('@', '');
       }
-    } catch (_) { }
+    } catch (_) {}
     return clean.replace('@', '');
   };
 
-  const createOrGo = async () => {
-    setCreateError('');
-    const platform = selectedPlatform;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-    setCreating(true);
-    try {
-      let username = '';
+    const createOrGo = async () => {
+        setCreateError("");
+        const platform = selectedPlatform;
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+        setCreating(true);
+        try {
+            let username = "";
 
-      if (sourceMode === 'existing') {
-        username = extractUsername(platform, existingUsername);
-        if (!username) throw new Error('Vui lòng chọn kênh có sẵn.');
-      } else {
-        username = extractUsername(platform, newInput);
-        if (!username) throw new Error('Vui lòng nhập link/username hợp lệ.');
+            if (sourceMode === "existing") {
+                username = extractUsername(platform, existingUsername);
+                if (!username) throw new Error("Vui lòng chọn kênh có sẵn.");
+            } else {
+                username = extractUsername(platform, newInput);
+                if (!username) throw new Error("Vui lòng nhập link/username hợp lệ.");
 
-        // 1) Quét nhanh profile từ backend (AI) để có payload chuẩn
-        const scanRes = await fetch(`${baseUrl.replace(/\/$/, '')}/ai/user-videos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform: platform.toLowerCase(),
-            username,
-            max_results: platform === 'FACEBOOK' ? 3 : platform === 'INSTAGRAM' ? 0 : 1,
-          }),
-        });
-        const scanJson = await scanRes.json();
-        if (!scanRes.ok) throw new Error(scanJson?.error || `Không thể quét kênh (${scanRes.status})`);
+                // 1) Quét nhanh profile từ backend (AI) để có payload chuẩn
+                const scanRes = await fetch(`${baseUrl.replace(/\/$/, "")}/ai/user-videos`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        platform: platform.toLowerCase(),
+                        username,
+                        max_results: platform === "FACEBOOK" ? 3 : platform === "INSTAGRAM" ? 0 : 1,
+                    }),
+                });
+                const scanJson = await scanRes.json();
+                if (!scanRes.ok) throw new Error(scanJson?.error || `Không thể quét kênh (${scanRes.status})`);
 
-        const p = scanJson?.profile || {};
-        const payload: any = {
-          platform,
-          username: (p.username || username || '').toString().replace(/^@/, ''),
-          display_name: p.display_name || p.displayName || p.name || username,
-          avatar_url: p.avatar_url || p.avatar || p.avatarUrl || '',
-          total_followers: p.follower_count ?? p.followers ?? p.followers_count ?? null,
-          total_likes: p.total_likes ?? p.likes ?? 0,
-          total_views: p.total_views ?? p.views ?? 0,
-          total_videos: p.total_videos ?? p.videos ?? 0,
-          posts_count: p.posts_count ?? p.total_posts ?? null,
-          engagement_rate: p.engagement_rate ?? 0,
-        };
+                const p = scanJson?.profile || {};
+                const payload: any = {
+                    platform,
+                    username: (p.username || username || "").toString().replace(/^@/, ""),
+                    display_name: p.display_name || p.displayName || p.name || username,
+                    avatar_url: p.avatar_url || p.avatar || p.avatarUrl || "",
+                    total_followers: p.follower_count ?? p.followers ?? p.followers_count ?? null,
+                    total_likes: p.total_likes ?? p.likes ?? 0,
+                    total_views: p.total_views ?? p.views ?? 0,
+                    total_videos: p.total_videos ?? p.videos ?? 0,
+                    posts_count: p.posts_count ?? p.total_posts ?? null,
+                    engagement_rate: p.engagement_rate ?? 0,
+                };
 
-        // 2) Lưu vào tracked-channels (BE) -> channels pages sẽ thấy kênh mới
-        await apiClient.post('/tracked-channels', payload);
-        await fetchAll();
-      }
+                // 2) Lưu vào tracked-channels (BE) -> channels pages sẽ thấy kênh mới
+                await apiClient.post("/tracked-channels", payload);
+                await fetchAll();
+            }
 
       // If schedule -> save and do NOT navigate now
       if (runMode === 'schedule') {
@@ -715,7 +722,7 @@ export default function ChannelAnalysisHubPage() {
             getAnalysisKey(platform, username),
             JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, startDate: createStartDate, endDate: createEndDate, createdAt: Date.now() })
           );
-        } catch (_) { }
+        } catch (_) {}
         await fetchAll();
         setShowCreateModal(false);
         setNewInput('');
@@ -731,46 +738,49 @@ export default function ChannelAnalysisHubPage() {
         const existing = localStorage.getItem(key);
         const prev = existing ? JSON.parse(existing) : {};
         localStorage.setItem(key, JSON.stringify({ ...prev, status: prev?.status || 'not_analyzed', startDate: createStartDate, endDate: createEndDate }));
-      } catch (_) { }
+      } catch (_) {}
       setStorageTick((x) => x + 1);
 
-      setShowCreateModal(false);
-      setNewInput('');
-      setExistingUsername('');
-      setCreateStartDate('');
-      setCreateEndDate('');
-      setScheduleAt('');
-      setRunMode('now');
+            setShowCreateModal(false);
+            setNewInput("");
+            setExistingUsername("");
+            setCreateStartDate("");
+            setCreateEndDate("");
+            setScheduleAt("");
+            setRunMode("now");
 
-      openDateRangeChooser({
-        id: `${Date.now()}`,
-        name: username,
-        url: buildChannelUrl(platform, username),
-        platform,
-        countLabel: '-',
-        maxAvailable: 0,
-        status: 'not_analyzed',
-        timeLabel: '-',
-        username,
-      }, 'open');
-    } catch (e: any) {
-      setCreateError((e?.message || 'Không thể tạo báo cáo').toString());
-    } finally {
-      setCreating(false);
-    }
-  };
+            openDateRangeChooser(
+                {
+                    id: `${Date.now()}`,
+                    name: username,
+                    url: buildChannelUrl(platform, username),
+                    platform,
+                    countLabel: "-",
+                    maxAvailable: 0,
+                    status: "not_analyzed",
+                    timeLabel: "-",
+                    username,
+                },
+                "open",
+            );
+        } catch (e: any) {
+            setCreateError((e?.message || "Không thể tạo báo cáo").toString());
+        } finally {
+            setCreating(false);
+        }
+    };
 
-  const rows = useMemo<Row[]>(() => {
-    const mapped = (channels || []).map((ch) => {
-      const name = (ch.display_name || ch.username || '').trim() || '(No name)';
-      const url = buildChannelUrl(ch.platform, ch.username);
+    const rows = useMemo<Row[]>(() => {
+        const mapped = (channels || []).map((ch) => {
+            const name = (ch.display_name || ch.username || "").trim() || "(No name)";
+            const url = buildChannelUrl(ch.platform, ch.username);
 
-      // Count label: scannedCount from localStorage (set after analysis), fallback to available count
-      let scannedCount: number | null = null;
-      const availableCount =
-        (typeof ch.posts_count === 'number' && ch.posts_count !== null ? ch.posts_count : null) ??
-        (typeof ch.total_videos === 'number' && ch.total_videos !== null ? ch.total_videos : null) ??
-        0;
+            // Count label: scannedCount from localStorage (set after analysis), fallback to available count
+            let scannedCount: number | null = null;
+            const availableCount =
+                (typeof ch.posts_count === "number" && ch.posts_count !== null ? ch.posts_count : null) ??
+                (typeof ch.total_videos === "number" && ch.total_videos !== null ? ch.total_videos : null) ??
+                0;
 
       // Analysis status from localStorage
       let analyzedAt: number | null = null;
@@ -789,61 +799,50 @@ export default function ChannelAnalysisHubPage() {
           if (parsed?.status === 'analyzing') {
             status = 'analyzing';
             analyzingAtMs = parsed?.analyzingAt;
-            // Show the user-selected max posts count while analyzing (instead of profile total)
-            if (typeof parsed?.maxPosts === 'number' && parsed.maxPosts > 0) {
-              scannedCount = parsed.maxPosts;
-            }
           }
           if (parsed?.status === 'scheduled') {
             status = 'scheduled';
             scheduledAtMs = parsed?.scheduledAt || null;
           }
         }
-      } catch (_) { }
+      } catch (_) {}
 
-      // Build countLabel:
-      // - completed: use actual scannedCount from backend
-      // - analyzing: use maxPosts (user's selection) to avoid showing total profile count
-      // - not_analyzed: use profile's availableCount as a hint only
+      // Build countLabel: show scannedCount (from analysis) or availableCount — never show dates
       let countLabel = '-';
       if (scannedCount !== null) {
-        countLabel = status === 'analyzing'
-          ? `${scannedCount} bài (đang quét...)`
-          : `${scannedCount} bài`;
-      } else if (status === 'not_analyzed' && availableCount > 0) {
+        countLabel = `${scannedCount} bài`;
+      } else if (availableCount > 0) {
         countLabel = `${availableCount} bài`;
       }
 
-      // Fallback time: last_synced_at / created_at
-      const timeLabel =
-        status === 'scheduled'
-          ? formatTimeLabel(scheduledAtMs, null)
-          : formatTimeLabel(analyzedAt, ch.last_synced_at || ch.created_at || null);
+            // Fallback time: last_synced_at / created_at
+            const timeLabel =
+                status === "scheduled"
+                    ? formatTimeLabel(scheduledAtMs, null)
+                    : formatTimeLabel(analyzedAt, ch.last_synced_at || ch.created_at || null);
 
-      return {
-        id: ch.id,
-        name,
-        url,
-        platform: ch.platform,
-        countLabel,
-        maxAvailable: availableCount || 0,
-        status,
-        timeLabel,
-        username: ch.username,
-        analyzingAt: analyzingAtMs,
-      };
-    });
-    const visible = showHidden
-      ? mapped
-      : mapped.filter((r) => !hiddenIds.has(getHiddenId(r.platform, r.username)));
+            return {
+                id: ch.id,
+                name,
+                url,
+                platform: ch.platform,
+                countLabel,
+                maxAvailable: availableCount || 0,
+                status,
+                timeLabel,
+                username: ch.username,
+                analyzingAt: analyzingAtMs,
+            };
+        });
+        const visible = showHidden ? mapped : mapped.filter((r) => !hiddenIds.has(getHiddenId(r.platform, r.username)));
 
-    if (platformFilter === 'ALL') return visible;
-    return visible.filter((r) => r.platform === platformFilter);
-  }, [channels, storageTick, showHidden, hiddenIds, platformFilter]);
+        if (platformFilter === "ALL") return visible;
+        return visible.filter((r) => r.platform === platformFilter);
+    }, [channels, storageTick, showHidden, hiddenIds, platformFilter]);
 
-  const onAnalyze = (row: Row) => {
-    const u = (row.username || '').replace(/^@/, '').trim();
-    if (!u) return;
+    const onAnalyze = (row: Row) => {
+        const u = (row.username || "").replace(/^@/, "").trim();
+        if (!u) return;
 
     try {
       const key = getAnalysisKey(row.platform, row.username);
@@ -851,16 +850,16 @@ export default function ChannelAnalysisHubPage() {
       if (!existing) {
         localStorage.setItem(key, JSON.stringify({ status: 'not_analyzed', analyzedAt: null }));
       }
-    } catch (_) { }
+    } catch (_) {}
 
-    try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) { }
+    try { sessionStorage.setItem('analytics_from_channels', '1'); } catch (_) {}
 
-    openDateRangeChooser(row, row.status === 'completed' ? 'rerun' : 'open');
-  };
+        openDateRangeChooser(row, row.status === "completed" ? "rerun" : "open");
+    };
 
-  const confirmDateRangeAndRun = useCallback(() => {
-    const row = pendingRow;
-    if (!row) return;
+    const confirmDateRangeAndRun = useCallback(() => {
+        const row = pendingRow;
+        if (!row) return;
 
     // Mark channel as 'analyzing' immediately so table shows progress bar
     try {
@@ -875,38 +874,38 @@ export default function ChannelAnalysisHubPage() {
         maxPosts: pendingMaxPosts,
         analyzingAt: Date.now(),
       }));
-    } catch (_) { }
+    } catch (_) {}
     setStorageTick((x) => x + 1);
 
-    setShowMaxPostsModal(false);
+        setShowMaxPostsModal(false);
 
-    openFacebookInsightsPopup(row, pendingStartDate, pendingEndDate);
+        openFacebookInsightsPopup(row, pendingStartDate, pendingEndDate);
 
     setTimeout(() => {
-      // Always forceRefresh when triggered from the date-range modal (both 'open' and 'rerun').
-      // forceRefresh=false is only used by onView (view cached results without re-fetching).
-      const forceRefresh = true;
+      const isRerun = pendingMode === 'rerun';
       if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts)]);
+        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
       } else {
-        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, forceRefresh, pendingMaxPosts)]);
+        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
       }
     }, 0);
   }, [openFacebookInsightsPopup, pendingEndDate, pendingMode, pendingRow, pendingStartDate, pendingMaxPosts, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
 
-  // Poll localStorage every 2s while any row is 'analyzing' to detect completion
-  useEffect(() => {
-    const hasAnalyzing = channels.some((ch) => {
-      try {
-        const raw = localStorage.getItem(getAnalysisKey(ch.platform, ch.username));
-        if (!raw) return false;
-        return JSON.parse(raw)?.status === 'analyzing';
-      } catch { return false; }
-    });
-    if (!hasAnalyzing) return;
-    const timer = setInterval(() => setStorageTick((x) => x + 1), 2000);
-    return () => clearInterval(timer);
-  }, [channels, storageTick]);
+    // Poll localStorage every 2s while any row is 'analyzing' to detect completion
+    useEffect(() => {
+        const hasAnalyzing = channels.some((ch) => {
+            try {
+                const raw = localStorage.getItem(getAnalysisKey(ch.platform, ch.username));
+                if (!raw) return false;
+                return JSON.parse(raw)?.status === "analyzing";
+            } catch {
+                return false;
+            }
+        });
+        if (!hasAnalyzing) return;
+        const timer = setInterval(() => setStorageTick((x) => x + 1), 2000);
+        return () => clearInterval(timer);
+    }, [channels, storageTick]);
 
   const badge = (r: Row) => {
     if (r.status === 'completed') {
@@ -923,8 +922,8 @@ export default function ChannelAnalysisHubPage() {
       return (
         <div className="relative inline-flex items-center w-36 h-6 rounded-full bg-indigo-50 border border-indigo-200 overflow-hidden shadow-sm">
           {/* Progress fill */}
-          <div
-            className="absolute left-0 top-0 bottom-0 bg-indigo-500 transition-all duration-1000 ease-linear"
+          <div 
+            className="absolute left-0 top-0 bottom-0 bg-indigo-500 transition-all duration-1000 ease-linear" 
             style={{ width: `${percent}%` }}
           />
           {/* Text overlap */}
@@ -944,23 +943,24 @@ export default function ChannelAnalysisHubPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600">
-            <BarChart3 className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">Phân tích kênh</h2>
-            <p className="text-sm text-slate-500">Tổng hợp kênh theo dõi: Facebook, Instagram, TikTok</p>
-          </div>
+        <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600">
+          <BarChart3 className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Phân tích kênh</h2>
+          <p className="text-sm text-slate-500">Tổng hợp kênh theo dõi: Facebook, Instagram, TikTok</p>
+        </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden md:inline-flex items-center gap-1 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
             <button
               type="button"
               onClick={() => setPlatformFilter('FACEBOOK')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'FACEBOOK'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
+                platformFilter === 'FACEBOOK'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-                }`}
+              }`}
               title="Lọc Facebook"
             >
               <span className="inline-flex items-center gap-2">
@@ -971,10 +971,11 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('INSTAGRAM')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'INSTAGRAM'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
+                platformFilter === 'INSTAGRAM'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-                }`}
+              }`}
               title="Lọc Instagram"
             >
               <span className="inline-flex items-center gap-2">
@@ -985,10 +986,11 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('TIKTOK')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'TIKTOK'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
+                platformFilter === 'TIKTOK'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-                }`}
+              }`}
               title="Lọc TikTok"
             >
               <span className="inline-flex items-center gap-2">
@@ -999,10 +1001,11 @@ export default function ChannelAnalysisHubPage() {
             <button
               type="button"
               onClick={() => setPlatformFilter('ALL')}
-              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${platformFilter === 'ALL'
+              className={`px-4 py-2.5 rounded-2xl text-base font-black transition shadow-sm ${
+                platformFilter === 'ALL'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-700 hover:bg-slate-50'
-                }`}
+              }`}
               title="Tất cả nền tảng"
             >
               Tất cả
@@ -1042,40 +1045,44 @@ export default function ChannelAnalysisHubPage() {
           <button
             type="button"
             onClick={() => setPlatformFilter('FACEBOOK')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'FACEBOOK'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
+              platformFilter === 'FACEBOOK'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-              }`}
+            }`}
           >
             FB
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('INSTAGRAM')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'INSTAGRAM'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
+              platformFilter === 'INSTAGRAM'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-              }`}
+            }`}
           >
             IG
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('TIKTOK')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'TIKTOK'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
+              platformFilter === 'TIKTOK'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-              }`}
+            }`}
           >
             TikTok
           </button>
           <button
             type="button"
             onClick={() => setPlatformFilter('ALL')}
-            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${platformFilter === 'ALL'
+            className={`px-3 py-2.5 rounded-2xl text-base font-black border transition shadow-sm ${
+              platformFilter === 'ALL'
                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
                 : 'bg-white text-slate-700 border-slate-200'
-              }`}
+            }`}
           >
             ALL
           </button>
@@ -1162,10 +1169,11 @@ export default function ChannelAnalysisHubPage() {
                         ) : (
                           <button
                             onClick={() => onAnalyze(r)}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${r.status === 'completed' || r.status === 'scheduled'
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+                              r.status === 'completed' || r.status === 'scheduled'
                                 ? 'bg-slate-900 text-white hover:bg-slate-800'
                                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                              }`}
+                            }`}
                           >
                             {r.status === 'completed' ? <RefreshCcw className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
                             {r.status === 'completed' ? 'Phân tích lại' : r.status === 'scheduled' ? 'Mở phân tích' : 'Phân tích'}
@@ -1188,55 +1196,55 @@ export default function ChannelAnalysisHubPage() {
         </div>
       )}
 
-      {/* Create Report Modal */}
-      {showCreateModal && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget && !creating) setShowCreateModal(false);
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
-          >
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  Tạo Báo Cáo
-                </h2>
-              </div>
-              <button
-                onClick={() => !creating && setShowCreateModal(false)}
-                className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-8 space-y-5">
-              {/* Platform */}
-              <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Chọn nền tảng</label>
-                <select
-                  value={selectedPlatform}
-                  onChange={(e) => {
-                    const p = e.target.value as PlatformKey;
-                    setSelectedPlatform(p);
-                    setExistingUsername('');
-                    setNewInput('');
-                    setSourceMode('existing');
-                  }}
-                  className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
+            {/* Create Report Modal */}
+            {showCreateModal && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget && !creating) setShowCreateModal(false);
+                    }}
                 >
-                  <option value="FACEBOOK">Facebook</option>
-                  <option value="INSTAGRAM">Instagram</option>
-                  <option value="TIKTOK">TikTok</option>
-                </select>
-              </div>
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+                    >
+                        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                                        <Plus className="w-5 h-5" />
+                                    </div>
+                                    Tạo Báo Cáo
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => !creating && setShowCreateModal(false)}
+                                className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-5">
+                            {/* Platform */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">Chọn nền tảng</label>
+                                <select
+                                    value={selectedPlatform}
+                                    onChange={(e) => {
+                                        const p = e.target.value as PlatformKey;
+                                        setSelectedPlatform(p);
+                                        setExistingUsername("");
+                                        setNewInput("");
+                                        setSourceMode("existing");
+                                    }}
+                                    className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
+                                >
+                                    <option value="FACEBOOK">Facebook</option>
+                                    <option value="INSTAGRAM">Instagram</option>
+                                    <option value="TIKTOK">TikTok</option>
+                                </select>
+                            </div>
 
               {/* Source mode */}
               <div>
@@ -1245,190 +1253,213 @@ export default function ChannelAnalysisHubPage() {
                   <button
                     type="button"
                     onClick={() => setSourceMode('existing')}
-                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${sourceMode === 'existing'
+                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${
+                      sourceMode === 'existing'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
+                    }`}
                   >
                     Chọn kênh có sẵn
                   </button>
                   <button
                     type="button"
                     onClick={() => setSourceMode('new')}
-                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${sourceMode === 'new'
+                    className={`px-4 py-3 rounded-xl border-2 font-bold text-sm transition ${
+                      sourceMode === 'new'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
+                    }`}
                   >
                     Add kênh mới
                   </button>
                 </div>
               </div>
 
-              {sourceMode === 'existing' ? (
-                <div>
-                  <label className="block text-sm font-bold text-slate-800 mb-2">Chọn kênh</label>
-                  <select
-                    value={existingUsername}
-                    onChange={(e) => setExistingUsername(e.target.value)}
-                    className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
-                  >
-                    <option value="">-- Chọn kênh --</option>
-                    {(channelsByPlatformVisible[selectedPlatform] || []).map((ch) => (
-                      <option key={ch.id} value={ch.username}>
-                        {ch.display_name || ch.username}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-500 mt-2">Nếu chưa có kênh, chọn “Add kênh mới”.</p>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-bold text-slate-800 mb-2">
-                    {selectedPlatform === 'FACEBOOK' ? 'Page URL' : 'Username / URL'}
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                      <LinkIcon className="w-5 h-5" />
+                            {sourceMode === "existing" ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-2">Chọn kênh</label>
+                                    <select
+                                        value={existingUsername}
+                                        onChange={(e) => setExistingUsername(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
+                                    >
+                                        <option value="">-- Chọn kênh --</option>
+                                        {(channelsByPlatformVisible[selectedPlatform] || []).map((ch) => (
+                                            <option key={ch.id} value={ch.username}>
+                                                {ch.display_name || ch.username}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        Nếu chưa có kênh, chọn “Add kênh mới”.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                                        {selectedPlatform === "FACEBOOK" ? "Page URL" : "Username / URL"}
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <LinkIcon className="w-5 h-5" />
+                                        </div>
+                                        <input
+                                            value={newInput}
+                                            onChange={(e) => setNewInput(e.target.value)}
+                                            placeholder={
+                                                selectedPlatform === "FACEBOOK"
+                                                    ? "https://www.facebook.com/..."
+                                                    : "Ví dụ: @username hoặc link"
+                                            }
+                                            className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Date range */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">Khoảng thời gian</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
+                                        <input
+                                            type="date"
+                                            value={createStartDate}
+                                            onChange={(e) => setCreateStartDate(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
+                                        <input
+                                            type="date"
+                                            value={createEndDate}
+                                            onChange={(e) => setCreateEndDate(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Hệ thống sẽ quét số lượng bài trong khoảng ngày này.
+                                </p>
+                            </div>
+
+                            {/* Run time */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">
+                                    Thời điểm thực hiện
+                                </label>
+                                <select
+                                    value={runMode}
+                                    onChange={(e) => setRunMode(e.target.value as any)}
+                                    className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold"
+                                >
+                                    <option value="now">Chạy ngay</option>
+                                    <option value="schedule">Lên lịch</option>
+                                </select>
+                                {runMode === "schedule" && (
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduleAt}
+                                        onChange={(e) => setScheduleAt(e.target.value)}
+                                        className="mt-3 w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold"
+                                    />
+                                )}
+                            </div>
+
+                            {createError && (
+                                <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                    {createError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    onClick={() => !creating && setShowCreateModal(false)}
+                                    disabled={creating}
+                                    className="px-5 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 border border-slate-200"
+                                >
+                                    Bỏ qua
+                                </button>
+                                <button
+                                    onClick={createOrGo}
+                                    disabled={creating}
+                                    className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 disabled:opacity-60 inline-flex items-center gap-2"
+                                >
+                                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                    Tạo
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <input
-                      value={newInput}
-                      onChange={(e) => setNewInput(e.target.value)}
-                      placeholder={selectedPlatform === 'FACEBOOK' ? 'https://www.facebook.com/...' : 'Ví dụ: @username hoặc link'}
-                      className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 placeholder:text-slate-400 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white font-semibold"
-                    />
-                  </div>
                 </div>
-              )}
+            )}
 
-              {/* Date range */}
-              <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Khoảng thời gian</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
-                    <input
-                      type="date"
-                      value={createStartDate}
-                      onChange={(e) => setCreateStartDate(e.target.value)}
-                      className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
-                    <input
-                      type="date"
-                      value={createEndDate}
-                      onChange={(e) => setCreateEndDate(e.target.value)}
-                      className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold text-sm"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Hệ thống sẽ quét số lượng bài trong khoảng ngày này.</p>
-              </div>
-
-              {/* Run time */}
-              <div>
-                <label className="block text-sm font-bold text-slate-800 mb-2">Thời điểm thực hiện</label>
-                <select
-                  value={runMode}
-                  onChange={(e) => setRunMode(e.target.value as any)}
-                  className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold"
+            {/* Facebook Insights Popup */}
+            {showInsightsModal && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) setShowInsightsModal(false);
+                    }}
                 >
-                  <option value="now">Chạy ngay</option>
-                  <option value="schedule">Lên lịch</option>
-                </select>
-                {runMode === 'schedule' && (
-                  <input
-                    type="datetime-local"
-                    value={scheduleAt}
-                    onChange={(e) => setScheduleAt(e.target.value)}
-                    className="mt-3 w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold"
-                  />
-                )}
-              </div>
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[88vh]"
+                    >
+                        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                            <div className="min-w-0">
+                                <h2 className="text-xl font-black text-slate-900 truncate">Channel Analytics</h2>
+                                <p className="text-xs text-slate-500 mt-1 truncate">
+                                    {(insightsRow?.name || insightsRow?.username || "").toString()}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {(insightsStartDate || insightsEndDate) && (
+                                    <span className="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">
+                                        {insightsStartDate ? insightsStartDate.split("-").reverse().join("/") : "..."} –{" "}
+                                        {insightsEndDate ? insightsEndDate.split("-").reverse().join("/") : "..."}
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => insightsRow && openDateRangeChooser(insightsRow, "rerun")}
+                                    disabled={insightsLoading || metricsLoading}
+                                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm disabled:opacity-60 inline-flex items-center gap-2"
+                                >
+                                    {insightsLoading || metricsLoading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="w-4 h-4" />
+                                    )}
+                                    {insightsLoading || metricsLoading
+                                        ? "Đang phân tích..."
+                                        : hasRealInsights(insights) || channelMetrics
+                                          ? "Phân tích lại"
+                                          : "Phân tích"}
+                                </button>
+                                <button
+                                    onClick={() => setShowInsightsModal(false)}
+                                    className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                                    title="Đóng (phân tích vẫn tiếp tục nền)"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
 
-              {createError && (
-                <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  {createError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => !creating && setShowCreateModal(false)}
-                  disabled={creating}
-                  className="px-5 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 border border-slate-200"
-                >
-                  Bỏ qua
-                </button>
-                <button
-                  onClick={createOrGo}
-                  disabled={creating}
-                  className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 disabled:opacity-60 inline-flex items-center gap-2"
-                >
-                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Tạo
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Facebook Insights Popup */}
-      {showInsightsModal && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowInsightsModal(false);
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[88vh]"
-          >
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-              <div className="min-w-0">
-                <h2 className="text-xl font-black text-slate-900 truncate">Channel Analytics</h2>
-                <p className="text-xs text-slate-500 mt-1 truncate">
-                  {(insightsRow?.name || insightsRow?.username || '').toString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {(insightsStartDate || insightsEndDate) && (
-                  <span className="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">
-                    {insightsStartDate ? insightsStartDate.split('-').reverse().join('/') : '...'} – {insightsEndDate ? insightsEndDate.split('-').reverse().join('/') : '...'}
-                  </span>
-                )}
-                <button
-                  onClick={() => insightsRow && openDateRangeChooser(insightsRow, 'rerun')}
-                  disabled={insightsLoading || metricsLoading}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm disabled:opacity-60 inline-flex items-center gap-2"
-                >
-                  {(insightsLoading || metricsLoading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  {(insightsLoading || metricsLoading) ? 'Đang phân tích...' : (hasRealInsights(insights) || channelMetrics) ? 'Phân tích lại' : 'Phân tích'}
-                </button>
-                <button
-                  onClick={() => setShowInsightsModal(false)}
-                  className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                  title="Đóng (phân tích vẫn tiếp tục nền)"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-8 space-y-6 overflow-y-auto">
-              {/* Metrics block */}
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-black text-slate-900">Top 10 viral & biểu đồ</p>
-                    <p className="text-xs text-slate-500 mt-1">Tính từ các bài đã quét (Apify)</p>
-                  </div>
-                  {metricsLoading ? <span className="text-xs text-slate-500">Đang tải...</span> : null}
-                </div>
+                        <div className="p-8 space-y-6 overflow-y-auto">
+                            {/* Metrics block */}
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">Top 10 viral & biểu đồ</p>
+                                        <p className="text-xs text-slate-500 mt-1">Tính từ các bài đã quét (Apify)</p>
+                                    </div>
+                                    {metricsLoading ? (
+                                        <span className="text-xs text-slate-500">Đang tải...</span>
+                                    ) : null}
+                                </div>
 
                 {metricsLoading ? (
                   <div className="flex items-center justify-center py-10 bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -1489,11 +1520,11 @@ export default function ChannelAnalysisHubPage() {
                           <p className="text-xs text-slate-500 mb-2">Số bài có hashtag #A1…#A5 trong khoảng thời gian đã quét</p>
                           <div className="h-52">
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart
+                              <BarChart 
                                 data={channelMetrics?.hashtag_stats?.length ? channelMetrics.hashtag_stats : [
-                                  { hashtag: 'A1', count: 0 }, { hashtag: 'A2', count: 0 }, { hashtag: 'A3', count: 0 }, { hashtag: 'A4', count: 0 }, { hashtag: 'A5', count: 0 }
-                                ]}
-                                layout="vertical"
+                                  {hashtag: 'A1', count: 0}, {hashtag: 'A2', count: 0}, {hashtag: 'A3', count: 0}, {hashtag: 'A4', count: 0}, {hashtag: 'A5', count: 0}
+                                ]} 
+                                layout="vertical" 
                                 margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
                               >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -1502,7 +1533,7 @@ export default function ChannelAnalysisHubPage() {
                                 <Tooltip formatter={(v: any) => [`${v} bài`, 'Số bài']} />
                                 <Bar dataKey="count" name="Số bài" radius={[0, 6, 6, 0]}>
                                   {(channelMetrics?.hashtag_stats || []).map((_: any, i: number) => (
-                                    <Cell key={i} fill={['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e'][i % 5]} />
+                                    <Cell key={i} fill={['#6366f1','#0ea5e9','#10b981','#f59e0b','#f43f5e'][i % 5]} />
                                   ))}
                                 </Bar>
                               </BarChart>
@@ -1541,21 +1572,21 @@ export default function ChannelAnalysisHubPage() {
                         {(channelMetrics?.top_viral_posts || [])
                           .slice(0, viralShowAll ? 10 : 5)
                           .map((p: any, idx: number) => (
-                            <div key={p?.id || p?.url || idx} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-700">#{idx + 1}</p>
-                                <a href={p?.url} target="_blank" className="text-sm text-blue-600 hover:underline break-all line-clamp-2">
-                                  {p?.url}
-                                </a>
-                                {p?.text ? <p className="text-xs text-slate-600 mt-1 line-clamp-2">{p.text}</p> : null}
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="text-xs text-slate-600">Like: {p?.likes || 0}</p>
-                                <p className="text-xs text-slate-600">Cmt: {p?.comments || 0}</p>
-                                <p className="text-xs text-slate-600">Share: {p?.shares || 0}</p>
-                              </div>
+                          <div key={p?.id || p?.url || idx} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-700">#{idx + 1}</p>
+                              <a href={p?.url} target="_blank" className="text-sm text-blue-600 hover:underline break-all line-clamp-2">
+                                {p?.url}
+                              </a>
+                              {p?.text ? <p className="text-xs text-slate-600 mt-1 line-clamp-2">{p.text}</p> : null}
                             </div>
-                          ))}
+                            <div className="text-right shrink-0">
+                              <p className="text-xs text-slate-600">Like: {p?.likes || 0}</p>
+                              <p className="text-xs text-slate-600">Cmt: {p?.comments || 0}</p>
+                              <p className="text-xs text-slate-600">Share: {p?.shares || 0}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       {(channelMetrics?.top_viral_posts || []).length > 5 && (
                         <div className="pt-3 flex justify-end">
@@ -1573,72 +1604,83 @@ export default function ChannelAnalysisHubPage() {
                 )}
               </div>
 
-              {/* Insights block */}
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-sm font-black text-slate-900">AI phân tích kênh</p>
-                    <p className="text-xs text-slate-500 mt-1">Gemini (structured JSON)</p>
-                  </div>
-                  {insightsLoading ? <span className="text-xs text-slate-500">Đang chạy...</span> : null}
-                </div>
+                            {/* Insights block */}
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">AI phân tích kênh</p>
+                                        <p className="text-xs text-slate-500 mt-1">Gemini (structured JSON)</p>
+                                    </div>
+                                    {insightsLoading ? (
+                                        <span className="text-xs text-slate-500">Đang chạy...</span>
+                                    ) : null}
+                                </div>
 
-                {insightsError ? (
-                  <div className="py-4 px-5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-sm">
-                    <p className="font-bold">Không thể phân tích</p>
-                    <p className="mt-2">{insightsError}</p>
-                  </div>
-                ) : insightsLoading ? (
-                  <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                    <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-                    <p className="text-slate-500 text-sm font-medium">Đang phân tích kênh bằng AI (Gemini)...</p>
-                  </div>
-                ) : !hasRealInsights(insights) ? (
-                  <div className="text-sm text-slate-500">Chưa có insights. Bấm “Phân tích” để tạo.</div>
-                ) : (
-                  <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
-                    {[
-                      'Định vị Thương hiệu',
-                      'Giọng nói Thương hiệu',
-                      'Khách hàng Mục tiêu',
-                      'Tuyến Nội dung',
-                      'Công thức Nội dung',
-                      'Phân tích Reel',
-                      'Chiến lược Quảng cáo',
-                      'Phễu Marketing',
-                      'Tương tác & Bình luận',
-                      'Tóm tắt Chiến lược',
-                      'Điểm mạnh',
-                      'Điểm yếu & Cơ hội',
-                      'Đề xuất hành động',
-                    ].map((title) => {
-                      const content = ((insights as any)?.[title] || '').toString().trim();
-                      return (
-                        <details key={title} className="group bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                          <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-3">
-                            <span className="font-black text-slate-900 text-base md:text-lg">{title}</span>
-                            <span className="text-slate-400 group-open:rotate-180 transition-transform">⌄</span>
-                          </summary>
-                          <div className="px-5 pb-5">
-                            {renderInsightContent(content)}
-                          </div>
-                        </details>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                                {insightsError ? (
+                                    <div className="py-4 px-5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-sm">
+                                        <p className="font-bold">Không thể phân tích</p>
+                                        <p className="mt-2">{insightsError}</p>
+                                    </div>
+                                ) : insightsLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+                                        <p className="text-slate-500 text-sm font-medium">
+                                            Đang phân tích kênh bằng AI (Gemini)...
+                                        </p>
+                                    </div>
+                                ) : !hasRealInsights(insights) ? (
+                                    <div className="text-sm text-slate-500">
+                                        Chưa có insights. Bấm “Phân tích” để tạo.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                                        {[
+                                            "Định vị Thương hiệu",
+                                            "Giọng nói Thương hiệu",
+                                            "Khách hàng Mục tiêu",
+                                            "Tuyến Nội dung",
+                                            "Công thức Nội dung",
+                                            "Phân tích Reel",
+                                            "Chiến lược Quảng cáo",
+                                            "Phễu Marketing",
+                                            "Tương tác & Bình luận",
+                                            "Tóm tắt Chiến lược",
+                                            "Điểm mạnh",
+                                            "Điểm yếu & Cơ hội",
+                                            "Đề xuất hành động",
+                                        ].map((title) => {
+                                            const content = ((insights as any)?.[title] || "").toString().trim();
+                                            return (
+                                                <details
+                                                    key={title}
+                                                    className="group bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+                                                >
+                                                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-3">
+                                                        <span className="font-black text-slate-900 text-base md:text-lg">
+                                                            {title}
+                                                        </span>
+                                                        <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                                                            ⌄
+                                                        </span>
+                                                    </summary>
+                                                    <div className="px-5 pb-5">{renderInsightContent(content)}</div>
+                                                </details>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
       {/* Date range chooser */}
       {showMaxPostsModal && pendingRow && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
+            if (e.target === e.currentTarget && !(insightsLoading || metricsLoading)) {
               setShowMaxPostsModal(false);
             }
           }}
@@ -1655,40 +1697,41 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
               <button
-                onClick={() => setShowMaxPostsModal(false)}
+                onClick={() => !(insightsLoading || metricsLoading) && setShowMaxPostsModal(false)}
                 className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-7 space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-slate-800 mb-3">Khoảng thời gian</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
-                    <input
-                      type="date"
-                      value={pendingStartDate}
-                      onChange={(e) => setPendingStartDate(e.target.value)}
-                      className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
-                    <input
-                      type="date"
-                      value={pendingEndDate}
-                      onChange={(e) => setPendingEndDate(e.target.value)}
-                      className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  Hệ thống sẽ quét và phân tích các bài đăng trong khoảng ngày đã chọn. Để trống để quét toàn bộ.
-                </p>
-              </div>
+                        <div className="p-7 space-y-5">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-3">Khoảng thời gian</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Từ ngày</label>
+                                        <input
+                                            type="date"
+                                            value={pendingStartDate}
+                                            onChange={(e) => setPendingStartDate(e.target.value)}
+                                            className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Đến ngày</label>
+                                        <input
+                                            type="date"
+                                            value={pendingEndDate}
+                                            onChange={(e) => setPendingEndDate(e.target.value)}
+                                            className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Hệ thống sẽ quét và phân tích các bài đăng trong khoảng ngày đã chọn. Để trống để
+                                    quét toàn bộ.
+                                </p>
+                            </div>
 
               <div>
                 <label className="block text-sm font-bold text-slate-800 mb-3">Số lượng bài đăng (Max: 100)</label>
@@ -1697,18 +1740,8 @@ export default function ChannelAnalysisHubPage() {
                   min="5"
                   max="100"
                   step="5"
-                  value={pendingMaxPostsStr}
-                  onChange={(e) => {
-                    // Allow empty string while typing so backspace works
-                    setPendingMaxPostsStr(e.target.value);
-                  }}
-                  onBlur={(e) => {
-                    // On blur: clamp to [5, 100], fallback to 30 if empty
-                    const parsed = parseInt(e.target.value);
-                    const clamped = Number.isNaN(parsed) ? 30 : Math.min(100, Math.max(5, parsed));
-                    setPendingMaxPosts(clamped);
-                    setPendingMaxPostsStr(String(clamped));
-                  }}
+                  value={pendingMaxPosts}
+                  onChange={(e) => setPendingMaxPosts(Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
                   className="w-full px-3 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-semibold text-sm"
                 />
                 <p className="text-xs text-slate-500 mt-2">
@@ -1716,26 +1749,21 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
 
-              {modalWarning && (
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold animate-in fade-in slide-in-from-top-1">
-                  ⚠️ {modalWarning}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end pt-1">
+              <div className="flex items-center justify-end gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (insightsLoading || metricsLoading) {
-                      setModalWarning('Đang phân tích trang khác. Vui lòng đợi đến khi hoàn thành.');
-                      return;
-                    }
-                    confirmDateRangeAndRun();
-                  }}
-                  className="w-full px-6 py-4 rounded-xl font-black text-base text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  onClick={() => setShowMaxPostsModal(false)}
+                  className="px-5 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 border border-slate-200"
                 >
-                  {(insightsLoading || metricsLoading) && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {insightsLoading || metricsLoading ? 'Đang phân tích kênh khác...' : 'Tiếp tục phân tích'}
+                  Bỏ qua
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDateRangeAndRun}
+                  disabled={insightsLoading || metricsLoading}
+                  className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
+                >
+                  Tiếp tục
                 </button>
               </div>
             </div>
@@ -1745,4 +1773,3 @@ export default function ChannelAnalysisHubPage() {
     </div>
   );
 }
-

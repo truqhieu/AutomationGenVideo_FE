@@ -1,12 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, CheckCircle, Shield, Zap, BarChart3, Globe, Database, Server, Video, Search, TrendingUp, Layers, Moon, Sun } from 'lucide-react';
-import { SiGooglecloud, SiAmazonwebservices } from 'react-icons/si';
-import { useAuthStore } from '@/store/auth-store';
-import { motion } from 'framer-motion';
+import Image from "next/image";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+    ArrowRight,
+    CheckCircle,
+    Shield,
+    BarChart3,
+    Globe,
+    Database,
+    Video,
+    Search,
+    TrendingUp,
+    Layers,
+    Moon,
+    Sun,
+} from "lucide-react";
+import { SiGooglecloud, SiAmazonwebservices } from "react-icons/si";
+import { useAuthStore } from "@/store/auth-store";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
     const { isAuthenticated } = useAuthStore();
@@ -17,15 +30,15 @@ export default function LandingPage() {
 
     useEffect(() => {
         // Check local storage or system preference on mount
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem("theme");
+        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+        if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
             setIsDarkMode(true);
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
         } else {
             setIsDarkMode(false);
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
         }
     }, []);
 
@@ -34,8 +47,8 @@ export default function LandingPage() {
     // any old tokens are checked against /auth/profile
     // and cleared if no longer valid.
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
-        if (token && typeof window !== 'undefined') {
+        const token = localStorage.getItem("auth_token");
+        if (token && typeof window !== "undefined") {
             // Use store's loadUser to validate token with backend.
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             useAuthStore.getState().loadUser();
@@ -46,53 +59,70 @@ export default function LandingPage() {
         const newMode = !isDarkMode;
         setIsDarkMode(newMode);
         if (newMode) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
+            document.documentElement.classList.add("dark");
+            localStorage.setItem("theme", "dark");
         } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
+            document.documentElement.classList.remove("dark");
+            localStorage.setItem("theme", "light");
         }
     };
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 transition-colors duration-300">
-
             {/* HEADER */}
-            <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 dark:bg-slate-950/90 backdrop-blur-md shadow-sm dark:shadow-slate-900/10 py-4' : 'bg-transparent py-6'}`}>
+            <header
+                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 dark:bg-slate-950/90 backdrop-blur-md shadow-sm dark:shadow-slate-900/10 py-4" : "bg-transparent py-6"}`}
+            >
                 <div className="container mx-auto px-6 max-w-7xl flex items-center justify-between">
-
                     {/* Logo */}
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <img src="/logo-vcb.jfif" alt="Viễn Chí Bảo" className="w-full h-full object-cover" />
+                            <Image src="/logo-vcb.jfif" alt="Viễn Chí Bảo" className="w-full h-full object-cover" width={40} height={40} unoptimized />
                         </div>
-                        <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Viễn Chí Bảo</span>
+                        <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            Viễn Chí Bảo
+                        </span>
                     </div>
 
                     {/* Nav Links (Simplified) */}
                     <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
-                        <Link href="#" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
-                        <Link href="#" className="hover:text-blue-600 transition-colors">Tính năng</Link>
-                        <Link href="#" className="hover:text-blue-600 transition-colors">Bảng giá</Link>
+                        <Link href="#" className="hover:text-blue-600 transition-colors">
+                            Trang chủ
+                        </Link>
+                        <Link href="#" className="hover:text-blue-600 transition-colors">
+                            Tính năng
+                        </Link>
+                        <Link href="#" className="hover:text-blue-600 transition-colors">
+                            Bảng giá
+                        </Link>
                     </nav>
 
                     {/* Auth Buttons */}
                     <div className="flex items-center gap-4">
                         <button
                             onClick={toggleTheme}
-                            className={`relative w-14 h-7 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'
-                                }`}
+                            className={`relative w-14 h-7 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                isDarkMode ? "bg-slate-700" : "bg-slate-200"
+                            }`}
                             aria-label="Toggle Dark Mode"
                         >
                             <div className="flex justify-between items-center w-full h-full px-1 text-[10px] font-bold">
-                                <span className={`transition-opacity duration-300 ${isDarkMode ? 'opacity-100 text-white' : 'opacity-0'}`}>ON</span>
-                                <span className={`transition-opacity duration-300 ${!isDarkMode ? 'opacity-100 text-slate-500' : 'opacity-0'}`}>OFF</span>
+                                <span
+                                    className={`transition-opacity duration-300 ${isDarkMode ? "opacity-100 text-white" : "opacity-0"}`}
+                                >
+                                    ON
+                                </span>
+                                <span
+                                    className={`transition-opacity duration-300 ${!isDarkMode ? "opacity-100 text-slate-500" : "opacity-0"}`}
+                                >
+                                    OFF
+                                </span>
                             </div>
                             <motion.div
                                 className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center z-10"
@@ -111,10 +141,10 @@ export default function LandingPage() {
                             <Link
                                 href="/dashboard"
                                 prefetch={false}
-                                onClick={() => setNavigatingTo('/dashboard')}
-                                className={`px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2 ${navigatingTo ? 'opacity-80 pointer-events-none' : ''}`}
+                                onClick={() => setNavigatingTo("/dashboard")}
+                                className={`px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2 ${navigatingTo ? "opacity-80 pointer-events-none" : ""}`}
                             >
-                                {navigatingTo === '/dashboard' ? (
+                                {navigatingTo === "/dashboard" ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                         Đang tải...
@@ -130,19 +160,23 @@ export default function LandingPage() {
                                 <Link
                                     href="/login"
                                     prefetch={true}
-                                    onClick={() => setNavigatingTo('/login')}
-                                    className={`text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 ${navigatingTo ? 'opacity-50 pointer-events-none' : ''}`}
+                                    onClick={() => setNavigatingTo("/login")}
+                                    className={`text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2 ${navigatingTo ? "opacity-50 pointer-events-none" : ""}`}
                                 >
-                                    {navigatingTo === '/login' && <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />}
+                                    {navigatingTo === "/login" && (
+                                        <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                                    )}
                                     Đăng nhập
                                 </Link>
                                 <Link
                                     href="/register"
                                     prefetch={true}
-                                    onClick={() => setNavigatingTo('/register')}
-                                    className={`px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 ${navigatingTo ? 'opacity-80 pointer-events-none' : ''}`}
+                                    onClick={() => setNavigatingTo("/register")}
+                                    className={`px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 ${navigatingTo ? "opacity-80 pointer-events-none" : ""}`}
                                 >
-                                    {navigatingTo === '/register' && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    {navigatingTo === "/register" && (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    )}
                                     Đăng ký
                                 </Link>
                             </>
@@ -160,7 +194,6 @@ export default function LandingPage() {
 
                 <div className="container mx-auto px-6 max-w-7xl">
                     <div className="flex flex-col lg:flex-row items-center gap-16">
-
                         {/* Text Content */}
                         <div className="flex-1 max-w-2xl relative z-10">
                             <motion.div
@@ -170,7 +203,9 @@ export default function LandingPage() {
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-8"
                             >
                                 <Layers className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Video Intelligence Platform</span>
+                                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Video Intelligence Platform
+                                </span>
                             </motion.div>
 
                             <motion.h1
@@ -180,7 +215,9 @@ export default function LandingPage() {
                                 className="text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white leading-[1.15] mb-6 tracking-tight"
                             >
                                 Tự động hóa <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sáng tạo Video & AI</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                                    Sáng tạo Video & AI
+                                </span>
                             </motion.h1>
 
                             <motion.p
@@ -189,7 +226,8 @@ export default function LandingPage() {
                                 transition={{ duration: 0.5, delay: 0.2 }}
                                 className="text-lg text-slate-600 dark:text-slate-400 mb-8 leading-relaxed max-w-lg"
                             >
-                                Giải pháp toàn diện giúp bạn khám phá xu hướng TikTok/Reels, tự động tải xuống hàng loạt và phân tích chiến lược của đối thủ cạnh tranh với sức mạnh của AI.
+                                Giải pháp toàn diện giúp bạn khám phá xu hướng TikTok/Reels, tự động tải xuống hàng loạt
+                                và phân tích chiến lược của đối thủ cạnh tranh với sức mạnh của AI.
                             </motion.p>
 
                             {/* Removed Buttons as requested */}
@@ -200,9 +238,13 @@ export default function LandingPage() {
                                 transition={{ duration: 0.5, delay: 0.3 }}
                                 className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-500 mt-8"
                             >
-                                <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-blue-500" /> Phân tích Video Real-time</div>
+                                <div className="flex items-center gap-1">
+                                    <CheckCircle className="w-4 h-4 text-blue-500" /> Phân tích Video Real-time
+                                </div>
                                 <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                                <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-blue-500" /> Không giới hạn kênh</div>
+                                <div className="flex items-center gap-1">
+                                    <CheckCircle className="w-4 h-4 text-blue-500" /> Không giới hạn kênh
+                                </div>
                             </motion.div>
                         </div>
 
@@ -232,13 +274,15 @@ export default function LandingPage() {
                                             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden relative">
                                                 {/* Scanning Line Effect */}
                                                 <motion.div
-                                                    animate={{ top: ['0%', '100%', '0%'] }}
+                                                    animate={{ top: ["0%", "100%", "0%"] }}
                                                     transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                                                     className="absolute left-0 right-0 h-0.5 bg-green-400/50 shadow-[0_0_10px_rgba(74,222,128,0.5)] z-20"
                                                 />
 
                                                 <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-10 h-10 bg-black dark:bg-slate-800 rounded-lg flex items-center justify-center text-white"><BarChart3 size={20} /></div>
+                                                    <div className="w-10 h-10 bg-black dark:bg-slate-800 rounded-lg flex items-center justify-center text-white">
+                                                        <BarChart3 size={20} />
+                                                    </div>
                                                     <div className="space-y-1">
                                                         <div className="h-2 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
                                                         <div className="h-1.5 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
@@ -249,8 +293,14 @@ export default function LandingPage() {
                                                         <motion.div
                                                             key={i}
                                                             initial={{ height: 0 }}
-                                                            animate={{ height: [`${h}%`, `${Math.min(h + 20, 100)}%`, `${h}%`] }}
-                                                            transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+                                                            animate={{
+                                                                height: [`${h}%`, `${Math.min(h + 20, 100)}%`, `${h}%`],
+                                                            }}
+                                                            transition={{
+                                                                duration: 2,
+                                                                repeat: Infinity,
+                                                                delay: i * 0.1,
+                                                            }}
                                                             className="w-full bg-blue-500 rounded-t-sm opacity-80"
                                                         />
                                                     ))}
@@ -273,7 +323,12 @@ export default function LandingPage() {
 
                                                 <motion.div
                                                     animate={{ y: [0, 5, 0] }}
-                                                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                                    transition={{
+                                                        duration: 3,
+                                                        repeat: Infinity,
+                                                        ease: "easeInOut",
+                                                        delay: 1,
+                                                    }}
                                                     className="bg-white dark:bg-slate-900 p-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 h-24 flex gap-2 items-center"
                                                 >
                                                     <div className="w-12 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg shrink-0" />
@@ -288,7 +343,13 @@ export default function LandingPage() {
                                         <div className="col-span-1 space-y-4">
                                             <motion.div
                                                 className="bg-indigo-600 p-4 rounded-xl shadow-lg h-32 flex flex-col justify-between text-white relative overflow-hidden"
-                                                animate={{ boxShadow: ['0 10px 15px -3px rgba(79, 70, 229, 0.4)', '0 20px 25px -5px rgba(79, 70, 229, 0.5)', '0 10px 15px -3px rgba(79, 70, 229, 0.4)'] }}
+                                                animate={{
+                                                    boxShadow: [
+                                                        "0 10px 15px -3px rgba(79, 70, 229, 0.4)",
+                                                        "0 20px 25px -5px rgba(79, 70, 229, 0.5)",
+                                                        "0 10px 15px -3px rgba(79, 70, 229, 0.4)",
+                                                    ],
+                                                }}
                                                 transition={{ duration: 3, repeat: Infinity }}
                                             >
                                                 <Globe size={20} className="opacity-80" />
@@ -305,7 +366,9 @@ export default function LandingPage() {
                                                 </div>
                                                 <div className="text-center">
                                                     <div className="text-xs text-slate-400">Content</div>
-                                                    <div className="font-bold text-slate-900 dark:text-white">Viral</div>
+                                                    <div className="font-bold text-slate-900 dark:text-white">
+                                                        Viral
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -360,19 +423,25 @@ export default function LandingPage() {
                         {/* Google Cloud Logo */}
                         <div className="flex items-center gap-2 group cursor-pointer hover:opacity-100">
                             <SiGooglecloud className="w-8 h-8 text-slate-500 group-hover:text-[#4285F4] transition-colors" />
-                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Google Cloud</span>
+                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                Google Cloud
+                            </span>
                         </div>
 
                         {/* AWS Logo */}
                         <div className="flex items-center gap-2 group cursor-pointer hover:opacity-100">
                             <SiAmazonwebservices className="w-8 h-8 text-slate-500 group-hover:text-[#FF9900] transition-colors" />
-                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">AWS</span>
+                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                AWS
+                            </span>
                         </div>
 
                         {/* Apify Logo */}
                         <div className="flex items-center gap-2 group cursor-pointer hover:opacity-100">
                             <Database className="w-8 h-8 text-slate-500 group-hover:text-[#97D700] transition-colors" />
-                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apify</span>
+                            <span className="font-bold text-xl text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                Apify
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -382,17 +451,37 @@ export default function LandingPage() {
             <section className="py-20">
                 <div className="container mx-auto px-6 max-w-7xl">
                     <div className="text-center max-w-3xl mx-auto mb-16">
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Công nghệ lõi của chúng tôi</h2>
-                        <p className="text-slate-600 dark:text-slate-400">Hệ thống phân tích video thông minh được xây dựng trên nền tảng Big Data và AI tiên tiến nhất.</p>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+                            Công nghệ lõi của chúng tôi
+                        </h2>
+                        <p className="text-slate-600 dark:text-slate-400">
+                            Hệ thống phân tích video thông minh được xây dựng trên nền tảng Big Data và AI tiên tiến
+                            nhất.
+                        </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { icon: Search, title: 'Scraping Thông minh', desc: 'Tự động thu thập dữ liệu video, bình luận và xu hướng từ TikTok/Instagram theo thời gian thực.' },
-                            { icon: TrendingUp, title: 'Dự báo Xu hướng', desc: 'Sử dụng AI để phân tích và dự đoán các trào lưu nội dung viral tiếp theo.' },
-                            { icon: Layers, title: 'Quản lý Đa kênh', desc: 'Tập trung quản lý hàng trăm kênh video trên một bảng điều khiển duy nhất.' }
+                            {
+                                icon: Search,
+                                title: "Scraping Thông minh",
+                                desc: "Tự động thu thập dữ liệu video, bình luận và xu hướng từ TikTok/Instagram theo thời gian thực.",
+                            },
+                            {
+                                icon: TrendingUp,
+                                title: "Dự báo Xu hướng",
+                                desc: "Sử dụng AI để phân tích và dự đoán các trào lưu nội dung viral tiếp theo.",
+                            },
+                            {
+                                icon: Layers,
+                                title: "Quản lý Đa kênh",
+                                desc: "Tập trung quản lý hàng trăm kênh video trên một bảng điều khiển duy nhất.",
+                            },
                         ].map((item, i) => (
-                            <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                            <div
+                                key={i}
+                                className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all"
+                            >
                                 <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6">
                                     <item.icon size={28} />
                                 </div>
@@ -403,7 +492,6 @@ export default function LandingPage() {
                     </div>
                 </div>
             </section>
-
         </div>
     );
 }

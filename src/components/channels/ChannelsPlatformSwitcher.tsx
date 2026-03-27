@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Facebook, Instagram, Music2, Music, BookOpen } from 'lucide-react';
@@ -12,37 +12,33 @@ type Item = {
   icon: any;
 };
 
+const PLATFORM_ITEMS: Item[] = [
+  { id: 'facebook', label: 'Facebook', href: '/dashboard/facebook/channels', icon: Facebook },
+  { id: 'instagram', label: 'Instagram', href: '/dashboard/instagram/channels', icon: Instagram },
+  { id: 'tiktok', label: 'TikTok', href: '/dashboard/ai/channels', icon: Music2 },
+  { id: 'douyin', label: 'Douyin', href: '/dashboard/douyin/channels', icon: Music },
+  { id: 'xiaohongshu', label: 'Xiaohongshu', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
+];
+
 export default function ChannelsPlatformSwitcher() {
   const pathname = usePathname() || '';
   const router = useRouter();
 
-  const items: Item[] = useMemo(
-    () => [
-      { id: 'facebook', label: 'Facebook', href: '/dashboard/facebook/channels', icon: Facebook },
-      { id: 'instagram', label: 'Instagram', href: '/dashboard/instagram/channels', icon: Instagram },
-      { id: 'tiktok', label: 'TikTok', href: '/dashboard/ai/channels', icon: Music2 },
-      { id: 'douyin', label: 'Douyin', href: '/dashboard/douyin/channels', icon: Music },
-      { id: 'xiaohongshu', label: 'Xiaohongshu', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
-    ],
-    []
-  );
-
-  const activeHref = items.find((it) => pathname.startsWith(it.href))?.href || '';
+  const activeHref = PLATFORM_ITEMS.find((it) => pathname.startsWith(it.href))?.href || '';
 
   // Prefetch all platform pages to reduce first-click lag
   useEffect(() => {
-    // Small delay to avoid competing with initial page render
     const t = setTimeout(() => {
-      items.forEach((it) => {
+      PLATFORM_ITEMS.forEach((it) => {
         try { router.prefetch(it.href); } catch (_) {}
       });
     }, 200);
     return () => clearTimeout(t);
-  }, [items, router]);
+  }, [router]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {items.map((it) => {
+      {PLATFORM_ITEMS.map((it) => {
         const active = activeHref === it.href;
         const Icon = it.icon;
         return (

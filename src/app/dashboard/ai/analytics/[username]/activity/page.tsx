@@ -2,6 +2,7 @@
 
 
 
+import Image from "next/image";
 import { useEffect, useState } from 'react';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -191,7 +192,7 @@ export default function ActivityPage() {
 
               <div className="aspect-[9/16] relative bg-black/5">
 
-                <img
+                <Image
 
                   src={video.thumbnail_url || '/placeholder-video.jpg'}
 
@@ -211,7 +212,7 @@ export default function ActivityPage() {
 
                   }}
 
-                />
+                 width={0} height={0} sizes="100vw" unoptimized/>
 
                 <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
 

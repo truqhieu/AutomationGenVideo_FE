@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Check, PieChart as PieIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import Image from "next/image";
+import React from "react";
+import { Check, PieChart as PieIcon } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 interface TrafficToday {
     fb: number;
@@ -53,7 +54,7 @@ interface EmployeeReport {
 const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
-    if (url.includes('drive.google.com')) {
+    if (url.includes("drive.google.com")) {
         const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
         if (match && match[1]) {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
@@ -65,28 +66,20 @@ const getAvatarUrl = (url: string | null, name: string) => {
 const formatTrafficNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
-    return num.toLocaleString('vi-VN');
+    return num.toLocaleString("vi-VN");
 };
 
-import { 
-    SiFacebook, 
-    SiInstagram, 
-    SiTiktok, 
-    SiYoutube, 
-    SiThreads, 
-    SiZalo, 
-    SiX 
-} from 'react-icons/si';
+import { SiFacebook, SiInstagram, SiTiktok, SiYoutube, SiThreads, SiZalo, SiX } from "react-icons/si";
 
 const PLATFORM_STYLES: Record<string, { label: string; color: string; bgColor: string; icon?: React.ElementType }> = {
-    fb: { label: 'Facebook', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.85)', icon: SiFacebook },
-    ig: { label: 'Instagram', color: '#ec4899', bgColor: 'rgba(236,72,153,0.85)', icon: SiInstagram },
-    tiktok: { label: 'TikTok', color: '#1f2937', bgColor: 'rgba(31,41,55,0.85)', icon: SiTiktok },
-    yt: { label: 'Youtube', color: '#ef4444', bgColor: 'rgba(239,68,68,0.85)', icon: SiYoutube },
-    thread: { label: 'Thread', color: '#6b7280', bgColor: 'rgba(107,114,128,0.85)', icon: SiThreads },
-    zalo: { label: 'Zalo', color: '#0ea5e9', bgColor: 'rgba(14,165,233,0.85)', icon: SiZalo },
-    lemon8: { label: 'Lemon8', color: '#eab308', bgColor: 'rgba(234,179,8,0.85)' },
-    twitter: { label: 'X', color: '#111827', bgColor: 'rgba(17,24,39,0.85)', icon: SiX },
+    fb: { label: "Facebook", color: "#3b82f6", bgColor: "rgba(59,130,246,0.85)", icon: SiFacebook },
+    ig: { label: "Instagram", color: "#ec4899", bgColor: "rgba(236,72,153,0.85)", icon: SiInstagram },
+    tiktok: { label: "TikTok", color: "#1f2937", bgColor: "rgba(31,41,55,0.85)", icon: SiTiktok },
+    yt: { label: "Youtube", color: "#ef4444", bgColor: "rgba(239,68,68,0.85)", icon: SiYoutube },
+    thread: { label: "Thread", color: "#6b7280", bgColor: "rgba(107,114,128,0.85)", icon: SiThreads },
+    zalo: { label: "Zalo", color: "#0ea5e9", bgColor: "rgba(14,165,233,0.85)", icon: SiZalo },
+    lemon8: { label: "Lemon8", color: "#eab308", bgColor: "rgba(234,179,8,0.85)" },
+    twitter: { label: "X", color: "#111827", bgColor: "rgba(17,24,39,0.85)", icon: SiX },
 };
 
 const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
@@ -98,9 +91,9 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
         .map(([key, style]) => ({
             key,
             ...style,
-            value: trafficToday[key as keyof TrafficToday] as number || 0,
+            value: (trafficToday[key as keyof TrafficToday] as number) || 0,
         }))
-        .filter(p => p.value > 0)
+        .filter((p) => p.value > 0)
         .sort((a, b) => b.value - a.value);
 
     // Get active data if any
@@ -113,19 +106,21 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                 <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest px-1 mb-4 flex items-center gap-2">
                     <PieIcon className="w-3.5 h-3.5" /> Phân phối Traffic theo kênh
                 </p>
-                
+
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 rounded-3xl border border-slate-100/50">
                     {/* Interactive Pie Chart - Centered */}
                     <div className="w-full h-[260px] max-w-[260px] relative mb-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={trafficToday.details.map((entry, idx) => ({
-                                        name: entry.channel || 'Hệ thống',
-                                        value: Number(entry.value || 0),
-                                        platform: entry.platform,
-                                        id: entry.id || idx
-                                    })).filter(d => d.value > 0)}
+                                    data={trafficToday.details
+                                        .map((entry, idx) => ({
+                                            name: entry.channel || "Hệ thống",
+                                            value: Number(entry.value || 0),
+                                            platform: entry.platform,
+                                            id: entry.id || idx,
+                                        }))
+                                        .filter((d) => d.value > 0)}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={75}
@@ -136,30 +131,32 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                     onMouseEnter={(_, index) => setActiveIndex(index)}
                                     onMouseLeave={() => setActiveIndex(null)}
                                 >
-                                    {(trafficToday.details.filter(e => Number(e.value || 0) > 0)).map((entry, idx) => {
-                                        const platformStyle = PLATFORM_STYLES[entry.platform || ''];
-                                        return (
-                                            <Cell 
-                                                key={`cell-${idx}`} 
-                                                fill={platformStyle?.bgColor || '#8b5cf6'} 
-                                                stroke="#fff"
-                                                strokeWidth={activeIndex === idx ? 5 : 3}
-                                                className="hover:opacity-80 transition-all cursor-pointer outline-none"
-                                            />
-                                        );
-                                    })}
+                                    {trafficToday.details
+                                        .filter((e) => Number(e.value || 0) > 0)
+                                        .map((entry, idx) => {
+                                            const platformStyle = PLATFORM_STYLES[entry.platform || ""];
+                                            return (
+                                                <Cell
+                                                    key={`cell-${idx}`}
+                                                    fill={platformStyle?.bgColor || "#8b5cf6"}
+                                                    stroke="#fff"
+                                                    strokeWidth={activeIndex === idx ? 5 : 3}
+                                                    className="hover:opacity-80 transition-all cursor-pointer outline-none"
+                                                />
+                                            );
+                                        })}
                                 </Pie>
                                 <Tooltip content={<></>} />
                             </PieChart>
                         </ResponsiveContainer>
-                        
+
                         {/* Central Summary - Interactive (No more overlap!) */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 text-center px-4 animate-in fade-in duration-300">
                             {activeData ? (
                                 <>
-                                    <span 
+                                    <span
                                         className="text-[10px] font-black uppercase tracking-widest mb-1 truncate w-full"
-                                        style={{ color: PLATFORM_STYLES[activeData.platform || '']?.color }}
+                                        style={{ color: PLATFORM_STYLES[activeData.platform || ""]?.color }}
                                     >
                                         {activeData.channel}
                                     </span>
@@ -169,7 +166,9 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                 </>
                             ) : (
                                 <>
-                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">Tổng kênh</span>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-tighter mb-1">
+                                        Tổng kênh
+                                    </span>
                                     <span className="text-2xl font-black text-slate-800 leading-none">
                                         {formatTrafficNumber(totalTraffic)}
                                     </span>
@@ -181,10 +180,13 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                     {/* Platform Traffic Notes (Notes màu và Tổng Traffic nền tảng) */}
                     <div className="w-full flex flex-wrap justify-center gap-3">
                         {platformTotals.map((p) => (
-                            <div key={p.key} className="flex items-center gap-3 bg-white px-3 py-2 rounded-2xl border border-slate-100/50 hover:shadow-sm transition-all group">
-                                <div 
-                                    className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm transition-transform group-hover:scale-125" 
-                                    style={{ backgroundColor: p.bgColor }} 
+                            <div
+                                key={p.key}
+                                className="flex items-center gap-3 bg-white px-3 py-2 rounded-2xl border border-slate-100/50 hover:shadow-sm transition-all group"
+                            >
+                                <div
+                                    className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm transition-transform group-hover:scale-125"
+                                    style={{ backgroundColor: p.bgColor }}
                                 />
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-2 mb-1">
@@ -192,9 +194,9 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
                                             {p.label}
                                         </span>
                                         {p.icon && (
-                                            <p.icon 
-                                                className="w-3 h-3 transition-colors group-hover:opacity-100 opacity-80" 
-                                                style={{ color: p.color }} 
+                                            <p.icon
+                                                className="w-3 h-3 transition-colors group-hover:opacity-100 opacity-80"
+                                                style={{ color: p.color }}
                                             />
                                         )}
                                     </div>
@@ -214,51 +216,61 @@ const TrafficChart = ({ trafficToday }: { trafficToday: TrafficToday }) => {
 const ReportCard = ({ report }: { report: EmployeeReport }) => {
     const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
-    const statusRaw = (report.status || '').toString().toUpperCase();
-    const isCompleted = statusRaw === 'ĐÃ BÁO CÁO ĐỦ' || statusRaw === 'SUBMITTED' || statusRaw === 'ĐÚNG HẠN';
-    const isPartial = statusRaw === 'CHƯA BÁO CÁO TRAFFIC' || statusRaw === 'CHƯA BÁO CÁO MEMBER';
-    const isUnreported = statusRaw === 'CHƯA BÁO CÁO' || statusRaw === '' || statusRaw === 'PENDING';
-    const isLate = statusRaw.includes('TRỄ') || statusRaw.includes('LATE');
+    const statusRaw = (report.status || "").toString().toUpperCase();
+    const isCompleted = statusRaw === "ĐÃ BÁO CÁO ĐỦ" || statusRaw === "SUBMITTED" || statusRaw === "ĐÚNG HẠN";
+    const isPartial = statusRaw === "CHƯA BÁO CÁO TRAFFIC" || statusRaw === "CHƯA BÁO CÁO MEMBER";
+    const isUnreported = statusRaw === "CHƯA BÁO CÁO" || statusRaw === "" || statusRaw === "PENDING";
+    const isLate = statusRaw.includes("TRỄ") || statusRaw.includes("LATE");
     const isOnTime = isCompleted && !isLate;
-    const showTime = report.time && report.time !== 'Chưa báo cáo';
+    const showTime = report.time && report.time !== "Chưa báo cáo";
 
-    const hasTraffic = report.trafficToday && Object.entries(PLATFORM_STYLES).some(
-        ([key]) => (report.trafficToday?.[key as keyof TrafficToday] as number || 0) > 0
-    );
+    const hasTraffic =
+        report.trafficToday &&
+        Object.entries(PLATFORM_STYLES).some(
+            ([key]) => ((report.trafficToday?.[key as keyof TrafficToday] as number) || 0) > 0,
+        );
 
-    const pos = (report.position || '').toLowerCase();
-    const isLeaderReport = pos === 'leader' || pos.includes('leader') || pos.includes('trưởng nhóm');
+    const pos = (report.position || "").toLowerCase();
+    const isLeaderReport = pos === "leader" || pos.includes("leader") || pos.includes("trưởng nhóm");
 
     return (
         <div
-            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${isOnTime
-                    ? 'bg-emerald-50 border-emerald-200'
+            className={`rounded-2xl p-4 shadow-sm h-full flex flex-col gap-3 border transition-colors duration-200 ${
+                isOnTime
+                    ? "bg-emerald-50 border-emerald-200"
                     : isLate
-                        ? 'bg-amber-50 border-amber-200'
-                        : isUnreported
-                            ? 'bg-red-50 border-red-200'
-                            : 'bg-white border-gray-100'
-                }`}
+                      ? "bg-amber-50 border-amber-200"
+                      : isUnreported
+                        ? "bg-red-50 border-red-200"
+                        : "bg-white border-gray-100"
+            }`}
         >
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                    <img
+                    <Image
                         src={avatarSrc}
                         alt={report.name}
                         className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
                         onError={(e) => {
                             e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(report.name)}&background=random`;
                         }}
+                        width={0}
+                        height={0}
+                        sizes="100vw"
+                        unoptimized
                     />
                     <div>
                         <div className="flex items-center gap-1.5 mb-0.5">
                             <h3 className="font-semibold text-gray-900 text-sm leading-tight">{report.name}</h3>
                             {report.position && (
-                                <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${report.position.toLowerCase().includes('lead')
-                                    ? 'bg-orange-50 text-orange-600 border-orange-100'
-                                    : 'bg-gray-50 text-gray-500 border-gray-100'
-                                    }`}>
+                                <span
+                                    className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${
+                                        report.position.toLowerCase().includes("lead")
+                                            ? "bg-orange-50 text-orange-600 border-orange-100"
+                                            : "bg-gray-50 text-gray-500 border-gray-100"
+                                    }`}
+                                >
                                     {report.position}
                                 </span>
                             )}
@@ -270,29 +282,26 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                 </div>
 
                 <span
-                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${isOnTime
-                            ? 'bg-emerald-500 text-white'
+                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center justify-end gap-1 ${
+                        isOnTime
+                            ? "bg-emerald-500 text-white"
                             : isLate
-                                ? 'bg-amber-400 text-white'
-                                : isUnreported
-                                    ? 'bg-red-500 text-white'
-                                    : 'bg-slate-300 text-slate-800'
-                        }`}
+                              ? "bg-amber-400 text-white"
+                              : isUnreported
+                                ? "bg-red-500 text-white"
+                                : "bg-slate-300 text-slate-800"
+                    }`}
                 >
                     <span>
                         {isOnTime
-                            ? 'ĐÚNG HẠN'
+                            ? "ĐÚNG HẠN"
                             : isLate
-                                ? 'TRỄ HẠN'
-                                : isUnreported
-                                    ? 'CHƯA BÁO CÁO'
-                                    : report.status || 'TRẠNG THÁI?'}
+                              ? "TRỄ HẠN"
+                              : isUnreported
+                                ? "CHƯA BÁO CÁO"
+                                : report.status || "TRẠNG THÁI?"}
                     </span>
-                    {showTime && (
-                        <span className="text-[11px] font-medium opacity-90">
-                            • {report.time}
-                        </span>
-                    )}
+                    {showTime && <span className="text-[11px] font-medium opacity-90">• {report.time}</span>}
                 </span>
             </div>
 
@@ -302,7 +311,7 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                     {/* Traffic Chart - Move to TOP for better visibility if report is missing */}
                     {hasTraffic && report.trafficToday && (
                         <div className="mb-2">
-                             <TrafficChart trafficToday={report.trafficToday} />
+                            <TrafficChart trafficToday={report.trafficToday} />
                         </div>
                     )}
 
@@ -316,20 +325,23 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                                 </h4>
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
                                     {[
-                                        { key: 'fb', label: 'FB' },
-                                        { key: 'tiktok', label: 'Tiktok' },
-                                        { key: 'ig', label: 'IG' },
-                                        { key: 'youtube', label: 'Youtube' },
-                                        { key: 'zalo', label: 'ZaloVideo' },
-                                        { key: 'captionHashtag', label: 'Caption & Hashtag' },
-                                        { key: 'lark', label: 'Báo cáo Lark' },
-                                        { key: 'reportLink', label: 'Báo cáo Link' },
+                                        { key: "fb", label: "FB" },
+                                        { key: "tiktok", label: "Tiktok" },
+                                        { key: "ig", label: "IG" },
+                                        { key: "youtube", label: "Youtube" },
+                                        { key: "zalo", label: "ZaloVideo" },
+                                        { key: "captionHashtag", label: "Caption & Hashtag" },
+                                        { key: "lark", label: "Báo cáo Lark" },
+                                        { key: "reportLink", label: "Báo cáo Link" },
                                     ].map((item) => (
                                         <div key={item.key} className="flex items-center gap-1.5">
-                                            <div className={`w-4 h-4 rounded flex items-center justify-center ${report.checklist[item.key as keyof typeof report.checklist]
-                                                ? 'bg-green-500'
-                                                : 'bg-gray-200'
-                                                }`}>
+                                            <div
+                                                className={`w-4 h-4 rounded flex items-center justify-center ${
+                                                    report.checklist[item.key as keyof typeof report.checklist]
+                                                        ? "bg-green-500"
+                                                        : "bg-gray-200"
+                                                }`}
+                                            >
                                                 <Check className="w-3 h-3 text-white" strokeWidth={3} />
                                             </div>
                                             <span className="text-xs text-gray-700 font-medium">{item.label}</span>
@@ -356,13 +368,14 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
                             {/* Questions Section */}
                             <div className="space-y-2.5">
                                 {report.questions.map((q, index) => (
-                                    <div key={index} className="border border-gray-100 rounded-xl p-3 bg-white shadow-sm">
+                                    <div
+                                        key={index}
+                                        className="border border-gray-100 rounded-xl p-3 bg-white shadow-sm"
+                                    >
                                         <p className="text-xs text-gray-500 mb-2 uppercase font-bold tracking-wide">
                                             {index + 1}. {q.question}
                                         </p>
-                                        <p className="text-sm text-gray-900 font-medium">
-                                            {q.answer}
-                                        </p>
+                                        <p className="text-sm text-gray-900 font-medium">{q.answer}</p>
                                     </div>
                                 ))}
                             </div>
@@ -372,7 +385,9 @@ const ReportCard = ({ report }: { report: EmployeeReport }) => {
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                     <span className="text-4xl mb-2">📋</span>
-                    <span className="text-sm font-medium uppercase tracking-widest opacity-60">Chưa báo cáo hôm nay</span>
+                    <span className="text-sm font-medium uppercase tracking-widest opacity-60">
+                        Chưa báo cáo hôm nay
+                    </span>
                 </div>
             )}
         </div>

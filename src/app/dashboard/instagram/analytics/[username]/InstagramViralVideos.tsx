@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { Play, Heart, Eye, Calendar, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,7 +96,7 @@ export default function InstagramViralVideos({ videos }: InstagramViralVideosPro
               {/* Thumbnail */}
               <div className="aspect-[9/16] relative bg-gradient-to-br from-pink-100 to-purple-100">
                 {video.thumbnail_url ? (
-                  <img 
+                  <Image 
                     src={video.thumbnail_url} 
                     alt={video.title || 'Video thumbnail'}
                     className="w-full h-full object-cover"
@@ -105,7 +106,7 @@ export default function InstagramViralVideos({ videos }: InstagramViralVideosPro
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
                     }}
-                  />
+                   width={0} height={0} sizes="100vw" unoptimized/>
                 ) : null}
                 
                 {/* Overlay Gradient */}

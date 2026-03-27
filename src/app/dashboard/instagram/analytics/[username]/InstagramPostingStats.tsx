@@ -1,7 +1,8 @@
 'use client';
 
+import NextImage from "next/image";
 import { useState } from 'react';
-import { Image, Film, LayoutGrid, BarChart3, X, Play, Heart, MessageCircle, Eye, Calendar, ExternalLink } from 'lucide-react';
+import { Image as ImageIcon, Film, LayoutGrid, BarChart3, X, Play, Heart, MessageCircle, Eye, Calendar, ExternalLink } from 'lucide-react';
 
 interface InstagramPostingStatsProps {
   videos: any[];
@@ -50,7 +51,7 @@ export default function InstagramPostingStats({ videos }: InstagramPostingStatsP
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                <Image className="w-5 h-5" />
+                <ImageIcon className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">Posts</p>
@@ -132,20 +133,23 @@ export default function InstagramPostingStats({ videos }: InstagramPostingStatsP
                       {/* Thumbnail */}
                       <div className="relative w-32 h-32 flex-shrink-0 rounded-xl overflow-hidden bg-slate-200">
                         {item.thumbnail_url ? (
-                          <img 
+                          <NextImage 
                             src={item.thumbnail_url} 
                             alt="" 
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/f1f5f9/94a3b8?text=No+Image';
                             }}
+                            fill
+                            sizes="128px"
+                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
                             {(item.is_video || item.video_url) ? (
                               <Film className="w-10 h-10 text-slate-400" />
                             ) : (
-                              <Image className="w-10 h-10 text-slate-400" />
+                              <ImageIcon className="w-10 h-10 text-slate-400" />
                             )}
                           </div>
                         )}

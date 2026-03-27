@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Instagram as InstagramIcon, MessageCircle, Share2, Link as LinkIcon, BarChart3, Camera, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -586,7 +587,7 @@ export default function InstagramChannelsPage() {
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-6">
                     <div className="relative flex-shrink-0">
-                      <img
+                      <Image
                         src={getAvatarUrl(channel)}
                         alt={channel.display_name}
                         referrerPolicy="no-referrer"
@@ -596,7 +597,7 @@ export default function InstagramChannelsPage() {
                         onError={(e) => {
                           e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.display_name)}&background=E1306C&color=fff`;
                         }}
-                      />
+                       width={0} height={0} sizes="100vw" unoptimized/>
                       <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center border-2 border-white text-white shadow-sm">
                         <InstagramIcon className="w-4 h-4" />
                       </div>

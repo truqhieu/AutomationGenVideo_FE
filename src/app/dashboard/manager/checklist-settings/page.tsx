@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
 import AccountManagement from '@/components/checklist/AccountManagement';
@@ -50,7 +50,7 @@ export default function ChecklistSettingsPage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const isAdmin = useMemo(() => user?.roles?.includes(UserRole.ADMIN) || user?.roles?.includes(UserRole.MANAGER), [user]);
+    const isAdmin = user?.roles?.includes(UserRole.ADMIN) || user?.roles?.includes(UserRole.MANAGER);
 
     // Only load settings when checklist tab is active
     useEffect(() => {

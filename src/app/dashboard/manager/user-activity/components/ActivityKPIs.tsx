@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, Globe } from 'lucide-react';
@@ -143,7 +144,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     </span>
                                 </div>
                                 <div className="text-[9px] font-black text-blue-600/70 uppercase flex items-center gap-0.5">
-                                    VN <img src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" />
+                                    VN <Image src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" width={16} height={10} unoptimized />
                                 </div>
                             </div>
                         </div>
