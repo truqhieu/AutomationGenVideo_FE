@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Video, Image as ImageIcon } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -28,12 +29,12 @@ export const ImageWithFallback = ({ src, alt, className, isVideo }: { src: strin
   }
   
   return (
-    <img 
+    <Image 
         src={src} 
         alt={alt} 
         className={className} 
         onError={() => setError(true)}
         loading="lazy"
-    />
+     width={0} height={0} sizes="100vw" unoptimized/>
   );
 };

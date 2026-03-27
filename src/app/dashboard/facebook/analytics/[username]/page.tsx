@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -8,13 +9,20 @@ import {
     ThumbsUp, MessageCircle, Share2, TrendingUp,
     ChevronDown, ChevronUp, FileText
 } from 'lucide-react';
-import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line
-} from 'recharts';
+import dynamic from 'next/dynamic';
 
 import { FacebookPost, ImageWithFallback } from './components/common';
 import { ReelsAnalytics } from './components/ReelsView';
 import { PostsAnalytics } from './components/PostsView';
+
+const FbEngagementChart = dynamic(
+    () => import('./components/FbEngagementChart').then((m) => ({ default: m.FbEngagementChart })),
+    { ssr: false },
+);
+const FbChannelMetricsCharts = dynamic(
+    () => import('./components/FbEngagementChart').then((m) => ({ default: m.FbChannelMetricsCharts })),
+    { ssr: false },
+);
 
 const Avatar = ({ src, alt, fallback }: { src?: string, alt: string, fallback: string }) => {
     const [error, setError] = useState(false);
@@ -28,12 +36,12 @@ const Avatar = ({ src, alt, fallback }: { src?: string, alt: string, fallback: s
     }
 
     return (
-        <img
+        <Image
             src={src}
             alt={alt}
             className="w-12 h-12 rounded-full border border-slate-100 shadow-sm object-cover"
             onError={() => setError(true)}
-        />
+         width={0} height={0} sizes="100vw" unoptimized/>
     );
 };
 
@@ -811,57 +819,7 @@ export default function FacebookAnalyticsPage() {
                                     </div>
 
                                     <div className="h-[300px] w-full">
-                                        {chartData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={chartData}>
-                                                    <defs>
-                                                        <linearGradient id="colorLikesAll" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#9333ea" stopOpacity={0.2} />
-                                                            <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis
-                                                        dataKey="date"
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
-                                                        dy={10}
-                                                    />
-                                                    <YAxis
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
-                                                    />
-                                                    <Tooltip
-                                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.15)' }}
-                                                    />
-                                                    <Area
-                                                        type="monotone"
-                                                        dataKey="likes"
-                                                        stroke="#9333ea"
-                                                        strokeWidth={3}
-                                                        fillOpacity={1}
-                                                        fill="url(#colorLikesAll)"
-                                                        name="Lượt thích"
-                                                    />
-                                                    <Line
-                                                        type="monotone"
-                                                        dataKey="comments"
-                                                        stroke="#f59e0b"
-                                                        strokeWidth={2}
-                                                        dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                                                        activeDot={{ r: 6 }}
-                                                        name="Bình luận"
-                                                    />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                                                <BarChart3 className="w-8 h-8 opacity-50 mb-2" />
-                                                <p>Chưa có dữ liệu biểu đồ</p>
-                                            </div>
-                                        )}
+                                        <FbEngagementChart chartData={chartData} />
                                     </div>
                                 </div>
 
@@ -994,42 +952,7 @@ export default function FacebookAnalyticsPage() {
                                                 </div>
                                             ) : channelMetrics?.charts ? (
                                                 <div className="space-y-6">
-                                                    {/* Avg engagement by day */}
-                                                    <div>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-sm font-semibold text-slate-700">Tương tác trung bình theo ngày</p>
-                                                            <p className="text-xs text-slate-500">{channelMetrics?.meta?.posts_analyzed || 0} bài phân tích</p>
-                                                        </div>
-                                                        <div className="h-56">
-                                                            <ResponsiveContainer width="100%" height="100%">
-                                                                <AreaChart data={channelMetrics.charts.avg_engagement_by_day || []}>
-                                                                    <CartesianGrid strokeDasharray="3 3" />
-                                                                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                                                                    <YAxis tick={{ fontSize: 11 }} />
-                                                                    <Tooltip />
-                                                                    <Area type="monotone" dataKey="avgLikes" stroke="#4f46e5" fill="#c7d2fe" name="Like TB" />
-                                                                    <Area type="monotone" dataKey="avgComments" stroke="#059669" fill="#bbf7d0" name="Comment TB" />
-                                                                    <Area type="monotone" dataKey="avgShares" stroke="#f59e0b" fill="#fde68a" name="Share TB" />
-                                                                </AreaChart>
-                                                            </ResponsiveContainer>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Posting frequency */}
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-slate-700 mb-2">Tần suất đăng bài</p>
-                                                        <div className="h-44">
-                                                            <ResponsiveContainer width="100%" height="100%">
-                                                                <AreaChart data={channelMetrics.charts.posting_frequency || []}>
-                                                                    <CartesianGrid strokeDasharray="3 3" />
-                                                                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                                                                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                                                                    <Tooltip />
-                                                                    <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#bae6fd" name="Bài/ngày" />
-                                                                </AreaChart>
-                                                            </ResponsiveContainer>
-                                                        </div>
-                                                    </div>
+                                                    <FbChannelMetricsCharts channelMetrics={channelMetrics} />
 
                                                     {/* Distributions */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

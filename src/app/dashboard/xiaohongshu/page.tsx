@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { Search, Loader2, AlertTriangle, Image as ImageIcon, Video, Eye, Heart, MessageCircle, Star, User, BookOpen, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -348,13 +349,13 @@ export default function XiaohongshuPage() {
                     {/* Cover */}
                     <div className="relative aspect-[3/4] bg-slate-100 group-hover:opacity-95 transition-opacity">
                       {note.cover_url ? (
-                        <img
+                        <Image
                           src={note.cover_url}
                           alt={note.title}
                           className="w-full h-full object-cover"
                           loading="lazy"
                           decoding="async"
-                        />
+                         width={0} height={0} sizes="100vw" unoptimized/>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-200">
                           <ImageIcon className="w-12 h-12 text-slate-400" />
@@ -375,12 +376,12 @@ export default function XiaohongshuPage() {
 
                       {/* Author */}
                       <div className="flex items-center gap-2 mb-3">
-                        <img
+                        <Image
                           src={note.author_avatar}
                           alt=""
                           className="w-6 h-6 rounded-full border border-slate-200 object-cover"
                           loading="lazy"
-                        />
+                         width={0} height={0} sizes="100vw" unoptimized/>
                         <span className="text-xs text-slate-500 truncate font-medium">{note.author_name}</span>
                       </div>
 

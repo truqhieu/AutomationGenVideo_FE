@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Trash2, ExternalLink, Heart, Eye, MessageCircle } from 'lucide-react';
@@ -157,11 +158,11 @@ export default function CollectionDetailPage() {
               {/* Thumbnail */}
               <div className="relative aspect-video bg-gray-100">
                 {cv.video.thumbnail_url ? (
-                  <img
+                  <Image
                     src={cv.video.thumbnail_url}
                     alt={cv.video.title}
                     className="w-full h-full object-cover"
-                  />
+                   width={0} height={0} sizes="100vw" unoptimized/>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
                     No Image

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useMemo, memo, useCallback, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -97,14 +98,12 @@ function SidebarContent({
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const isManagement = useMemo(() => 
-    user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER, UserRole.LEADER].includes(r)),
-    [user?.roles]
+  const isManagement = user?.roles?.some((r: any) =>
+    [UserRole.ADMIN, UserRole.MANAGER, UserRole.LEADER].includes(r)
   );
 
-  const isManagerOrAdmin = useMemo(() => 
-    user?.roles?.some((r: any) => [UserRole.ADMIN, UserRole.MANAGER].includes(r)),
-    [user?.roles]
+  const isManagerOrAdmin = user?.roles?.some((r: any) =>
+    [UserRole.ADMIN, UserRole.MANAGER].includes(r)
   );
 
   // Cleanup hover timeout on unmount
@@ -245,12 +244,12 @@ function SidebarContent({
           className="w-[80px] h-full bg-[#0f172a] border-r border-slate-800 flex flex-col items-center py-6 gap-6 z-20 relative"
         >
           <div className="w-12 h-12 rounded-xl overflow-hidden mb-4 cursor-pointer border-2 border-slate-700 shadow-lg relative group">
-            <img
+            <Image
               src="/logo-vcb.jfif"
               alt="VCB"
               className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-110"
               loading="eager"
-            />
+             width={0} height={0} sizes="100vw" unoptimized/>
           </div>
 
           <div className="flex-1 flex flex-col gap-4 w-full px-4">

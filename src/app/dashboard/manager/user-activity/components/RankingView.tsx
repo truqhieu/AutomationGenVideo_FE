@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import React from 'react';
 import { Users, DollarSign } from 'lucide-react';
 
@@ -142,14 +143,14 @@ const RankingView = ({ rankings }: RankingViewProps) => {
                                     )}
                                 </div>
                                 <div className="relative">
-                                    <img
+                                    <Image
                                         src={getAvatarUrl(user.avatar, user.name)}
                                         alt={user.name}
                                         className={`w-12 h-12 rounded-2xl object-cover ring-4 shadow-md ${style.avatarRing}`}
                                         onError={(e) => {
                                             e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
                                         }}
-                                    />
+                                     width={0} height={0} sizes="100vw" unoptimized/>
                                     {user.rank === 1 && (
                                             <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
                                                 <span className="text-[10px]">👑</span>

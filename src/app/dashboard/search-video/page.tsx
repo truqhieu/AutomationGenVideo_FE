@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertTriangle, Facebook, Instagram, Music2, Music, BookOpen, Hash, Play, Heart, MessageCircle, Share2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -495,11 +496,11 @@ export default function GlobalSearchPage() {
                                         >
                                             {/* Visual Media Header */}
                                             <div className="relative aspect-[9/16] overflow-hidden">
-                                                <img
+                                                <Image
                                                     src={video.thumbnail_url}
                                                     alt={video.description}
                                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                                />
+                                                 width={0} height={0} sizes="100vw" unoptimized/>
                                                 {/* Premium Overlays */}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-[#111420] via-transparent to-transparent opacity-80" />
 

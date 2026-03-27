@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import {
     Search, Loader2, Film, Video, ThumbsUp, MessageCircle, Share2,
@@ -387,7 +388,7 @@ export default function InstagramSearchReelPage() {
                                             </div>
 
                                             {reel.thumbnail_url ? (
-                                                <img
+                                                <Image
                                                     src={getThumbnailSrc(reel.thumbnail_url)}
                                                     alt={reel.description}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -399,7 +400,7 @@ export default function InstagramSearchReelPage() {
                                                             t.src = reel.thumbnail_url;
                                                         }
                                                     }}
-                                                />
+                                                 width={0} height={0} sizes="100vw" unoptimized/>
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                                                     <Video className="w-10 h-10 opacity-50" />
@@ -436,12 +437,12 @@ export default function InstagramSearchReelPage() {
                                         <div className="p-3 flex flex-col flex-1">
                                             {/* Author */}
                                             <div className="flex items-center gap-2 mb-2">
-                                                <img
+                                                <Image
                                                     src={getAvatarUrl(reel)}
                                                     alt=""
                                                     className="w-7 h-7 rounded-full border border-slate-200 object-cover flex-shrink-0"
                                                     loading="lazy"
-                                                />
+                                                 width={0} height={0} sizes="100vw" unoptimized/>
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-bold text-slate-900 truncate">{reel.author_name || reel.author_username}</p>
                                                     <p className="text-[10px] text-slate-400 truncate">@{reel.author_username}</p>

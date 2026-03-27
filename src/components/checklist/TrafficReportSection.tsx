@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import Image from "next/image";
+import React, { useEffect, useRef, useState } from 'react';
 import { Activity, ImagePlus, X, Loader2 } from 'lucide-react';
 
 export const TRAFFIC_PLATFORMS = [
@@ -384,32 +385,35 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Evidence Gallery for this specific channel */}
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {(entry.evidences || []).length === 0 && (
-                                            <p className="text-[10px] text-slate-400 font-bold italic px-1">
-                                                {readOnly ? 'Không có minh chứng' : 'Chưa có minh chứng hình ảnh'}
-                                            </p>
-                                        )}
-                                        {(entry.evidences || []).map((ev, evIdx) => (
-                                            <div key={evIdx} className="group/img relative w-14 h-14 rounded-xl overflow-hidden shadow-sm border border-slate-200">
-                                                <img 
-                                                    src={ev.url} 
-                                                    alt={ev.name} 
-                                                    className="w-full h-full object-cover cursor-zoom-in group-hover/img:scale-110 transition-transform duration-300" 
-                                                    onClick={() => window.open(ev.url, '_blank')}
-                                                />
+                                    <div className="min-h-[40px] flex flex-wrap gap-2 px-1 mt-2">
+                                        {(entry.evidences || []).map((img, evIdx) => (
+                                            <div
+                                                key={`${entry.id}-${evIdx}`}
+                                                className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm animate-in zoom-in duration-200 cursor-pointer"
+                                                onClick={() => window.open(img.url, '_blank')}
+                                            >
+                                                <Image src={img.url} alt={img.name} className="w-full h-full object-cover" title={img.name} width={40} height={40} unoptimized />
                                                 {!readOnly && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeEntryImage(platform.id, entry.id, evIdx)}
-                                                        className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover/img:opacity-100 transition-all hover:bg-red-600 shadow-lg"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeEntryImage(platform.id, entry.id, evIdx);
+                                                        }}
+                                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
                                                     >
-                                                        <X className="w-2.5 h-2.5" />
+                                                        <X className="w-3 h-3" />
                                                     </button>
                                                 )}
                                             </div>
                                         ))}
+                                        {(!(entry.evidences || []).length) &&
+                                            !(uploadingPlatform === platform.id && activeTarget?.entryId === entry.id) && (
+                                                <div className="text-[10px] text-slate-400 italic flex items-center gap-1">
+                                                    <ImagePlus className="w-3 h-3 opacity-50" />
+                                                    Chưa có minh chứng
+                                                </div>
+                                            )}
                                     </div>
                                 </div>
                             ))}

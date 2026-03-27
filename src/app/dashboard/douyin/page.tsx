@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import {
   Search, Loader2, AlertTriangle, Video, Eye, Heart, MessageCircle,
@@ -323,8 +324,16 @@ export default function DouyinScraperPage() {
                       {/* Thumbnail */}
                       <div className="relative aspect-[9/16] bg-slate-800 group-hover:opacity-95 transition-opacity">
                         {video.thumbnail_url ? (
-                          <img src={video.thumbnail_url} alt={video.caption}
-                            className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                          <Image
+                            src={video.thumbnail_url}
+                            alt={video.caption}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 33vw"
+                            unoptimized
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Video className="w-12 h-12 text-slate-600" />
@@ -338,7 +347,7 @@ export default function DouyinScraperPage() {
                         {/* Author */}
                         <div className="flex items-center gap-2 mb-3">
                           {video.author_avatar ? (
-                            <img src={video.author_avatar} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />
+                            <Image src={video.author_avatar} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" width={32} height={32} unoptimized />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
                               <User className="w-4 h-4 text-slate-400" />

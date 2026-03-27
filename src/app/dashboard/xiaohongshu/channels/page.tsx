@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Loader2, BookOpen, RotateCcw, DownloadCloud } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -394,11 +395,11 @@ export default function XiaohongshuChannelsPage() {
                             >
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="relative">
-                                        <img
+                                        <Image
                                             src={getAvatarUrl(channel)}
                                             alt={channel.display_name || channel.username}
                                             className="w-12 h-12 rounded-full object-cover border-2 border-slate-100"
-                                        />
+                                         width={0} height={0} sizes="100vw" unoptimized/>
                                         <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] border-2 border-white">
                                             📕
                                         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useState } from 'react';
 import { Play, Heart, MessageCircle, Share2, Calendar, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -75,7 +76,7 @@ export default function TopViralVideos({ videos }: TopViralVideosProps) {
             >
               {/* Thumbnail */}
               <div className="aspect-[9/16] relative bg-black/5">
-                <img 
+                <Image 
                   src={video.thumbnail_url || '/placeholder-video.jpg'} 
                   alt={video.title || 'Video thumbnail'}
                   className="w-full h-full object-cover"
@@ -85,7 +86,7 @@ export default function TopViralVideos({ videos }: TopViralVideosProps) {
                     const target = e.target as HTMLImageElement;
                     target.src = '/placeholder-video.jpg';
                   }}
-                />
+                 width={0} height={0} sizes="100vw" unoptimized/>
                 
                 {/* Overlay Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />

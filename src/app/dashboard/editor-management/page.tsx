@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
@@ -336,11 +337,11 @@ export default function EditorManagementPage() {
                             {/* Channel Header */}
                             <div className="flex items-center gap-3 mb-3">
                               {channel.avatar_url ? (
-                                <img
+                                <Image
                                   src={channel.avatar_url}
                                   alt={channel.display_name || channel.username}
                                   className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
-                                />
+                                 width={0} height={0} sizes="100vw" unoptimized/>
                               ) : (
                                 <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
                                   <Users className="w-6 h-6 text-slate-400" />
