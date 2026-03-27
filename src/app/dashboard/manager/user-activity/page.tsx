@@ -8,7 +8,8 @@ import ActivityFilters from './components/ActivityFilters';
 import UserActivityCard, { UserActivity } from './components/UserActivityCard';
 import ReportCard from './components/ReportCard';
 import RankingView from './components/RankingView';
-import DailyReportWorkspace from './components/DailyReportWorkspace';
+import MenberReportWorkspace from './components/MenberReportWorkspace';
+import ManagerChecklistWorkspace from './components/ManagerChecklistWorkspace';
 import PersonalCharts from './components/PersonalCharts';
 import {
     RefreshCw,
@@ -584,7 +585,7 @@ const UserActivityPageContent = () => {
             const rRole = (r.role || '').toLowerCase();
             const rPos = (r.position || '').toLowerCase();
             const isReportFromLeader = rRole.includes('leader') || rPos.includes('leader');
-            
+
             if (!isAdminUser) {
                 // Non-admins (Leaders/Members) can ONLY see their own team's outstanding reports
                 if (!isMyTeam) return false;
@@ -594,7 +595,7 @@ const UserActivityPageContent = () => {
             const isLeaderHandled = statusText.includes('leader đã duyệt') || statusText.includes('leader từ chối');
             const isLegacyHandled = statusText === 'đã duyệt' || statusText === 'từ chối' || statusText === 'không duyệt';
             const isAdminHandled = statusText.includes('admin đã duyệt') || statusText.includes('admin từ chối');
-            
+
             if (isAdminUser) {
                 // Admin ONLY sees reports AFTER Leader handled them (or legacy or admin handled)
                 if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled) return false;
@@ -603,12 +604,12 @@ const UserActivityPageContent = () => {
             // Normal filters
             if (!matchTeam(r.team)) return false;
             if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
-            
+
             // Deduplicate by Name + Category + Content to prevent identical visual rows
             const key = `${r.name}_${r.category}_${r.content}`.toLowerCase().trim();
             if (uniqueKeys.has(key)) return false;
             uniqueKeys.add(key);
-            
+
             return true;
         });
     }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, userTeam]);
@@ -835,7 +836,7 @@ const UserActivityPageContent = () => {
                                                 <tbody className="divide-y divide-slate-100 bg-white">
                                                     {filteredChecklistReports.map((r, idx) => {
                                                         const statusText = (r.approval_status || '').toLowerCase();
-                                                        
+
                                                         const isLegacyApproved = statusText === 'đã duyệt' || statusText === 'duyệt';
                                                         const isLegacyRejected = statusText === 'từ chối' || statusText === 'không duyệt';
 
@@ -888,8 +889,8 @@ const UserActivityPageContent = () => {
                                                                 </td>
                                                                 <td className="px-6 py-3 border-r border-slate-50 text-center">
                                                                     <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${r.category?.toLowerCase().includes('win')
-                                                                            ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100'
-                                                                            : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
+                                                                        ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100'
+                                                                        : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
                                                                         }`}>
                                                                         {r.category || '-'}
                                                                     </span>
@@ -921,7 +922,7 @@ const UserActivityPageContent = () => {
                                                                                     )}
                                                                                 </>
                                                                             )}
-                                                                            
+
                                                                             {/* Leader View (chỉ hiện kết quả của Manager) */}
                                                                             {(isLeaderUser && !isAdminUser) && (
                                                                                 <>
@@ -971,7 +972,7 @@ const UserActivityPageContent = () => {
                                                                                     </button>
                                                                                 </>
                                                                             )}
-                                                                            
+
                                                                             {canAdminAction && (
                                                                                 <>
                                                                                     <button
@@ -1127,7 +1128,11 @@ const UserActivityPageContent = () => {
                             </div>
                         </div>
                     ) : activeTab === 'daily_report' ? (
-                        <DailyReportWorkspace />
+                        (isAdminUser || isLeaderUser) ? (
+                            <ManagerChecklistWorkspace reports={reports} />
+                        ) : (
+                            <MenberReportWorkspace />
+                        )
                     ) : null}
                 </main>
             </div>
