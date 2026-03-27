@@ -9,7 +9,6 @@ import { DashboardFilters } from "../shared/DashboardFilters";
 import { Funnel5A } from "../shared/Funnel5A";
 import { KpiTripleCards } from "../shared/KpiTripleCards";
 import { LeaderA5TierTable } from "./LeaderA5TierTable";
-import { LeaderEmployeePerfBars } from "./LeaderEmployeePerfBars";
 import { LeaderHeatmap } from "./LeaderHeatmap";
 import { LeaderMemberTable } from "./LeaderMemberTable";
 
@@ -61,7 +60,6 @@ export function LeaderOverviewTab() {
         <LeaderA5TierTable />
         <LeaderHeatmap />
       </div>
-      <LeaderEmployeePerfBars />
     </div>
   );
 }

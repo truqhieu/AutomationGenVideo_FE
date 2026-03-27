@@ -53,6 +53,11 @@ interface DashboardFiltersProps {
    * `false` = ẩn hẳn lọc nền tảng/kênh (ví dụ tab KPI admin).
    */
   showPlatformChannelFallback?: boolean;
+  /**
+   * Khi không truyền `adminTeamRegion`: `true` = hiện dropdown mock Team;
+   * `false` = ẩn hẳn (ví dụ tab KPI Leader — chỉ chọn tháng).
+   */
+  showTeamFallback?: boolean;
 }
 
 const focusRing: Record<Accent, string> = {
@@ -74,6 +79,7 @@ export function DashboardFilters({
   adminTeamRegion,
   adminPlatformChannel,
   showPlatformChannelFallback = true,
+  showTeamFallback = true,
 }: DashboardFiltersProps) {
   const fr = focusRing[accent];
   const [from, setFrom] = useState(defaultDateFrom);
@@ -121,13 +127,13 @@ export function DashboardFilters({
             </option>
           ))}
         </select>
-      ) : (
+      ) : showTeamFallback ? (
         <select className={cn("cursor-pointer", inputBase, fr)}>
           <option>Tất cả Team</option>
           <option>Nội dung VN</option>
           <option>Toàn cầu</option>
         </select>
-      )}
+      ) : null}
       {adminPlatformChannel ? (
         <>
           <select
