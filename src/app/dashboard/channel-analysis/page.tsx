@@ -297,6 +297,13 @@ export default function ChannelAnalysisHubPage() {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
             const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/channel/insights`;
 
+            // Prepare redundant identifiers to ensure BE can find it
+            const platform = targetRow.platform.toLowerCase();
+            const url = platform === 'facebook' ? `https://www.facebook.com/${encodeURIComponent(username)}` : 
+                       platform === 'tiktok' ? `https://www.tiktok.com/@${encodeURIComponent(username)}` : 
+                       platform === 'instagram' ? `https://www.instagram.com/${encodeURIComponent(username)}/` : 
+                       undefined;
+
             setInsightsLoading(true);
             setInsightsError("");
             try {
@@ -304,8 +311,9 @@ export default function ChannelAnalysisHubPage() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        platform: targetRow.platform.toLowerCase(),
+                        platform,
                         username,
+                        url,
                         start_date: startDate || undefined,
                         end_date: endDate || undefined,
                         language: "vi",
@@ -360,6 +368,13 @@ export default function ChannelAnalysisHubPage() {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
             const apiUrl = `${baseUrl.replace(/\/$/, "")}/ai/channel/metrics`;
 
+            // Prepare redundant identifiers
+            const platform = targetRow.platform.toLowerCase();
+            const url = platform === 'facebook' ? `https://www.facebook.com/${encodeURIComponent(username)}` : 
+                       platform === 'tiktok' ? `https://www.tiktok.com/@${encodeURIComponent(username)}` : 
+                       platform === 'instagram' ? `https://www.instagram.com/${encodeURIComponent(username)}/` : 
+                       undefined;
+
     setMetricsLoading(true);
     setMetricsError('');
     try {
@@ -367,8 +382,9 @@ export default function ChannelAnalysisHubPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: targetRow.platform.toLowerCase(),
+          platform,
           username,
+          url,
           start_date: startDate || undefined,
           end_date: endDate || undefined,
           force_refresh: forceRefresh,
