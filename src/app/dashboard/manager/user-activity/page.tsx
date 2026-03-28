@@ -327,16 +327,33 @@ const UserActivityPageContent = () => {
     const filteredChecklistReports = React.useMemo(() => {
         const uniqueKeys = new Set();
         return reportOutstandings.filter(r => {
-            const isMyTeam = userTeam && r.team === userTeam;
-            if (!isAdminUser && !isMyTeam) return false;
+            // --- NEW RULES for Workflow Priority ---
+            const isMyReport = user?.email && r.email && normalize(r.email) === normalize(user.email);
+            const isMyTeam = (userTeam && r.team) && normalize(r.team) === normalize(userTeam);
+            const rRole = (r.role || '').toLowerCase();
+            const rPos = (r.position || '').toLowerCase();
+            const isReportFromLeader = rRole.includes('leader') || rPos.includes('leader');
+            
+            if (!isAdminUser) {
+                // Non-admins (Leaders/Members) can ONLY see their own team's outstanding reports
+                // Exception: ALWAYS allow seeing own reports even if team has slight naming mismatch
+                if (!isMyTeam && !isMyReport) return false;
+            }
 
             const statusText = (r.approval_status || '').toLowerCase();
             const isLeaderHandled = statusText.includes('leader đã duyệt') || statusText.includes('leader từ chối');
             const isLegacyHandled = statusText === 'đã duyệt' || statusText === 'từ chối' || statusText === 'không duyệt';
-            const isAdminHandled = statusText.includes('admin đã duyệt') || statusText.includes('admin từ chối') || isLegacyHandled;
+            const isAdminHandled = statusText.includes('admin đã duyệt') || statusText.includes('admin từ chối');
+            
+            if (isAdminUser) {
+                // Admin ONLY sees reports AFTER Leader handled them (or legacy or admin handled)
+                // Exception: If no team, no leader exists -> show directly to admin
+                const hasNoTeam = !r.team || r.team.trim() === '' || normalize(r.team) === 'khac';
+                if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled && !hasNoTeam) return false;
+            }
 
-            if (isAdminUser && (!isLeaderHandled && !isLegacyHandled && !isAdminHandled)) return false;
-            if (!matchTeam(r.team)) return false;
+            // Normal filters
+            if (!matchTeam(r.team) && !isMyReport) return false;
             if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
 
             const key = `${r.name}_${r.category}_${r.content}`.toLowerCase().trim();
@@ -578,11 +595,19 @@ const UserActivityPageContent = () => {
                                                                 const parts = r.date.split('/');
                                                                 if (parts.length === 3) rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
                                                             }
-                                                            if (!isNaN(rDateObj.getTime()) && (new Date().getTime() - rDateObj.getTime() > 24 * 60 * 60 * 1000)) isExpired = true;
+                                                            if (!isNaN(rDateObj.getTime())) {
+                                                                // > 24 hours
+                                                                if (new Date().getTime() - rDateObj.getTime() > 24 * 60 * 60 * 1000) {
+                                                                    isExpired = true;
+                                                                }
+                                                            }
                                                         }
-                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team === userTeam && !(isAdminApproved || isAdminRejected);
-                                                        const canAdminAction = !isExpired && isAdminUser;
-                                                        const isAutoRejected = isExpired && !(isAdminApproved || isAdminRejected);
+
+                                                        // Permissions
+                                                        // BỔ SUNG: Nếu report là từ Leader, hoặc KHÔNG CÓ TEAM, thì chỉ Admin mới được duyệt.
+                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team && r.team.trim() !== '' && r.team === userTeam && !isAdminHandled && !isReportFromLeader;
+                                                        const canAdminAction = !isExpired && isAdminUser; // Màn Admin có thể thao tác hết
+                                                        const isAutoRejected = isExpired && !isAdminHandled;
 
                                                         return (
                                                             <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
@@ -629,7 +654,9 @@ const UserActivityPageContent = () => {
                                                                                     ) : isLeaderApproved ? (
                                                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt (Chờ duyệt)</span>
                                                                                     ) : (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Leader duyệt</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                            <Clock className="w-3.5 h-3.5" /> {(isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? 'Chờ Admin duyệt' : 'Chờ Leader duyệt'}
+                                                                                        </span>
                                                                                     )}
                                                                                 </>
                                                                             )}
@@ -646,6 +673,8 @@ const UserActivityPageContent = () => {
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt (Đã khóa)</span>
                                                                                         ) : isLeaderRejected ? (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối (Đã khóa)</span>
+                                                                                        ) : (isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Admin duyệt</span>
                                                                                         ) : (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt (Quá hạn)</span>
                                                                                         )

@@ -27,7 +27,7 @@ export function FbEngagementChart({ chartData }: { chartData: any[] }) {
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.15)' }} />
                 <Area type="monotone" dataKey="likes" stroke="#9333ea" strokeWidth={3} fillOpacity={1} fill="url(#colorLikesAll)" name="Lượt thích" />
-                <Line type="monotone" dataKey="comments" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="Bình luận" />
+                <Line type="monotone" dataKey="engagement" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="Tổng tương tác" />
             </AreaChart>
         </ResponsiveContainer>
     );
@@ -43,14 +43,13 @@ export function FbChannelMetricsCharts({ channelMetrics }: { channelMetrics: any
                 </div>
                 <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={channelMetrics.charts.avg_engagement_by_day || []}>
+                        <AreaChart data={(channelMetrics.charts.avg_engagement_by_day || []).map((it: any) => ({ ...it, engagement: it.avgLikes + it.avgComments + it.avgShares }))}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip />
                             <Area type="monotone" dataKey="avgLikes" stroke="#4f46e5" fill="#c7d2fe" name="Like TB" />
-                            <Area type="monotone" dataKey="avgComments" stroke="#059669" fill="#bbf7d0" name="Comment TB" />
-                            <Area type="monotone" dataKey="avgShares" stroke="#f59e0b" fill="#fde68a" name="Share TB" />
+                            <Area type="monotone" dataKey="engagement" stroke="#f59e0b" fill="#fde68a" name="Tương tác TB" opacity={0.6} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>

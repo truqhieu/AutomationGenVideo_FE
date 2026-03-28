@@ -35,12 +35,17 @@ export const PostsAnalytics: React.FC<PostsAnalyticsProps> = ({ data, loading })
     
     // Note: If Views are 0 (common for image posts), engagement rate will be 0.
     
+    const totalEngagement = totalLikes + totalComments + totalShares;
+    const avgEngagement = totalItems > 0 ? totalEngagement / totalItems : 0;
+    
     return {
       totalLikes,
       totalComments,
       totalViews,
       totalShares,
       totalItems,
+      totalEngagement,
+      avgEngagement: avgEngagement.toFixed(1),
       engagementRate: engagementRate.toFixed(2)
     };
   }, [filteredData]);
@@ -99,19 +104,19 @@ export const PostsAnalytics: React.FC<PostsAnalyticsProps> = ({ data, loading })
             </div>
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                  <div className="flex items-center gap-3 mb-3">
-                     <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><MessageCircle className="w-5 h-5" /></div>
-                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Bình luận</span>
+                     <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><TrendingUp className="w-5 h-5" /></div>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Tổng Tương tác</span>
                 </div>
-                <div className="text-3xl font-black text-amber-600 tracking-tight">{stats.totalComments.toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 mt-1">Tổng bình luận bài viết</div>
+                <div className="text-3xl font-black text-amber-600 tracking-tight">{stats.totalEngagement.toLocaleString()}</div>
+                 <div className="text-[10px] text-slate-400 mt-1">Tổng Likes+Cmt+Share bài viết</div>
             </div>
              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                  <div className="flex items-center gap-3 mb-3">
-                     <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Share2 className="w-5 h-5" /></div>
-                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Lượt chia sẻ</span>
+                     <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><BarChart3 className="w-5 h-5" /></div>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Tương tác / Bài</span>
                 </div>
-                <div className="text-3xl font-black text-purple-600 tracking-tight">{stats.totalShares.toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 mt-1">Tổng chia sẻ bài viết</div>
+                <div className="text-3xl font-black text-indigo-600 tracking-tight">{stats.avgEngagement}</div>
+                 <div className="text-[10px] text-slate-400 mt-1">Trung bình tương tác/bài viết</div>
             </div>
         </div>
 
