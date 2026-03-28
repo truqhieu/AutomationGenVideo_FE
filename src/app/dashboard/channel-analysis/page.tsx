@@ -26,6 +26,7 @@ import {
     DownloadCloud,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, Legend } from 'recharts';
 
 const ChannelMetricsCharts = dynamic(() => import("./ChannelMetricsCharts"), { ssr: false });
 
