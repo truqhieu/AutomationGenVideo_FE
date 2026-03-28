@@ -34,6 +34,7 @@ export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderPr
     );
     const isAdmin = user?.roles?.includes(UserRole.ADMIN);
     const isLeader = user?.roles?.includes(UserRole.LEADER);
+    const isManager = user?.roles?.includes(UserRole.MANAGER);
 
     const userInitial = user?.full_name
         ? (user.full_name.trim().split(" ").pop()?.[0]?.toUpperCase() ?? "?")
@@ -42,6 +43,7 @@ export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderPr
     const navMenus = useNavMenus(!!isManagerOrAdmin, !!isManagement, {
         isAdmin: !!isAdmin,
         isLeader: !!isLeader,
+        isManager: !!isManager,
     });
 
     // allowedMenuIds chứa tab-level permissions, không phải nav menu IDs.

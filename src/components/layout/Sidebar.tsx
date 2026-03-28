@@ -105,6 +105,9 @@ function SidebarContent({
     [UserRole.ADMIN, UserRole.MANAGER].includes(r)
   );
 
+  const isManagerRole = user?.roles?.includes(UserRole.MANAGER);
+  const isAdminRole = user?.roles?.includes(UserRole.ADMIN);
+
   // Cleanup hover timeout on unmount
   useEffect(() => {
     return () => {
@@ -137,7 +140,7 @@ function SidebarContent({
   // Platforms configuration
   const platforms = useMemo(() => {
     const items = [
-      ...(isManagerOrAdmin ? [
+      ...(isManagerRole ? [
         {
           id: 'dashboard-general',
           icon: LayoutGrid,
@@ -161,13 +164,15 @@ function SidebarContent({
             section: 'HỆ THỐNG',
             items: [
               { label: 'Hiệu suất', href: '/dashboard/manager/user-activity?tab=performance', icon: Activity },
-              ...(isManagerOrAdmin ? [
+              ...(isManagerRole ? [
                 { label: 'Tổng quan', href: '/dashboard/manager/user-activity?tab=dashboard', icon: LayoutDashboard },
               ] : []),
               { label: 'Bảng xếp hạng', href: '/dashboard/manager/user-activity?tab=ranking', icon: Layout },
               { label: 'Tiến độ', href: '/dashboard/manager/user-activity?tab=personal', icon: User },
-              { label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText },
-              { label: 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: CheckSquare },
+              ...(isAdminRole
+                ? []
+                : [{ label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText }]),
+              { label: isAdminRole ? 'Xem báo cáo' : 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: CheckSquare },
               { label: 'Vấn đề & Win', href: '/dashboard/manager/user-activity?tab=daily_outstanding', icon: ClipboardList },
             ]
           }
@@ -195,7 +200,7 @@ function SidebarContent({
       }
     ];
     return items;
-  }, [user?.roles, isManagement, isManagerOrAdmin]);
+  }, [user?.roles, isManagement, isManagerOrAdmin, isManagerRole, isAdminRole]);
 
   const currentPlatform = useMemo(() => platforms.find(p => p.id === activePlatform), [platforms, activePlatform]);
 
