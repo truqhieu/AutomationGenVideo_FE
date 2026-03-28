@@ -138,10 +138,12 @@ export function useNavMenus(
                                     : "Danh sách công việc cần hoàn thành hôm nay",
                             },
                             {
-                                label: "Vấn đề & Win",
+                                label: isAdmin ? "Duyệt vấn đề & win" : "Vấn đề & Win",
                                 href: "/dashboard/manager/user-activity?tab=daily_outstanding",
                                 icon: ClipboardList,
-                                description: "Ghi nhận vấn đề nổi bật & thành tích ngày",
+                                description: isAdmin
+                                    ? "Duyệt và ghi nhận vấn đề nổi bật & thành tích ngày"
+                                    : "Ghi nhận vấn đề nổi bật & thành tích ngày",
                             },
                         ],
                     },

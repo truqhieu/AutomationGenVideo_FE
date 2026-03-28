@@ -174,7 +174,7 @@ function SidebarContent({
                 ? []
                 : [{ label: 'Báo cáo', href: '/dashboard/manager/user-activity?tab=daily_report', icon: FileText }]),
               { label: isAdminRole ? 'Xem báo cáo' : 'Checklist', href: '/dashboard/manager/user-activity?tab=daily_checklist', icon: CheckSquare },
-              { label: 'Vấn đề & Win', href: '/dashboard/manager/user-activity?tab=daily_outstanding', icon: ClipboardList },
+              { label: isAdminRole ? 'Duyệt vấn đề & win' : 'Vấn đề & Win', href: '/dashboard/manager/user-activity?tab=daily_outstanding', icon: ClipboardList },
             ]
           }
         ]

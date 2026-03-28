@@ -339,10 +339,17 @@ const UserActivityPageContent = () => {
 
     const visibleTabs = React.useMemo(() => {
         const hasManagerRole = sysRoles.includes(UserRole.MANAGER) || userRole === "manager";
-        return allTabs.filter((tab) => {
-            if (tab.id === "dashboard") return hasManagerRole;
-            return true;
-        });
+        const isAdminOnlyNav = sysRoles.includes(UserRole.ADMIN);
+        return allTabs
+            .filter((tab) => {
+                if (tab.id === "dashboard") return hasManagerRole;
+                return true;
+            })
+            .map((tab) =>
+                tab.id === "daily_outstanding" && isAdminOnlyNav
+                    ? { ...tab, label: "Duyệt vấn đề & win" }
+                    : tab,
+            );
     }, [allTabs, sysRoles, userRole]);
 
     // Memoize filtered report lists to avoid expensive re-filtering on every render
