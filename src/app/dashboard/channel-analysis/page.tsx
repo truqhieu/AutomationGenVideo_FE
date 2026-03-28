@@ -218,7 +218,7 @@ export default function ChannelAnalysisHubPage() {
         if (!i || Object.keys(i).length === 0) return false;
         const vals = Object.values(i);
         const isPlaceholder = (v?: string) => {
-            const s = (v || "").trim();
+            const s = (v || "").toString().trim();
             if (!s) return true;
             return s.startsWith("Chưa đủ dữ liệu");
         };
@@ -804,7 +804,7 @@ export default function ChannelAnalysisHubPage() {
 
     const rows = useMemo<Row[]>(() => {
         const mapped = (channels || []).map((ch) => {
-            const name = (ch.display_name || ch.username || "").trim() || "(No name)";
+            const name = (ch.display_name || ch.username || "").toString().trim() || "(No name)";
             const url = buildChannelUrl(ch.platform, ch.username);
 
             // Count label: scannedCount from localStorage (set after analysis), fallback to available count
