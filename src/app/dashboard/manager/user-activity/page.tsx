@@ -338,7 +338,9 @@ const UserActivityPageContent = () => {
             
             if (isAdminUser) {
                 // Admin ONLY sees reports AFTER Leader handled them (or legacy or admin handled)
-                if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled) return false;
+                // Exception: If no team, no leader exists -> show directly to admin
+                const hasNoTeam = !r.team || r.team.trim() === '' || normalize(r.team) === 'khac';
+                if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled && !hasNoTeam) return false;
             }
 
             // Normal filters
@@ -603,8 +605,8 @@ const UserActivityPageContent = () => {
                                                         }
 
                                                         // Permissions
-                                                        // BỔ SUNG: Nếu report là từ Leader, thì chỉ Manager (Admin) mới được duyệt, Leader của team không tự duyệt được cho chính mình hoặc leader khác.
-                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team === userTeam && !isAdminHandled && !isReportFromLeader;
+                                                        // BỔ SUNG: Nếu report là từ Leader, hoặc KHÔNG CÓ TEAM, thì chỉ Admin mới được duyệt.
+                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team && r.team.trim() !== '' && r.team === userTeam && !isAdminHandled && !isReportFromLeader;
                                                         const canAdminAction = !isExpired && isAdminUser; // Màn Admin có thể thao tác hết
                                                         const isAutoRejected = isExpired && !isAdminHandled;
 
@@ -654,7 +656,7 @@ const UserActivityPageContent = () => {
                                                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt (Chờ duyệt)</span>
                                                                                     ) : (
                                                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
-                                                                                            <Clock className="w-3.5 h-3.5" /> {isReportFromLeader ? 'Chờ Manager duyệt' : 'Chờ Leader duyệt'}
+                                                                                            <Clock className="w-3.5 h-3.5" /> {(isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? 'Chờ Admin duyệt' : 'Chờ Leader duyệt'}
                                                                                         </span>
                                                                                     )}
                                                                                 </>
@@ -672,8 +674,8 @@ const UserActivityPageContent = () => {
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt (Đã khóa)</span>
                                                                                         ) : isLeaderRejected ? (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối (Đã khóa)</span>
-                                                                                        ) : isReportFromLeader ? (
-                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Manager duyệt</span>
+                                                                                        ) : (isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Admin duyệt</span>
                                                                                         ) : (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt (Quá hạn)</span>
                                                                                         )
