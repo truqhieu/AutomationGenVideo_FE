@@ -409,8 +409,6 @@ export default function ChannelAnalysisHubPage() {
         const prev = existing ? JSON.parse(existing) : {};
         localStorage.setItem(key, JSON.stringify({
           ...prev,
-          status: 'completed',
-          analyzedAt: prev.analyzedAt || Date.now(),
           startDate,
           endDate,
           scannedCount: scanned !== null ? scanned : prev.scannedCount
@@ -548,8 +546,6 @@ export default function ChannelAnalysisHubPage() {
         const prev = existing ? JSON.parse(existing) : {};
         localStorage.setItem(key, JSON.stringify({
           ...prev,
-          status: 'completed',
-          analyzedAt: prev.analyzedAt || Date.now(),
           startDate,
           endDate,
           scannedCount: scanned !== null ? scanned : prev.scannedCount
@@ -1254,7 +1250,8 @@ export default function ChannelAnalysisHubPage() {
                                 </h2>
                             </div>
                             <button
-                                onClick={() => !creating && setShowCreateModal(false)}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setShowCreateModal(false); }}
                                 className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
                             >
                                 <X className="w-5 h-5" />
@@ -1475,7 +1472,8 @@ export default function ChannelAnalysisHubPage() {
                                           : "Phân tích"}
                                 </button>
                                 <button
-                                    onClick={() => setShowInsightsModal(false)}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setShowInsightsModal(false); }}
                                     className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
                                     title="Đóng (phân tích vẫn tiếp tục nền)"
                                 >
@@ -1733,7 +1731,8 @@ export default function ChannelAnalysisHubPage() {
                 </p>
               </div>
               <button
-                onClick={() => !(insightsLoading || metricsLoading) && setShowMaxPostsModal(false)}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowMaxPostsModal(false); }}
                 className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 <X className="w-5 h-5" />
