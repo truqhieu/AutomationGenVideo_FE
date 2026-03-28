@@ -590,6 +590,8 @@ const ChecklistContainer = ({
                     ...payload,
                     userEmail: user.email,
                     userName: user.full_name,
+                    userTeam: user.team,
+                    userRoles: user.roles,
                     reportDate: reportDate,
                 };
 
