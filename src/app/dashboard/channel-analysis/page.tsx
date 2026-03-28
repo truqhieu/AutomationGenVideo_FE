@@ -401,6 +401,23 @@ export default function ChannelAnalysisHubPage() {
       }
       if (json.success === false && json.error) throw new Error(json.error);
       setChannelMetrics(json.metrics || null);
+
+      const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
+      try {
+        const key = getAnalysisKey(targetRow.platform, username);
+        const existing = localStorage.getItem(key);
+        const prev = existing ? JSON.parse(existing) : {};
+        localStorage.setItem(key, JSON.stringify({
+          ...prev,
+          status: 'completed',
+          analyzedAt: prev.analyzedAt || Date.now(),
+          startDate,
+          endDate,
+          scannedCount: scanned !== null ? scanned : prev.scannedCount
+        }));
+        setStorageTick((x) => x + 1);
+      } catch (_) {}
+
     } catch (e: any) {
       setMetricsError((e?.message || 'Không thể tải thống kê kênh').toString());
     } finally {
@@ -523,20 +540,22 @@ export default function ChannelAnalysisHubPage() {
       }
       if (json.success === false && json.error) throw new Error(json.error);
       setChannelMetrics(json.metrics || null);
-      // Also persist scanned_count if insights haven't done so yet
+      // Also persist scanned_count and mark completed
       const scanned = json.scanned_count ?? json.metrics?.meta?.scanned_count ?? null;
-      if (scanned !== null) {
-        try {
-          const key = getAnalysisKey('FACEBOOK', username);
-          const existing = localStorage.getItem(key);
-          const prev = existing ? JSON.parse(existing) : {};
-          // Only update if scannedCount not yet set or this is newer
-          if (!prev.scannedCount) {
-            localStorage.setItem(key, JSON.stringify({ ...prev, startDate, endDate, scannedCount: scanned }));
-            setStorageTick((x) => x + 1);
-          }
-        } catch (_) {}
-      }
+      try {
+        const key = getAnalysisKey('FACEBOOK', username);
+        const existing = localStorage.getItem(key);
+        const prev = existing ? JSON.parse(existing) : {};
+        localStorage.setItem(key, JSON.stringify({
+          ...prev,
+          status: 'completed',
+          analyzedAt: prev.analyzedAt || Date.now(),
+          startDate,
+          endDate,
+          scannedCount: scanned !== null ? scanned : prev.scannedCount
+        }));
+        setStorageTick((x) => x + 1);
+      } catch (_) {}
     } catch (e: any) {
       setMetricsError((e?.message || 'Không thể tải thống kê kênh').toString());
     } finally {
