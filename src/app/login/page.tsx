@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth-store';
-import { UserRole } from '@/types/auth';
+import { getDashboardPathForRoles } from '@/lib/post-login-redirect';
 import Button from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
@@ -41,12 +41,7 @@ export default function LoginPage() {
       await login(data);
       const { user } = useAuthStore.getState();
       if (user) {
-        if (user.roles?.some(r => r === UserRole.MANAGER || r === UserRole.ADMIN)) {
-          router.push('/dashboard/manager');
-        } else {
-          // Members/Leaders go directly to Performance page
-          router.push('/dashboard/manager/user-activity?tab=performance');
-        }
+        router.push(getDashboardPathForRoles(user.roles));
       } else {
         router.push('/dashboard/manager/user-activity?tab=performance');
       }
