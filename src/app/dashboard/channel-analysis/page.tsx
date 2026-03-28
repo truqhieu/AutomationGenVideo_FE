@@ -344,16 +344,15 @@ export default function ChannelAnalysisHubPage() {
       setStorageTick((x) => x + 1);
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
-      // Revert 'analyzing' on error so row doesn't stay stuck
+      if (e?.message?.includes('524') || e?.message?.includes('timeout')) {
+        setInsightsError('Hệ thống đang tổng hợp dữ liệu và phân tích chi tiết. Quá trình này thường mất 2-3 phút, bạn vui lòng chờ kết quả tự động hiển thị khi hoàn tất nhé!');
+        return;
+      }
+      setInsightsError((e?.message || 'Hiện tại chưa lấy được dữ liệu phân tích, vui lòng thử lại sau.').toString());
       try {
         const key = getAnalysisKey(targetRow.platform, username);
-        const raw = localStorage.getItem(key);
-        const prev = raw ? JSON.parse(raw) : {};
-        if (prev.status === 'analyzing') {
-          localStorage.setItem(key, JSON.stringify({ ...prev, status: 'not_analyzed' }));
-          setStorageTick((x) => x + 1);
-        }
+        localStorage.setItem(key, JSON.stringify({ status: 'not_analyzed' }));
+        setStorageTick((x) => x + 1);
       } catch (_) {}
     } finally {
       setInsightsLoading(false);
@@ -497,7 +496,11 @@ export default function ChannelAnalysisHubPage() {
       // Refresh table to reflect status/time
       await fetchAll();
     } catch (e: any) {
-      setInsightsError((e?.message || 'Không thể tải phân tích kênh').toString());
+      if (e?.message?.includes('524') || e?.message?.includes('timeout')) {
+        setInsightsError('Dữ liệu kênh khá lớn, AI đang tiếp tục phân tích dựa trên các bài viết mới nhất. Vui lòng chờ trong giây lát...');
+        return;
+      }
+      setInsightsError((e?.message || 'Không thể phân tích kênh vào lúc này.').toString());
       // Revert 'analyzing' on error
       try {
         const key = getAnalysisKey('FACEBOOK', username);
