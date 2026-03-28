@@ -229,6 +229,13 @@ const ActivityFilters = ({
         return today.getDate() === day && today.getMonth() === currentMonth && today.getFullYear() === currentYear;
     };
 
+    const isFuture = (day: number) => {
+        const d = new Date(currentYear, currentMonth, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return d > today;
+    };
+
     const isSelected = (day: number) => {
         const d = new Date(currentYear, currentMonth, day);
         return d.getTime() === dateRange.start.getTime() || d.getTime() === dateRange.end.getTime();
@@ -240,6 +247,7 @@ const ActivityFilters = ({
     };
 
     const handleDateSelect = (day: number) => {
+        if (isFuture(day)) return;
         const newDate = new Date(currentYear, currentMonth, day);
 
         if (filterMode === "day") {
@@ -273,16 +281,26 @@ const ActivityFilters = ({
     };
 
     const handleMonthSelect = (monthIdx: number) => {
+        const today = new Date();
+        if (currentYear > today.getFullYear() || (currentYear === today.getFullYear() && monthIdx > today.getMonth())) return;
+        
         const start = new Date(viewDate.getFullYear(), monthIdx, 1, 0, 0, 0, 0);
         const end = new Date(viewDate.getFullYear(), monthIdx + 1, 0, 23, 59, 59, 999);
-        setDateRange({ start, end });
+        // Cap end date at today
+        const cappedEnd = end > today ? today : end;
+        setDateRange({ start, end: cappedEnd });
         setOpenDropdown(null);
     };
 
     const handleYearSelect = (year: number) => {
+        const today = new Date();
+        if (year > today.getFullYear()) return;
+
         const start = new Date(year, 0, 1, 0, 0, 0, 0);
         const end = new Date(year, 11, 31, 23, 59, 59, 999);
-        setDateRange({ start, end });
+        // Cap end date at today
+        const cappedEnd = end > today ? today : end;
+        setDateRange({ start, end: cappedEnd });
         setOpenDropdown(null);
     };
 
@@ -656,7 +674,15 @@ const ActivityFilters = ({
                                                         <ChevronDown className="w-4 h-4 rotate-90" />
                                                     </button>
                                                     <span className="text-sm font-black text-gray-800">{viewDate.getFullYear()}</span>
-                                                    <button onClick={() => { const d = new Date(viewDate); d.setFullYear(d.getFullYear() + 1); setViewDate(d); }} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                    <button 
+                                                        onClick={() => { 
+                                                            const d = new Date(viewDate); 
+                                                            d.setFullYear(d.getFullYear() + 1); 
+                                                            if (d.getFullYear() <= new Date().getFullYear()) setViewDate(d); 
+                                                        }} 
+                                                        disabled={viewDate.getFullYear() >= new Date().getFullYear()}
+                                                        className={`p-1.5 rounded-lg transition-colors ${viewDate.getFullYear() >= new Date().getFullYear() ? "text-gray-200 cursor-not-allowed" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"}`}
+                                                    >
                                                         <ChevronDown className="w-4 h-4 -rotate-90" />
                                                     </button>
                                                 </div>
@@ -668,12 +694,15 @@ const ActivityFilters = ({
                                                             <button
                                                                 key={i}
                                                                 onClick={() => handleMonthSelect(i)}
+                                                                disabled={currentYear > new Date().getFullYear() || (currentYear === new Date().getFullYear() && i > new Date().getMonth())}
                                                                 className={`py-3 rounded-xl text-xs font-bold border transition-all ${
                                                                     isActiveMon
                                                                         ? "bg-blue-600 border-blue-600 text-white shadow-md"
                                                                         : isCurrentMon
                                                                           ? "border-blue-300 text-blue-600 bg-blue-50"
-                                                                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
+                                                                          : (currentYear > new Date().getFullYear() || (currentYear === new Date().getFullYear() && i > new Date().getMonth()))
+                                                                            ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50"
+                                                                            : "bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
                                                                 }`}
                                                             >
                                                                 Th.{i + 1}
@@ -691,12 +720,15 @@ const ActivityFilters = ({
                                                         <button
                                                             key={yr}
                                                             onClick={() => handleYearSelect(yr)}
+                                                            disabled={yr > new Date().getFullYear()}
                                                             className={`py-6 rounded-2xl text-xl font-black border transition-all ${
                                                                 isActiveYr
                                                                     ? "bg-blue-600 border-blue-600 text-white shadow-md"
                                                                     : isCurrentYr
                                                                       ? "border-blue-300 text-blue-600 bg-blue-50"
-                                                                      : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
+                                                                      : yr > new Date().getFullYear()
+                                                                        ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50"
+                                                                        : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50"
                                                             }`}
                                                         >
                                                             {yr}
@@ -714,7 +746,18 @@ const ActivityFilters = ({
                                                     <span className="text-sm font-black text-gray-800 capitalize">
                                                         {viewDate.toLocaleString("vi-VN", { month: "long", year: "numeric" })}
                                                     </span>
-                                                    <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors">
+                                                    <button 
+                                                        onClick={() => {
+                                                            const today = new Date();
+                                                            const nextMonth = new Date(viewDate);
+                                                            nextMonth.setMonth(nextMonth.getMonth() + 1);
+                                                            if (nextMonth.getFullYear() < today.getFullYear() || (nextMonth.getFullYear() === today.getFullYear() && nextMonth.getMonth() <= today.getMonth())) {
+                                                                changeMonth(1);
+                                                            }
+                                                        }} 
+                                                        disabled={viewDate.getFullYear() > new Date().getFullYear() || (viewDate.getFullYear() === new Date().getFullYear() && viewDate.getMonth() >= new Date().getMonth())}
+                                                        className={`p-1.5 rounded-lg transition-colors ${viewDate.getFullYear() > new Date().getFullYear() || (viewDate.getFullYear() === new Date().getFullYear() && viewDate.getMonth() >= new Date().getMonth()) ? "text-gray-200 cursor-not-allowed" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"}`}
+                                                    >
                                                         <ChevronDown className="w-4 h-4 -rotate-90" />
                                                     </button>
                                                 </div>
@@ -733,6 +776,7 @@ const ActivityFilters = ({
                                                             {day ? (
                                                                 <button
                                                                     onClick={() => handleDateSelect(day)}
+                                                                    disabled={isFuture(day)}
                                                                     className={`w-full h-full flex items-center justify-center text-[12px] font-semibold rounded-lg transition-all
                                                                         ${
                                                                             isSelected(day) || (filterMode === "week" && isInRange(day))
@@ -741,7 +785,9 @@ const ActivityFilters = ({
                                                                                   ? "bg-blue-100 text-blue-700"
                                                                                   : isToday(day)
                                                                                     ? "bg-blue-50 text-blue-600 ring-2 ring-blue-400 ring-offset-1 font-bold"
-                                                                                    : "hover:bg-gray-100 text-gray-700 hover:text-blue-700"
+                                                                                    : isFuture(day)
+                                                                                      ? "text-gray-300 cursor-not-allowed opacity-50"
+                                                                                      : "hover:bg-gray-100 text-gray-700 hover:text-blue-700"
                                                                         }`}
                                                                 >
                                                                     {day}

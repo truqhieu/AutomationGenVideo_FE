@@ -198,7 +198,7 @@ export function useActivityData({
             if (timeType) params.append("timeType", timeType);
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/user-activity?${params.toString()}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
 
             if (data.userRole) setUserRole(data.userRole.toLowerCase());
@@ -229,7 +229,7 @@ export function useActivityData({
                 params.append("name", searchNameRef.current);
             }
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/personal-history?${params.toString()}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
             setPersonalHistory(data);
         } catch (error) {
