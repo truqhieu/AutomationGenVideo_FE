@@ -326,6 +326,7 @@ export default function ChannelAnalysisHubPage() {
                     if (res.headers.get("content-type")?.includes("json")) json = await res.json();
                 } catch (_) { }
                 if (!res.ok) {
+                    if (res.status === 524) return;
                     const msg = (json.error || json.message || "").toString() || `Lỗi ${res.status}`;
                     throw new Error(msg);
                 }
@@ -396,6 +397,7 @@ export default function ChannelAnalysisHubPage() {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
       } catch (_) {}
       if (!res.ok) {
+        if (res.status === 524) return;
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
       }
@@ -471,6 +473,7 @@ export default function ChannelAnalysisHubPage() {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
       } catch (_) {}
       if (!res.ok) {
+        if (res.status === 524) return; // Cloudflare Timeout - process is still running on NAS
         const msg = (json.error || json.message || '').toString();
         const friendly =
           res.status === 429 || msg.includes('429') || msg.toLowerCase().includes('quota')
@@ -533,6 +536,7 @@ export default function ChannelAnalysisHubPage() {
         if (res.headers.get('content-type')?.includes('json')) json = await res.json();
       } catch (_) {}
       if (!res.ok) {
+        if (res.status === 524) return;
         const msg = (json.error || json.message || '').toString() || `Lỗi ${res.status}`;
         throw new Error(msg);
       }
@@ -831,6 +835,21 @@ export default function ChannelAnalysisHubPage() {
           if (parsed?.status === 'analyzing') {
             status = 'analyzing';
             analyzingAtMs = parsed?.analyzingAt;
+            // Auto-complete if server data (last_synced_at) is newer than when we started
+            if (analyzingAtMs && ch.last_synced_at) {
+               const lsa = new Date(ch.last_synced_at).getTime();
+               if (lsa > analyzingAtMs) {
+                  status = 'completed';
+                  analyzedAt = lsa;
+                  // Sync back to localStorage
+                  try {
+                    localStorage.setItem(
+                      getAnalysisKey(ch.platform, ch.username),
+                      JSON.stringify({ ...parsed, status: 'completed', analyzedAt: lsa })
+                    );
+                  } catch(__) {}
+               }
+            }
           }
           if (parsed?.status === 'scheduled') {
             status = 'scheduled';
@@ -935,7 +954,17 @@ export default function ChannelAnalysisHubPage() {
             }
         });
         if (!hasAnalyzing) return;
-        const timer = setInterval(() => setStorageTick((x) => x + 1), 2000);
+        // Poll every 3s to pick up completion from server DB
+        const timer = setInterval(() => {
+           setStorageTick((x) => x + 1);
+           // Silent fetch to update channels from DB
+           const platforms: PlatformKey[] = ["FACEBOOK", "INSTAGRAM", "TIKTOK"];
+           Promise.all(platforms.map((p) => apiClient.get(`/tracked-channels?platform=${p}`)))
+             .then(res => {
+                const merged: TrackedChannel[] = res.flatMap((r: any) => r?.data || []);
+                if (merged.length > 0) setChannels(merged);
+             }).catch(() => {});
+        }, 5000); // 5s silent refresh
         return () => clearInterval(timer);
     }, [channels, storageTick]);
 
@@ -944,9 +973,9 @@ export default function ChannelAnalysisHubPage() {
       return <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 w-fit">Hoàn thành</span>;
     }
     if (r.status === 'analyzing') {
-      let percent = 5; // default 5%
+      let percent = 5;
       if (r.analyzingAt) {
-        // Giả sử quy trình mất khoảng 45s để hoàn thành
+        // AI analysis via Tunnel often takes 120-180 seconds
         const elapsedS = (Date.now() - r.analyzingAt) / 1000;
         const mapped = Math.min(Math.round((elapsedS / 45) * 100), 95);  // max 95% fake progress
         percent = Math.max(percent, mapped);
