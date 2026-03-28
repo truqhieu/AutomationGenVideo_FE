@@ -32,7 +32,7 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { UserRole } from "@/types/auth";
 import { useActivityData } from "./hooks/useActivityData";
 import { useActivityFilters, CARDS_PER_BATCH, CHECKLIST_PAGE_SIZE } from "./hooks/useActivityFilters";
@@ -120,6 +120,7 @@ const CardSkeleton = () => (
 
 const UserActivityPageContent = () => {
     const { user, token } = useAuthStore();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
     const reportParam = searchParams.get("report");
@@ -206,6 +207,16 @@ const UserActivityPageContent = () => {
         const next = activeTabFromSearchParam(tabParam);
         if (next) setActiveTab(next);
     }, [tabParam]);
+
+    // Tab Tổng quan (dashboard) chỉ dành cho MANAGER — admin thuần không dùng được
+    React.useEffect(() => {
+        if (!user || tabParam !== "dashboard") return;
+        const hasManagerRole =
+            user.roles?.includes(UserRole.MANAGER) || userRole === "manager";
+        if (!hasManagerRole) {
+            router.replace("/dashboard/manager/user-activity?tab=performance");
+        }
+    }, [user, tabParam, userRole, router]);
 
     React.useEffect(() => {
         const r = reportParam?.trim().toLowerCase();
@@ -310,9 +321,13 @@ const UserActivityPageContent = () => {
     ], []);
 
     const visibleTabs = React.useMemo(() => {
-        if (isAdminUser) return allTabs;
-        return allTabs.filter(tab => tab.id !== 'dashboard');
-    }, [allTabs, isAdminUser]);
+        const hasManagerRole =
+            sysRoles.includes(UserRole.MANAGER) || userRole === "manager";
+        return allTabs.filter((tab) => {
+            if (tab.id === "dashboard") return hasManagerRole;
+            return true;
+        });
+    }, [allTabs, sysRoles, userRole]);
 
     const filteredPerformanceReports = React.useMemo(() => {
         return reports.filter(r => matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase()));

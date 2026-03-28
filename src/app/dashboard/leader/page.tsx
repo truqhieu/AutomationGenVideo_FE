@@ -10,8 +10,7 @@ export default function LeaderDashboardPage() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  const canAccess =
-    user?.roles?.includes(UserRole.LEADER) || user?.roles?.includes(UserRole.ADMIN);
+  const canAccess = user?.roles?.includes(UserRole.LEADER);
 
   useEffect(() => {
     if (user && !canAccess) {
