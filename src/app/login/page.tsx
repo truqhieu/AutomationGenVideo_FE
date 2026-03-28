@@ -44,10 +44,11 @@ export default function LoginPage() {
         if (user.roles?.some(r => r === UserRole.MANAGER || r === UserRole.ADMIN)) {
           router.push('/dashboard/manager');
         } else {
-          router.push('/dashboard');
+          // Members/Leaders go directly to Performance page
+          router.push('/dashboard/manager/user-activity?tab=performance');
         }
       } else {
-        router.push('/dashboard');
+        router.push('/dashboard/manager/user-activity?tab=performance');
       }
     } catch (err: any) {
       console.error('Login error:', err);
