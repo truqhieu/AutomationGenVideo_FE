@@ -319,14 +319,16 @@ const UserActivityPageContent = () => {
         const uniqueKeys = new Set();
         return reportOutstandings.filter(r => {
             // --- NEW RULES for Workflow Priority ---
-            const isMyTeam = userTeam && r.team === userTeam;
+            const isMyReport = user?.email && r.email && normalize(r.email) === normalize(user.email);
+            const isMyTeam = (userTeam && r.team) && normalize(r.team) === normalize(userTeam);
             const rRole = (r.role || '').toLowerCase();
             const rPos = (r.position || '').toLowerCase();
             const isReportFromLeader = rRole.includes('leader') || rPos.includes('leader');
             
             if (!isAdminUser) {
                 // Non-admins (Leaders/Members) can ONLY see their own team's outstanding reports
-                if (!isMyTeam) return false;
+                // Exception: ALWAYS allow seeing own reports even if team has slight naming mismatch
+                if (!isMyTeam && !isMyReport) return false;
             }
 
             const statusText = (r.approval_status || '').toLowerCase();
@@ -340,7 +342,7 @@ const UserActivityPageContent = () => {
             }
 
             // Normal filters
-            if (!matchTeam(r.team)) return false;
+            if (!matchTeam(r.team) && !isMyReport) return false;
             if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
             
             // Deduplicate by Name + Category + Content to prevent identical visual rows
