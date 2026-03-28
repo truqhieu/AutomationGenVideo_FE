@@ -20,6 +20,8 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
+  if (user) return null;
+
   // Keep rendering placeholder for a flicker, but redirect is primary
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 animate-fade-in-up">
