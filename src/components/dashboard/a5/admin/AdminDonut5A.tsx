@@ -4,7 +4,7 @@ import { PieChart as PieChartIcon } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { A5_LINE_COLORS, type A5Key } from "../constants";
 
-const SLICES: { key: A5Key; label: string; pct: string; count: number }[] = [
+const DEFAULT_SLICES: { key: A5Key; label: string; pct: string; count: number }[] = [
   { key: "a1", label: "A1", pct: "32%", count: 245 },
   { key: "a2", label: "A2", pct: "26%", count: 198 },
   { key: "a3", label: "A3", pct: "21%", count: 156 },
@@ -12,14 +12,32 @@ const SLICES: { key: A5Key; label: string; pct: string; count: number }[] = [
   { key: "a5", label: "A5", pct: "9%", count: 67 },
 ];
 
-export function AdminDonut5A() {
+interface AdminDonut5AProps {
+  slices?: typeof DEFAULT_SLICES;
+  centerTotal?: number;
+  accent?: "indigo" | "amber";
+}
+
+export function AdminDonut5A({
+  slices = DEFAULT_SLICES,
+  centerTotal,
+  accent = "indigo",
+}: AdminDonut5AProps) {
+  const SLICES = slices;
+  const total = centerTotal ?? SLICES.reduce((s, x) => s + x.count, 0);
   const data = SLICES.map((s) => ({ name: s.label, value: s.count, key: s.key }));
 
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center gap-2 text-base font-bold">
-        <PieChartIcon className="h-5 w-5 shrink-0 text-gray-600" aria-hidden />
-        Phân bổ 5A toàn công ty
+        <PieChartIcon
+          className={
+            accent === "amber" ? "h-5 w-5 shrink-0 text-amber-600" : "h-5 w-5 shrink-0 text-gray-600"
+          }
+          aria-hidden
+        />
+        Phân bổ 5A
+        <span className="text-xs font-normal text-gray-500"> (theo Team &amp; kênh)</span>
       </div>
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
         <div className="relative h-[150px] w-[150px] shrink-0">
@@ -44,7 +62,7 @@ export function AdminDonut5A() {
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-2xl font-extrabold">755</div>
+              <div className="text-2xl font-extrabold">{total}</div>
               <div className="text-xs text-gray-500">video</div>
             </div>
           </div>

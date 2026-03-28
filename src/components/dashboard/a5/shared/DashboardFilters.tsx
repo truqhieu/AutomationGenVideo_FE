@@ -3,8 +3,27 @@
 import { CalendarDays, CalendarRange, Filter } from "lucide-react";
 import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
+import type { PlatformId } from "../admin/admin-platform-channel-data";
+import type { AdminTeamRegionId } from "../admin/admin-team-perf-data";
 
 type Accent = "indigo" | "amber";
+
+/** Lọc team khu vực (tab Tổng quan admin) */
+export interface AdminTeamRegionFilters {
+  teamRegionId: AdminTeamRegionId | "all";
+  onTeamRegionIdChange: (v: AdminTeamRegionId | "all") => void;
+  options: { id: AdminTeamRegionId | "all"; label: string }[];
+}
+
+/** Lọc nền tảng + kênh chi tiết (tab Tổng quan admin) */
+export interface AdminPlatformChannelFilters {
+  platformId: PlatformId | "all";
+  onPlatformIdChange: (v: PlatformId | "all") => void;
+  channelKey: string | "all";
+  onChannelKeyChange: (v: string | "all") => void;
+  platformOptions: { id: PlatformId | "all"; label: string }[];
+  channelOptions: { value: string; label: string }[];
+}
 
 export interface DashboardDateRange {
   from: string;
@@ -27,6 +46,18 @@ interface DashboardFiltersProps {
   onDateRangeChange?: (range: DashboardDateRange) => void;
   /** Tab KPI admin: chọn tháng `YYYY-MM` */
   monthPicker?: DashboardMonthPicker;
+  adminTeamRegion?: AdminTeamRegionFilters;
+  adminPlatformChannel?: AdminPlatformChannelFilters;
+  /**
+   * Khi không truyền `adminPlatformChannel`: `true` = hiện dropdown mock (Leader);
+   * `false` = ẩn hẳn lọc nền tảng/kênh (ví dụ tab KPI admin).
+   */
+  showPlatformChannelFallback?: boolean;
+  /**
+   * Khi không truyền `adminTeamRegion`: `true` = hiện dropdown mock Team;
+   * `false` = ẩn hẳn (ví dụ tab KPI Leader — chỉ chọn tháng).
+   */
+  showTeamFallback?: boolean;
 }
 
 const focusRing: Record<Accent, string> = {
@@ -45,6 +76,10 @@ export function DashboardFilters({
   defaultDateTo = "2026-03-23",
   onDateRangeChange,
   monthPicker,
+  adminTeamRegion,
+  adminPlatformChannel,
+  showPlatformChannelFallback = true,
+  showTeamFallback = true,
 }: DashboardFiltersProps) {
   const fr = focusRing[accent];
   const [from, setFrom] = useState(defaultDateFrom);
@@ -77,23 +112,71 @@ export function DashboardFilters({
         <Filter className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
         Lọc:
       </span>
-      <select
-        className={cn("cursor-pointer", inputBase, fr)}
-      >
-        <option>Tất cả Team</option>
-        <option>Nội dung VN</option>
-        <option>Toàn cầu</option>
-      </select>
-      <select
-        className={cn("cursor-pointer", inputBase, fr)}
-      >
-        <option>Tất cả nền tảng</option>
-        <option>Facebook</option>
-        <option>TikTok</option>
-        <option>Instagram</option>
-        <option>YouTube</option>
-        <option>Khác (Zalo, Twitter...)</option>
-      </select>
+      {adminTeamRegion ? (
+        <select
+          value={adminTeamRegion.teamRegionId}
+          onChange={(e) =>
+            adminTeamRegion.onTeamRegionIdChange(e.target.value as AdminTeamRegionId | "all")
+          }
+          className={cn("cursor-pointer", inputBase, fr)}
+          aria-label="Lọc team"
+        >
+          {adminTeamRegion.options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : showTeamFallback ? (
+        <select className={cn("cursor-pointer", inputBase, fr)}>
+          <option>Tất cả Team</option>
+          <option>Nội dung VN</option>
+          <option>Toàn cầu</option>
+        </select>
+      ) : null}
+      {adminPlatformChannel ? (
+        <>
+          <select
+            value={adminPlatformChannel.platformId}
+            onChange={(e) =>
+              adminPlatformChannel.onPlatformIdChange(e.target.value as PlatformId | "all")
+            }
+            className={cn("cursor-pointer", inputBase, fr)}
+            aria-label="Lọc nền tảng"
+          >
+            {adminPlatformChannel.platformOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={adminPlatformChannel.channelKey}
+            onChange={(e) =>
+              adminPlatformChannel.onChannelKeyChange(
+                e.target.value === "all" ? "all" : e.target.value,
+              )
+            }
+            className={cn("cursor-pointer", inputBase, fr)}
+            aria-label="Lọc kênh trong nền tảng"
+          >
+            {adminPlatformChannel.channelOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </>
+      ) : showPlatformChannelFallback ? (
+        <select className={cn("cursor-pointer", inputBase, fr)}>
+          <option>Tất cả nền tảng</option>
+          <option>Facebook</option>
+          <option>TikTok</option>
+          <option>Instagram</option>
+          <option>YouTube</option>
+          <option>Khác (Zalo, Twitter...)</option>
+        </select>
+      ) : null}
 
       {monthPicker ? (
         <>

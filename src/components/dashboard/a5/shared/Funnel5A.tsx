@@ -12,9 +12,11 @@ const STEPS = [
 interface Funnel5AProps {
   /** Admin: hiện mô tả dưới mỗi bước; Leader: chỉ tiêu đề (mock gốc ngắn hơn) */
   variant?: "admin" | "leader";
+  /** 5 giá trị view đã scale theo bộ lọc (mặc định mock tĩnh) */
+  stepValues?: readonly string[];
 }
 
-export function Funnel5A({ variant = "admin" }: Funnel5AProps) {
+export function Funnel5A({ variant = "admin", stepValues }: Funnel5AProps) {
   return (
     <div className="mb-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
       <div className="mb-5 flex flex-wrap items-center gap-2 text-base font-bold">
@@ -34,7 +36,9 @@ export function Funnel5A({ variant = "admin" }: Funnel5AProps) {
                 )}
               >
                 <div>
-                  <div className={cn("text-xl font-extrabold", s.text)}>{s.value}</div>
+                  <div className={cn("text-xl font-extrabold", s.text)}>
+                    {stepValues?.[i] ?? s.value}
+                  </div>
                   <div className="text-xs text-gray-500">view</div>
                 </div>
               </div>

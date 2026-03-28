@@ -1,15 +1,15 @@
 "use client";
 
-import React, { Suspense, useEffect, useState, useCallback, useDeferredValue } from 'react';
-import { createPortal } from 'react-dom';
-import ActivityKPIs from './components/ActivityKPIs';
-import DashboardAnalytics from './components/DashboardAnalytics';
-import ActivityFilters from './components/ActivityFilters';
-import UserActivityCard, { UserActivity } from './components/UserActivityCard';
-import ReportCard from './components/ReportCard';
-import RankingView from './components/RankingView';
-import ChecklistContainer from '@/components/checklist/ChecklistContainer';
-import PersonalCharts from './components/PersonalCharts';
+import React, { Suspense, useEffect, useState, useCallback, useDeferredValue } from "react";
+import { createPortal } from "react-dom";
+import ActivityKPIs from "./components/ActivityKPIs";
+import DashboardAnalytics from "./components/DashboardAnalytics";
+import ActivityFilters from "./components/ActivityFilters";
+import UserActivityCard, { UserActivity } from "./components/UserActivityCard";
+import ReportCard from "./components/ReportCard";
+import RankingView from "./components/RankingView";
+import ChecklistContainer from "@/components/checklist/ChecklistContainer";
+import PersonalCharts from "./components/PersonalCharts";
 import {
     RefreshCw,
     User,
@@ -31,7 +31,7 @@ import {
     CheckSquare,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { UserRole } from "@/types/auth";
 import { useActivityData } from "./hooks/useActivityData";
 import { useActivityFilters, CARDS_PER_BATCH, CHECKLIST_PAGE_SIZE } from "./hooks/useActivityFilters";
@@ -118,6 +118,7 @@ const CardSkeleton = () => (
 
 const UserActivityPageContent = () => {
     const { user, token } = useAuthStore();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
     const reportParam = searchParams.get("report");
@@ -138,20 +139,45 @@ const UserActivityPageContent = () => {
     const [showTabMenu, setShowTabMenu] = React.useState(false);
 
     const {
-        activeTeam, setActiveTeam, selectedDate, setSelectedDate,
-        searchName, setSearchName, dailyFilter, setDailyFilter,
-        timeType, setTimeType, dateRange, setDateRange,
-        visibleCount, setVisibleCount, checklistPage, setChecklistPage,
-        checklistRoleFilter, setChecklistRoleFilter, loadMoreRef,
+        activeTeam,
+        setActiveTeam,
+        selectedDate,
+        setSelectedDate,
+        searchName,
+        setSearchName,
+        dailyFilter,
+        setDailyFilter,
+        timeType,
+        setTimeType,
+        dateRange,
+        setDateRange,
+        visibleCount,
+        setVisibleCount,
+        checklistPage,
+        setChecklistPage,
+        checklistRoleFilter,
+        setChecklistRoleFilter,
+        loadMoreRef,
     } = useActivityFilters();
 
     // useDeferredValue: filter/sort chỉ chạy sau khi trình duyệt xử lý input xong
     const deferredSearchName = useDeferredValue(searchName);
 
     const {
-        reports, summary, rankings, teamContributions, groupContributions,
-        reportOutstandings, kpiMeta, loading, userRole, userTeam, personalHistory,
-        fetchReports, fetchHistory, handleUpdateStatus,
+        reports,
+        summary,
+        rankings,
+        teamContributions,
+        groupContributions,
+        reportOutstandings,
+        kpiMeta,
+        loading,
+        userRole,
+        userTeam,
+        personalHistory,
+        fetchReports,
+        fetchHistory,
+        handleUpdateStatus,
     } = useActivityData({
         user,
         dateRange,
@@ -167,6 +193,15 @@ const UserActivityPageContent = () => {
         if (next) setActiveTab(next);
     }, [tabParam]);
 
+    // Tab Tổng quan (dashboard) chỉ dành cho MANAGER — admin thuần không dùng được
+    React.useEffect(() => {
+        if (!user || tabParam !== "dashboard") return;
+        const hasManagerRole = user.roles?.includes(UserRole.MANAGER) || userRole === "manager";
+        if (!hasManagerRole) {
+            router.replace("/dashboard/manager/user-activity?tab=performance");
+        }
+    }, [user, tabParam, userRole, router]);
+
     React.useEffect(() => {
         const r = reportParam?.trim().toLowerCase();
         if (r === "daily") setReportType("daily");
@@ -180,10 +215,10 @@ const UserActivityPageContent = () => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setVisibleCount(prev => prev + CARDS_PER_BATCH);
+                    setVisibleCount((prev) => prev + CARDS_PER_BATCH);
                 }
             },
-            { rootMargin: '200px' }
+            { rootMargin: "200px" },
         );
         observer.observe(el);
         return () => observer.disconnect();
@@ -198,7 +233,10 @@ const UserActivityPageContent = () => {
             let changed = false;
             teamContributions.forEach((item) => {
                 const t = item.team;
-                if (t && t !== "Khác" && !next.has(t)) { next.add(t); changed = true; }
+                if (t && t !== "Khác" && !next.has(t)) {
+                    next.add(t);
+                    changed = true;
+                }
             });
             return changed ? Array.from(next) : prev;
         });
@@ -216,27 +254,34 @@ const UserActivityPageContent = () => {
         return { globalTeams: globals.sort(), vnTeams: vns.sort() };
     }, [allKnownTeams]);
 
-    const matchTeam = React.useCallback((teamName: string | null | undefined): boolean => {
-        if (activeTeam === 'All') return true;
+    const matchTeam = React.useCallback(
+        (teamName: string | null | undefined): boolean => {
+            if (activeTeam === "All") return true;
 
-        const safeTeam = normalize(teamName || 'Khác');
-        const safeActive = normalize(activeTeam);
+            const safeTeam = normalize(teamName || "Khác");
+            const safeActive = normalize(activeTeam);
 
-        if (activeTeam === 'All Global') return globalTeams.some(t => normalize(t) === safeTeam);
-        if (activeTeam === 'All VN') return vnTeams.some(t => normalize(t) === safeTeam);
+            if (activeTeam === "All Global") return globalTeams.some((t) => normalize(t) === safeTeam);
+            if (activeTeam === "All VN") return vnTeams.some((t) => normalize(t) === safeTeam);
 
-        return safeTeam === safeActive;
-    }, [activeTeam, globalTeams, vnTeams]);
+            return safeTeam === safeActive;
+        },
+        [activeTeam, globalTeams, vnTeams],
+    );
 
     // Role helpers (memoized to avoid re-compute on every render)
     const sysRoles = user?.roles || [];
     const isAdminUser = React.useMemo(
-        () => sysRoles.includes(UserRole.ADMIN) || sysRoles.includes(UserRole.MANAGER) || userRole === 'admin' || userRole === 'manager',
-        [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
+        () =>
+            sysRoles.includes(UserRole.ADMIN) ||
+            sysRoles.includes(UserRole.MANAGER) ||
+            userRole === "admin" ||
+            userRole === "manager",
+        [userRole, sysRoles], // eslint-disable-line react-hooks/exhaustive-deps
     );
     const isLeaderUser = React.useMemo(
-        () => sysRoles.includes(UserRole.LEADER) || userRole === 'leader',
-        [userRole, sysRoles]  // eslint-disable-line react-hooks/exhaustive-deps
+        () => sysRoles.includes(UserRole.LEADER) || userRole === "leader",
+        [userRole, sysRoles], // eslint-disable-line react-hooks/exhaustive-deps
     );
 
     const [initialTeamSet, setInitialTeamSet] = React.useState(false);
@@ -279,97 +324,104 @@ const UserActivityPageContent = () => {
         }
     };
 
-    const allTabs = React.useMemo(() => [
-        { id: 'performance', label: 'Hiệu Suất', icon: RefreshCw },
-        { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-        { id: 'ranking', label: 'Bảng xếp hạng', icon: Layout },
-        { id: 'personal', label: 'Tiến độ', icon: User },
-        { id: 'daily_report', label: 'Báo cáo', icon: FileText },
-        { id: 'daily_outstanding', label: 'Vấn đề & Win', icon: ClipboardList },
-        { id: 'daily_checklist', label: 'Checklist', icon: CheckSquare }
-    ], []);
+    const allTabs = React.useMemo(
+        () => [
+            { id: "performance", label: "Hiệu Suất", icon: RefreshCw },
+            { id: "dashboard", label: "Tổng quan", icon: LayoutDashboard },
+            { id: "ranking", label: "Bảng xếp hạng", icon: Layout },
+            { id: "personal", label: "Tiến độ", icon: User },
+            { id: "daily_report", label: "Báo cáo", icon: FileText },
+            { id: "daily_outstanding", label: "Vấn đề & Win", icon: ClipboardList },
+            { id: "daily_checklist", label: "Checklist", icon: CheckSquare },
+        ],
+        [],
+    );
 
     const visibleTabs = React.useMemo(() => {
-        if (isAdminUser) return allTabs;
-        return allTabs.filter(tab => tab.id !== 'dashboard');
-    }, [allTabs, isAdminUser]);
+        const hasManagerRole = sysRoles.includes(UserRole.MANAGER) || userRole === "manager";
+        return allTabs.filter((tab) => {
+            if (tab.id === "dashboard") return hasManagerRole;
+            return true;
+        });
+    }, [allTabs, sysRoles, userRole]);
 
     // Memoize filtered report lists to avoid expensive re-filtering on every render
     // Dùng deferredSearchName thay searchName → filter không chặn main thread khi gõ
     const filteredPerformanceReports = React.useMemo(() => {
-        return reports.filter(r => {
-            return matchTeam(r.team) && (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
+        return reports.filter((r) => {
+            return matchTeam(r.team) && (r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase());
         });
     }, [reports, matchTeam, deferredSearchName]);
 
     const filteredPersonalMembers = React.useMemo(() => {
-        return personalHistory.members.filter(m => {
+        return personalHistory.members.filter((m) => {
             return matchTeam(m.team);
         });
     }, [personalHistory.members, matchTeam]);
 
     const filteredAllReports = React.useMemo(() => {
-        return reports.filter(r => {
-            const isSearchMatch = (r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase());
+        return reports.filter((r) => {
+            const isSearchMatch = (r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase());
             return matchTeam(r.team) && isSearchMatch;
         });
     }, [reports, matchTeam, deferredSearchName]);
 
     const filteredChecklistReports = React.useMemo(() => {
         const uniqueKeys = new Set();
-        return reportOutstandings.filter(r => {
+        return reportOutstandings.filter((r) => {
             // --- NEW RULES for Workflow Priority ---
             const isMyReport = user?.email && r.email && normalize(r.email) === normalize(user.email);
-            const isMyTeam = (userTeam && r.team) && normalize(r.team) === normalize(userTeam);
-            const rRole = (r.role || '').toLowerCase();
-            const rPos = (r.position || '').toLowerCase();
-            const isReportFromLeader = rRole.includes('leader') || rPos.includes('leader');
-            
+            const isMyTeam = userTeam && r.team && normalize(r.team) === normalize(userTeam);
+            const rRole = (r.role || "").toLowerCase();
+            const rPos = (r.position || "").toLowerCase();
+            const isReportFromLeader = rRole.includes("leader") || rPos.includes("leader");
+
             if (!isAdminUser) {
                 // Non-admins (Leaders/Members) can ONLY see their own team's outstanding reports
                 // Exception: ALWAYS allow seeing own reports even if team has slight naming mismatch
                 if (!isMyTeam && !isMyReport) return false;
             }
 
-            const statusText = (r.approval_status || '').toLowerCase();
-            const isLeaderHandled = statusText.includes('leader đã duyệt') || statusText.includes('leader từ chối');
-            const isLegacyHandled = statusText === 'đã duyệt' || statusText === 'từ chối' || statusText === 'không duyệt';
-            const isAdminHandled = statusText.includes('admin đã duyệt') || statusText.includes('admin từ chối');
-            
+            const statusText = (r.approval_status || "").toLowerCase();
+            const isLeaderHandled = statusText.includes("leader đã duyệt") || statusText.includes("leader từ chối");
+            const isLegacyHandled =
+                statusText === "đã duyệt" || statusText === "từ chối" || statusText === "không duyệt";
+            const isAdminHandled = statusText.includes("admin đã duyệt") || statusText.includes("admin từ chối");
+
             if (isAdminUser) {
                 // Admin ONLY sees reports AFTER Leader handled them (or legacy or admin handled)
                 // Exception: If no team, no leader exists -> show directly to admin
-                const hasNoTeam = !r.team || r.team.trim() === '' || normalize(r.team) === 'khac';
+                const hasNoTeam = !r.team || r.team.trim() === "" || normalize(r.team) === "khac";
                 if (!isLeaderHandled && !isLegacyHandled && !isAdminHandled && !hasNoTeam) return false;
             }
 
             // Normal filters
             if (!matchTeam(r.team) && !isMyReport) return false;
-            if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
-            
+            if (!(r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
+
             // Deduplicate by Name + Category + Content to prevent identical visual rows
             const key = `${r.name}_${r.category}_${r.content}`.toLowerCase().trim();
             if (uniqueKeys.has(key)) return false;
             uniqueKeys.add(key);
-            
+
             return true;
         });
     }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, userTeam]);
 
     const checklistFilteredReports = React.useMemo(() => {
         // Bước 1: Lọc theo text search và dropdown team
-        let roleFiltered = reports.filter(r => {
+        let roleFiltered = reports.filter((r) => {
             if (!matchTeam(r.team)) return false;
-            if (!(r.name || 'Unknown').toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
+            if (!(r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
             return true;
         });
 
         // Bước 2: Áp filter Leader/Member button filter
-        return roleFiltered.filter(r => {
-            if (checklistRoleFilter === 'all') return true;
-            const pos = (r.position || '').toLowerCase();
-            const isReportLeader = pos === 'leader' || pos.includes('leader') || pos.includes('trưởng nhóm');
-            if (checklistRoleFilter === 'leader') return isReportLeader;
+        return roleFiltered.filter((r) => {
+            if (checklistRoleFilter === "all") return true;
+            const pos = (r.position || "").toLowerCase();
+            const isReportLeader = pos === "leader" || pos.includes("leader") || pos.includes("trưởng nhóm");
+            if (checklistRoleFilter === "leader") return isReportLeader;
             return !isReportLeader; // 'member'
         });
     }, [reports, matchTeam, deferredSearchName, checklistRoleFilter]);
@@ -423,7 +475,10 @@ const UserActivityPageContent = () => {
                             {loading && !summary ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {Array.from({ length: 4 }).map((_, i) => (
-                                        <div key={i} className="bg-white rounded-3xl border border-slate-200/60 p-3 animate-pulse">
+                                        <div
+                                            key={i}
+                                            className="bg-white rounded-3xl border border-slate-200/60 p-3 animate-pulse"
+                                        >
                                             <div className="h-3 w-24 bg-slate-200 rounded mb-3" />
                                             <div className="flex items-center gap-4 mb-3">
                                                 <div className="w-16 h-16 rounded-full bg-slate-100" />
@@ -457,24 +512,38 @@ const UserActivityPageContent = () => {
                     ) : activeTab === "performance" ? (
                         loading ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                                {Array.from({ length: 10 }).map((_, i) => <CardSkeleton key={i} />)}
+                                {Array.from({ length: 10 }).map((_, i) => (
+                                    <CardSkeleton key={i} />
+                                ))}
                             </div>
                         ) : (
                             <>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                                     {filteredPerformanceReports.slice(0, visibleCount).map((report, idx) => {
-                                        const isOwnName = report.name && user?.full_name && normalize(report.name) === normalize(user.full_name);
-                                        const isOwnEmail = report.email && user?.email && normalize(report.email) === normalize(user.email);
+                                        const isOwnName =
+                                            report.name &&
+                                            user?.full_name &&
+                                            normalize(report.name) === normalize(user.full_name);
+                                        const isOwnEmail =
+                                            report.email &&
+                                            user?.email &&
+                                            normalize(report.email) === normalize(user.email);
                                         const isOwnCard = isOwnName || isOwnEmail;
                                         const canClickCard =
                                             isAdminUser ||
-                                            (isLeaderUser && report.team && userTeam && normalize(report.team) === normalize(userTeam)) ||
+                                            (isLeaderUser &&
+                                                report.team &&
+                                                userTeam &&
+                                                normalize(report.team) === normalize(userTeam)) ||
                                             isOwnCard;
                                         return (
                                             <div
                                                 key={report.id || idx}
                                                 className="animate-in fade-in slide-in-from-bottom-2 duration-300"
-                                                style={{ animationDelay: `${Math.min(idx, 9) * 50}ms`, animationFillMode: "backwards" }}
+                                                style={{
+                                                    animationDelay: `${Math.min(idx, 9) * 50}ms`,
+                                                    animationFillMode: "backwards",
+                                                }}
                                             >
                                                 <UserActivityCard
                                                     data={{ ...report, reportStatus: report.status }}
@@ -542,7 +611,7 @@ const UserActivityPageContent = () => {
                                                         </span>
                                                     ) : isLeaderUser ? (
                                                         <span className="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 text-xs font-black uppercase tracking-widest shadow-sm">
-                                                            Team: {userTeam || 'Của tôi'}
+                                                            Team: {userTeam || "Của tôi"}
                                                         </span>
                                                     ) : (
                                                         <span className="px-3 py-1.5 rounded-xl bg-blue-100 border border-blue-200 text-blue-700 text-xs font-black uppercase tracking-widest shadow-sm">
@@ -550,7 +619,9 @@ const UserActivityPageContent = () => {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-base text-slate-500 font-bold italic mt-1">Tổng quát các vấn đề cần lưu ý và thành tích trong ngày</p>
+                                                <p className="text-base text-slate-500 font-bold italic mt-1">
+                                                    Tổng quát các vấn đề cần lưu ý và thành tích trong ngày
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -560,10 +631,18 @@ const UserActivityPageContent = () => {
                                             <table className="w-full border-collapse text-left">
                                                 <thead className="sticky top-0 z-20 bg-gradient-to-r from-blue-700 to-indigo-800 shadow-lg">
                                                     <tr>
-                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">Chức danh</th>
-                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">Nhân viên</th>
-                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">Phân loại</th>
-                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">Nội dung</th>
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                            Chức danh
+                                                        </th>
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
+                                                            Nhân viên
+                                                        </th>
+                                                        <th className="px-6 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
+                                                            Phân loại
+                                                        </th>
+                                                        <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-left">
+                                                            Nội dung
+                                                        </th>
                                                         <th className="px-8 py-3 text-[13px] font-black uppercase text-blue-50 tracking-widest bg-transparent border-b border-white/10 text-center">
                                                             Thao tác / Trạng thái
                                                         </th>
@@ -571,34 +650,47 @@ const UserActivityPageContent = () => {
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100 bg-white">
                                                     {filteredChecklistReports.map((r, idx) => {
-                                                        const statusText = (r.approval_status || '').toLowerCase();
-                                                        
-                                                        const isLegacyApproved = statusText === 'đã duyệt' || statusText === 'duyệt';
-                                                        const isLegacyRejected = statusText === 'từ chối' || statusText === 'không duyệt';
+                                                        const statusText = (r.approval_status || "").toLowerCase();
 
-                                                        const isLeaderApproved = statusText.includes('leader đã duyệt');
-                                                        const isLeaderRejected = statusText.includes('leader từ chối');
+                                                        const isLegacyApproved =
+                                                            statusText === "đã duyệt" || statusText === "duyệt";
+                                                        const isLegacyRejected =
+                                                            statusText === "từ chối" || statusText === "không duyệt";
+
+                                                        const isLeaderApproved = statusText.includes("leader đã duyệt");
+                                                        const isLeaderRejected = statusText.includes("leader từ chối");
                                                         const isLeaderHandled = isLeaderApproved || isLeaderRejected;
 
-                                                        const isAdminApproved = statusText.includes('admin đã duyệt') || isLegacyApproved;
-                                                        const isAdminRejected = statusText.includes('admin từ chối') || isLegacyRejected;
+                                                        const isAdminApproved =
+                                                            statusText.includes("admin đã duyệt") || isLegacyApproved;
+                                                        const isAdminRejected =
+                                                            statusText.includes("admin từ chối") || isLegacyRejected;
                                                         const isAdminHandled = isAdminApproved || isAdminRejected;
 
-                                                        const isReportFromLeader = (r.role || '').toLowerCase().includes('leader') || (r.position || '').toLowerCase().includes('leader');
+                                                        const isReportFromLeader =
+                                                            (r.role || "").toLowerCase().includes("leader") ||
+                                                            (r.position || "").toLowerCase().includes("leader");
 
                                                         // Check if report is older than 1 day
                                                         let isExpired = false;
                                                         if (r.date) {
                                                             let rDateObj = new Date(r.date);
-                                                            if (r.date.includes('/')) {
-                                                                const parts = r.date.split('/');
+                                                            if (r.date.includes("/")) {
+                                                                const parts = r.date.split("/");
                                                                 if (parts.length === 3) {
-                                                                    rDateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                                                                    rDateObj = new Date(
+                                                                        parseInt(parts[2]),
+                                                                        parseInt(parts[1]) - 1,
+                                                                        parseInt(parts[0]),
+                                                                    );
                                                                 }
                                                             }
                                                             if (!isNaN(rDateObj.getTime())) {
                                                                 // > 24 hours
-                                                                if (new Date().getTime() - rDateObj.getTime() > 24 * 60 * 60 * 1000) {
+                                                                if (
+                                                                    new Date().getTime() - rDateObj.getTime() >
+                                                                    24 * 60 * 60 * 1000
+                                                                ) {
                                                                     isExpired = true;
                                                                 }
                                                             }
@@ -606,35 +698,55 @@ const UserActivityPageContent = () => {
 
                                                         // Permissions
                                                         // BỔ SUNG: Nếu report là từ Leader, hoặc KHÔNG CÓ TEAM, thì chỉ Admin mới được duyệt.
-                                                        const canLeaderAction = !isExpired && isLeaderUser && !isAdminUser && r.team && r.team.trim() !== '' && r.team === userTeam && !isAdminHandled && !isReportFromLeader;
+                                                        const canLeaderAction =
+                                                            !isExpired &&
+                                                            isLeaderUser &&
+                                                            !isAdminUser &&
+                                                            r.team &&
+                                                            r.team.trim() !== "" &&
+                                                            r.team === userTeam &&
+                                                            !isAdminHandled &&
+                                                            !isReportFromLeader;
                                                         const canAdminAction = !isExpired && isAdminUser; // Màn Admin có thể thao tác hết
                                                         const isAutoRejected = isExpired && !isAdminHandled;
 
                                                         return (
-                                                            <tr key={r.id || idx} className="hover:bg-blue-50/40 transition-all group">
+                                                            <tr
+                                                                key={r.id || idx}
+                                                                className="hover:bg-blue-50/40 transition-all group"
+                                                            >
                                                                 <td className="px-6 py-3 border-r border-slate-50 text-center">
                                                                     <span className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-black uppercase tracking-widest shadow-sm">
-                                                                        {r.role || 'Member'}
+                                                                        {r.role || "Member"}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-8 py-3 border-r border-slate-50">
-                                                                    <div className="font-black text-slate-900 text-[18px] mb-1">{r.name}</div>
+                                                                    <div className="font-black text-slate-900 text-[18px] mb-1">
+                                                                        {r.name}
+                                                                    </div>
                                                                     <div className="flex items-center gap-2 text-[12px] text-blue-700 font-bold">
-                                                                        <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">{r.team}</span>
-                                                                        <span className="text-slate-400 font-medium italic">{r.date}</span>
+                                                                        <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100">
+                                                                            {r.team}
+                                                                        </span>
+                                                                        <span className="text-slate-400 font-medium italic">
+                                                                            {r.date}
+                                                                        </span>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-3 border-r border-slate-50 text-center">
-                                                                    <span className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${r.category?.toLowerCase().includes('win')
-                                                                            ? 'bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100'
-                                                                            : 'bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100'
-                                                                        }`}>
-                                                                        {r.category || '-'}
+                                                                    <span
+                                                                        className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${
+                                                                            r.category?.toLowerCase().includes("win")
+                                                                                ? "bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100"
+                                                                                : "bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100"
+                                                                        }`}
+                                                                    >
+                                                                        {r.category || "-"}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-8 py-3 border-r border-slate-50">
                                                                     <div className="text-[17px] text-slate-900 font-bold leading-relaxed max-w-[800px]">
-                                                                        {r.content || 'Không có nội dung'}
+                                                                        {r.content || "Không có nội dung"}
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-3.5 text-center">
@@ -642,42 +754,88 @@ const UserActivityPageContent = () => {
                                                                         {/* Trạng thái hiển thị */}
                                                                         <div className="flex items-center justify-center gap-2">
                                                                             {/* Member View */}
-                                                                            {(!isAdminUser && !isLeaderUser) && (
+                                                                            {!isAdminUser && !isLeaderUser && (
                                                                                 <>
                                                                                     {isAdminApproved ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                                                            <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                                                                                            Đã duyệt
+                                                                                        </span>
                                                                                     ) : isAdminRejected ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                                                                                            <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                            Đã từ chối
+                                                                                        </span>
                                                                                     ) : isLeaderRejected ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Leader từ chối</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                                                                                            <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                            Leader từ chối
+                                                                                        </span>
                                                                                     ) : isAutoRejected ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                            <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                            Không được duyệt
+                                                                                        </span>
                                                                                     ) : isLeaderApproved ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt (Chờ duyệt)</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                                                                            <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                                                                                            Leader đã duyệt (Chờ duyệt)
+                                                                                        </span>
                                                                                     ) : (
                                                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
-                                                                                            <Clock className="w-3.5 h-3.5" /> {(isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? 'Chờ Admin duyệt' : 'Chờ Leader duyệt'}
+                                                                                            <Clock className="w-3.5 h-3.5" />{" "}
+                                                                                            {isReportFromLeader ||
+                                                                                            !r.team ||
+                                                                                            r.team.trim() === "" ||
+                                                                                            normalize(r.team) === "khac"
+                                                                                                ? "Chờ Admin duyệt"
+                                                                                                : "Chờ Leader duyệt"}
                                                                                         </span>
                                                                                     )}
                                                                                 </>
                                                                             )}
-                                                                            
+
                                                                             {/* Leader View (chỉ hiện kết quả của Manager) */}
-                                                                            {(isLeaderUser && !isAdminUser) && (
+                                                                            {isLeaderUser && !isAdminUser && (
                                                                                 <>
                                                                                     {isAdminApproved ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt</span>
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                                                            <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                                                                                            Đã duyệt
+                                                                                        </span>
                                                                                     ) : isAdminRejected ? (
-                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối</span>
-                                                                                    ) : (!canLeaderAction && r.team === userTeam && !isAdminHandled) ? (
+                                                                                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                                                                                            <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                            Đã từ chối
+                                                                                        </span>
+                                                                                    ) : !canLeaderAction &&
+                                                                                      r.team === userTeam &&
+                                                                                      !isAdminHandled ? (
                                                                                         isLeaderApproved ? (
-                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt (Đã khóa)</span>
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                                <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                                                                                                Đã duyệt (Đã khóa)
+                                                                                            </span>
                                                                                         ) : isLeaderRejected ? (
-                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Đã từ chối (Đã khóa)</span>
-                                                                                        ) : (isReportFromLeader || !r.team || r.team.trim() === '' || normalize(r.team) === 'khac') ? (
-                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Chờ Admin duyệt</span>
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                                <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                                Đã từ chối (Đã khóa)
+                                                                                            </span>
+                                                                                        ) : isReportFromLeader ||
+                                                                                          !r.team ||
+                                                                                          r.team.trim() === "" ||
+                                                                                          normalize(r.team) ===
+                                                                                              "khac" ? (
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                                <Clock className="w-3.5 h-3.5" />{" "}
+                                                                                                Chờ Admin duyệt
+                                                                                            </span>
                                                                                         ) : (
-                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Không được duyệt (Quá hạn)</span>
+                                                                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                                                                                <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                                Không được duyệt (Quá
+                                                                                                hạn)
+                                                                                            </span>
                                                                                         )
                                                                                     ) : null}
                                                                                 </>
@@ -687,9 +845,21 @@ const UserActivityPageContent = () => {
                                                                             {isAdminUser && (
                                                                                 <>
                                                                                     {isLeaderApproved ? (
-                                                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'} border flex items-center gap-1`}><CheckCircle2 className="w-3.5 h-3.5" /> Leader đã duyệt {isExpired && '(Khóa)'}</span>
+                                                                                        <span
+                                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"} border flex items-center gap-1`}
+                                                                                        >
+                                                                                            <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                                                                                            Leader đã duyệt{" "}
+                                                                                            {isExpired && "(Khóa)"}
+                                                                                        </span>
                                                                                     ) : isLeaderRejected ? (
-                                                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-red-50 text-red-700 border-red-200'} border flex items-center gap-1`}><AlertCircle className="w-3.5 h-3.5" /> Leader từ chối {isExpired && '(Khóa)'}</span>
+                                                                                        <span
+                                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${isExpired ? "bg-slate-50 text-slate-500 border-slate-200" : "bg-red-50 text-red-700 border-red-200"} border flex items-center gap-1`}
+                                                                                        >
+                                                                                            <AlertCircle className="w-3.5 h-3.5" />{" "}
+                                                                                            Leader từ chối{" "}
+                                                                                            {isExpired && "(Khóa)"}
+                                                                                        </span>
                                                                                     ) : null}
                                                                                 </>
                                                                             )}
@@ -700,33 +870,93 @@ const UserActivityPageContent = () => {
                                                                             {canLeaderAction && (
                                                                                 <>
                                                                                     <button
-                                                                                        onClick={() => handleUpdateStatus(r.id, isLeaderApproved ? 'Chưa duyệt' : 'Leader đã duyệt')}
-                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderApproved ? 'bg-slate-200 text-slate-700' : 'bg-emerald-600 text-white shadow-emerald-200/50'}`}
+                                                                                        onClick={() =>
+                                                                                            handleUpdateStatus(
+                                                                                                r.id,
+                                                                                                isLeaderApproved
+                                                                                                    ? "Chưa duyệt"
+                                                                                                    : "Leader đã duyệt",
+                                                                                            )
+                                                                                        }
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderApproved ? "bg-slate-200 text-slate-700" : "bg-emerald-600 text-white shadow-emerald-200/50"}`}
                                                                                     >
-                                                                                        <Check className="w-3.5 h-3.5" strokeWidth={4} /> {isLeaderApproved ? 'Hủy duyệt' : 'Duyệt'}
+                                                                                        <Check
+                                                                                            className="w-3.5 h-3.5"
+                                                                                            strokeWidth={4}
+                                                                                        />{" "}
+                                                                                        {isLeaderApproved
+                                                                                            ? "Hủy duyệt"
+                                                                                            : "Duyệt"}
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => handleUpdateStatus(r.id, isLeaderRejected ? 'Chưa duyệt' : 'Leader từ chối')}
-                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderRejected ? 'bg-slate-200 text-slate-700' : 'bg-red-600 text-white shadow-red-200/50'}`}
+                                                                                        onClick={() =>
+                                                                                            handleUpdateStatus(
+                                                                                                r.id,
+                                                                                                isLeaderRejected
+                                                                                                    ? "Chưa duyệt"
+                                                                                                    : "Leader từ chối",
+                                                                                            )
+                                                                                        }
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isLeaderRejected ? "bg-slate-200 text-slate-700" : "bg-red-600 text-white shadow-red-200/50"}`}
                                                                                     >
-                                                                                        <X className="w-3.5 h-3.5" strokeWidth={4} /> {isLeaderRejected ? 'Hủy từ chối' : 'Từ chối'}
+                                                                                        <X
+                                                                                            className="w-3.5 h-3.5"
+                                                                                            strokeWidth={4}
+                                                                                        />{" "}
+                                                                                        {isLeaderRejected
+                                                                                            ? "Hủy từ chối"
+                                                                                            : "Từ chối"}
                                                                                     </button>
                                                                                 </>
                                                                             )}
-                                                                            
+
                                                                             {canAdminAction && (
                                                                                 <>
                                                                                     <button
-                                                                                        onClick={() => handleUpdateStatus(r.id, isAdminApproved ? (isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : 'Chưa duyệt') : `Admin đã duyệt | ${isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : ''}`)}
-                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminApproved ? 'bg-slate-200 text-slate-700' : 'bg-blue-600 text-white shadow-blue-200/50'}`}
+                                                                                        onClick={() =>
+                                                                                            handleUpdateStatus(
+                                                                                                r.id,
+                                                                                                isAdminApproved
+                                                                                                    ? isLeaderApproved
+                                                                                                        ? "Leader đã duyệt"
+                                                                                                        : isLeaderRejected
+                                                                                                          ? "Leader từ chối"
+                                                                                                          : "Chưa duyệt"
+                                                                                                    : `Admin đã duyệt | ${isLeaderApproved ? "Leader đã duyệt" : isLeaderRejected ? "Leader từ chối" : ""}`,
+                                                                                            )
+                                                                                        }
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminApproved ? "bg-slate-200 text-slate-700" : "bg-blue-600 text-white shadow-blue-200/50"}`}
                                                                                     >
-                                                                                        <Check className="w-3.5 h-3.5" strokeWidth={4} /> {isAdminApproved ? 'Hủy duyệt' : 'Duyệt'}
+                                                                                        <Check
+                                                                                            className="w-3.5 h-3.5"
+                                                                                            strokeWidth={4}
+                                                                                        />{" "}
+                                                                                        {isAdminApproved
+                                                                                            ? "Hủy duyệt"
+                                                                                            : "Duyệt"}
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => handleUpdateStatus(r.id, isAdminRejected ? (isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : 'Chưa duyệt') : `Admin từ chối | ${isLeaderApproved ? 'Leader đã duyệt' : isLeaderRejected ? 'Leader từ chối' : ''}`)}
-                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminRejected ? 'bg-slate-200 text-slate-700' : 'bg-red-600 text-white shadow-red-200/50'}`}
+                                                                                        onClick={() =>
+                                                                                            handleUpdateStatus(
+                                                                                                r.id,
+                                                                                                isAdminRejected
+                                                                                                    ? isLeaderApproved
+                                                                                                        ? "Leader đã duyệt"
+                                                                                                        : isLeaderRejected
+                                                                                                          ? "Leader từ chối"
+                                                                                                          : "Chưa duyệt"
+                                                                                                    : `Admin từ chối | ${isLeaderApproved ? "Leader đã duyệt" : isLeaderRejected ? "Leader từ chối" : ""}`,
+                                                                                            )
+                                                                                        }
+                                                                                        className={`px-3 py-2 rounded-lg text-[11px] font-black uppercase flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95 ${isAdminRejected ? "bg-slate-200 text-slate-700" : "bg-red-600 text-white shadow-red-200/50"}`}
                                                                                     >
-                                                                                        <X className="w-3.5 h-3.5" strokeWidth={4} /> {isAdminRejected ? 'Hủy từ chối' : 'Từ chối'}
+                                                                                        <X
+                                                                                            className="w-3.5 h-3.5"
+                                                                                            strokeWidth={4}
+                                                                                        />{" "}
+                                                                                        {isAdminRejected
+                                                                                            ? "Hủy từ chối"
+                                                                                            : "Từ chối"}
                                                                                     </button>
                                                                                 </>
                                                                             )}
@@ -746,11 +976,13 @@ const UserActivityPageContent = () => {
                                     <div className="p-4 bg-slate-50 rounded-full mb-4">
                                         <ClipboardList className="w-8 h-8 text-slate-300" />
                                     </div>
-                                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Không có vấn đề nổi bật nào trong ngày</p>
+                                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">
+                                        Không có vấn đề nổi bật nào trong ngày
+                                    </p>
                                 </div>
                             )}
                         </div>
-                    ) : activeTab === 'daily_checklist' ? (
+                    ) : activeTab === "daily_checklist" ? (
                         <div className="space-y-4">
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-4">
@@ -765,7 +997,7 @@ const UserActivityPageContent = () => {
                                             </span>
                                         ) : isLeaderUser ? (
                                             <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-widest">
-                                                Team: {userTeam || 'Của tôi'}
+                                                Team: {userTeam || "Của tôi"}
                                             </span>
                                         ) : (
                                             <span className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black uppercase tracking-widest">
@@ -778,20 +1010,29 @@ const UserActivityPageContent = () => {
                                     {(isAdminUser || isLeaderUser) && (
                                         <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
                                             <button
-                                                onClick={() => { setChecklistRoleFilter('all'); setChecklistPage(1); }}
-                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                onClick={() => {
+                                                    setChecklistRoleFilter("all");
+                                                    setChecklistPage(1);
+                                                }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === "all" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                                             >
                                                 Tất cả
                                             </button>
                                             <button
-                                                onClick={() => { setChecklistRoleFilter('leader'); setChecklistPage(1); }}
-                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'leader' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                onClick={() => {
+                                                    setChecklistRoleFilter("leader");
+                                                    setChecklistPage(1);
+                                                }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === "leader" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                                             >
                                                 Leader
                                             </button>
                                             <button
-                                                onClick={() => { setChecklistRoleFilter('member'); setChecklistPage(1); }}
-                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === 'member' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                onClick={() => {
+                                                    setChecklistRoleFilter("member");
+                                                    setChecklistPage(1);
+                                                }}
+                                                className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${checklistRoleFilter === "member" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                                             >
                                                 Member
                                             </button>
@@ -801,7 +1042,10 @@ const UserActivityPageContent = () => {
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {loading ? (
                                         Array.from({ length: 4 }).map((_, i) => (
-                                            <div key={i} className="bg-white rounded-3xl border border-slate-200 p-6 animate-pulse">
+                                            <div
+                                                key={i}
+                                                className="bg-white rounded-3xl border border-slate-200 p-6 animate-pulse"
+                                            >
                                                 <div className="flex items-center gap-4 mb-4">
                                                     <div className="w-12 h-12 rounded-full bg-slate-200" />
                                                     <div>
@@ -817,9 +1061,15 @@ const UserActivityPageContent = () => {
                                         ))
                                     ) : checklistFilteredReports.length > 0 ? (
                                         checklistFilteredReports
-                                            .slice((checklistPage - 1) * CHECKLIST_PAGE_SIZE, checklistPage * CHECKLIST_PAGE_SIZE)
+                                            .slice(
+                                                (checklistPage - 1) * CHECKLIST_PAGE_SIZE,
+                                                checklistPage * CHECKLIST_PAGE_SIZE,
+                                            )
                                             .map((report, idx) => (
-                                                <div key={report.id || idx} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                <div
+                                                    key={report.id || idx}
+                                                    className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                                                >
                                                     <ReportCard report={report} />
                                                 </div>
                                             ))
@@ -841,11 +1091,20 @@ const UserActivityPageContent = () => {
                                         </button>
 
                                         <div className="flex items-center gap-1">
-                                            {Array.from({ length: Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE) }).map((_, i) => {
+                                            {Array.from({
+                                                length: Math.ceil(
+                                                    checklistFilteredReports.length / CHECKLIST_PAGE_SIZE,
+                                                ),
+                                            }).map((_, i) => {
                                                 const pageNum = i + 1;
-                                                const totalPages = Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE);
+                                                const totalPages = Math.ceil(
+                                                    checklistFilteredReports.length / CHECKLIST_PAGE_SIZE,
+                                                );
                                                 const isCurrent = pageNum === checklistPage;
-                                                const isVisible = pageNum === 1 || pageNum === totalPages || (pageNum >= checklistPage - 1 && pageNum <= checklistPage + 1);
+                                                const isVisible =
+                                                    pageNum === 1 ||
+                                                    pageNum === totalPages ||
+                                                    (pageNum >= checklistPage - 1 && pageNum <= checklistPage + 1);
                                                 if (isVisible) {
                                                     return (
                                                         <button
@@ -857,15 +1116,37 @@ const UserActivityPageContent = () => {
                                                         </button>
                                                     );
                                                 }
-                                                if (pageNum === 2 && checklistPage > 3) return <span key="dots1" className="px-2 text-slate-400 font-bold">...</span>;
-                                                if (pageNum === totalPages - 1 && checklistPage < totalPages - 2) return <span key="dots2" className="px-2 text-slate-400 font-bold">...</span>;
+                                                if (pageNum === 2 && checklistPage > 3)
+                                                    return (
+                                                        <span key="dots1" className="px-2 text-slate-400 font-bold">
+                                                            ...
+                                                        </span>
+                                                    );
+                                                if (pageNum === totalPages - 1 && checklistPage < totalPages - 2)
+                                                    return (
+                                                        <span key="dots2" className="px-2 text-slate-400 font-bold">
+                                                            ...
+                                                        </span>
+                                                    );
                                                 return null;
                                             })}
                                         </div>
 
                                         <button
-                                            onClick={() => setChecklistPage((p) => Math.min(Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE), p + 1))}
-                                            disabled={checklistPage === Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE)}
+                                            onClick={() =>
+                                                setChecklistPage((p) =>
+                                                    Math.min(
+                                                        Math.ceil(
+                                                            checklistFilteredReports.length / CHECKLIST_PAGE_SIZE,
+                                                        ),
+                                                        p + 1,
+                                                    ),
+                                                )
+                                            }
+                                            disabled={
+                                                checklistPage ===
+                                                Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE)
+                                            }
                                             className={`p-2 rounded-xl border transition-all ${checklistPage === Math.ceil(checklistFilteredReports.length / CHECKLIST_PAGE_SIZE) ? "opacity-30 cursor-not-allowed bg-slate-50 text-slate-400 border-slate-100" : "bg-white text-blue-600 border-blue-100 hover:bg-blue-50/50 hover:border-blue-200"}`}
                                         >
                                             <ChevronRight className="w-5 h-5" />
@@ -886,8 +1167,12 @@ const UserActivityPageContent = () => {
                                         <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-500 shadow-inner">
                                             <Calendar className="w-8 h-8 text-blue-400" />
                                         </div>
-                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Báo cáo ngày</h3>
-                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">Báo cáo và đánh giá công việc hàng ngày của Leader và Member.</p>
+                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                            Báo cáo ngày
+                                        </h3>
+                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                            Báo cáo và đánh giá công việc hàng ngày của Leader và Member.
+                                        </p>
                                         <div className="mt-8 flex items-center gap-2 text-blue-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
                                             Chọn loại báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                         </div>
@@ -901,8 +1186,12 @@ const UserActivityPageContent = () => {
                                         <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all duration-500 shadow-inner">
                                             <BarChart3 className="w-8 h-8 text-indigo-400" />
                                         </div>
-                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Báo cáo tháng</h3>
-                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">Tổng hợp dữ liệu hiệu suất, traffic và doanh thu theo chu kỳ tháng.</p>
+                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                            Báo cáo tháng
+                                        </h3>
+                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                            Tổng hợp dữ liệu hiệu suất, traffic và doanh thu theo chu kỳ tháng.
+                                        </p>
                                         <div className="mt-8 flex items-center gap-2 text-indigo-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
                                             Xem báo cáo tháng <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                         </div>
@@ -913,32 +1202,53 @@ const UserActivityPageContent = () => {
                                     {dailySubtype === "select" ? (
                                         <div className="space-y-6">
                                             <div className="px-4">
-                                                <button type="button" onClick={() => setReportType("select")} className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer">
-                                                    <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Quay lại chọn Loại
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReportType("select")}
+                                                    className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer"
+                                                >
+                                                    <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+                                                    Quay lại chọn Loại
                                                 </button>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                                                <button onClick={() => setDailySubtype("traffic")} className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left">
+                                                <button
+                                                    onClick={() => setDailySubtype("traffic")}
+                                                    className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                >
                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-950/30 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-purple-900/40 transition-colors" />
                                                     <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-500 transition-all duration-500 shadow-inner">
                                                         <BarChart3 className="w-8 h-8 text-purple-400" />
                                                     </div>
-                                                    <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Báo cáo Traffic</h3>
-                                                    <p className="text-sm text-slate-400 font-medium leading-relaxed">Cập nhật số liệu truy cập từ các nền tảng mạng xã hội hôm nay.</p>
+                                                    <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                                        Báo cáo Traffic
+                                                    </h3>
+                                                    <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                                        Cập nhật số liệu truy cập từ các nền tảng mạng xã hội hôm nay.
+                                                    </p>
                                                     <div className="mt-8 flex items-center gap-2 text-purple-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
-                                                        Nhập số liệu <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                        Nhập số liệu{" "}
+                                                        <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                     </div>
                                                 </button>
 
-                                                <button onClick={() => setDailySubtype("work")} className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left">
+                                                <button
+                                                    onClick={() => setDailySubtype("work")}
+                                                    className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                >
                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-950/30 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-900/40 transition-colors" />
                                                     <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-500 shadow-inner">
                                                         <ClipboardList className="w-8 h-8 text-blue-400" />
                                                     </div>
-                                                    <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Công việc hôm nay</h3>
-                                                    <p className="text-sm text-slate-400 font-medium leading-relaxed">Báo cáo tiến độ checklist, khó khăn và kế hoạch làm việc.</p>
+                                                    <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                                        Công việc hôm nay
+                                                    </h3>
+                                                    <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                                        Báo cáo tiến độ checklist, khó khăn và kế hoạch làm việc.
+                                                    </p>
                                                     <div className="mt-8 flex items-center gap-2 text-blue-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
-                                                        Báo cáo công việc <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                        Báo cáo công việc{" "}
+                                                        <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                     </div>
                                                 </button>
                                             </div>
@@ -946,12 +1256,22 @@ const UserActivityPageContent = () => {
                                     ) : dailySubtype === "traffic" ? (
                                         <div className="space-y-6">
                                             <div className="px-4">
-                                                <button type="button" onClick={() => setDailySubtype("select")} className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer">
-                                                    <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Quay lại
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDailySubtype("select")}
+                                                    className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50/50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold transition-all group border border-blue-100/50 shadow-sm cursor-pointer"
+                                                >
+                                                    <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+                                                    Quay lại
                                                 </button>
                                             </div>
                                             <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
-                                                <ChecklistContainer key="traffic" mode="member" showOnlyTraffic={true} onSuccess={() => fetchReports(false)} />
+                                                <ChecklistContainer
+                                                    key="traffic"
+                                                    mode="member"
+                                                    showOnlyTraffic={true}
+                                                    onSuccess={() => fetchReports(false)}
+                                                />
                                             </div>
                                         </div>
                                     ) : (
@@ -959,34 +1279,57 @@ const UserActivityPageContent = () => {
                                             {reportMode === "select" ? (
                                                 <div className="space-y-6">
                                                     <div className="px-4">
-                                                        <button type="button" onClick={() => setDailySubtype("select")} className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer">
-                                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Quay lại
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDailySubtype("select")}
+                                                            className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer"
+                                                        >
+                                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+                                                            Quay lại
                                                         </button>
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                                                         {(isAdminUser || !isLeaderUser) && (
-                                                            <button onClick={() => setReportMode("member")} className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left">
+                                                            <button
+                                                                onClick={() => setReportMode("member")}
+                                                                className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                            >
                                                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-950/30 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-900/40 transition-colors" />
                                                                 <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-500 shadow-inner">
                                                                     <User className="w-8 h-8 text-blue-400" />
                                                                 </div>
-                                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Báo cáo Member</h3>
-                                                                <p className="text-sm text-slate-400 font-medium leading-relaxed">Dành cho Editor & Content báo cáo tiến độ checklist và khó khăn hàng ngày.</p>
+                                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                                                    Báo cáo Member
+                                                                </h3>
+                                                                <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                                                    Dành cho Editor & Content báo cáo tiến độ checklist
+                                                                    và khó khăn hàng ngày.
+                                                                </p>
                                                                 <div className="mt-8 flex items-center gap-2 text-blue-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
-                                                                    Bắt đầu báo cáo <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                                    Bắt đầu báo cáo{" "}
+                                                                    <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                                 </div>
                                                             </button>
                                                         )}
                                                         {(isAdminUser || isLeaderUser) && (
-                                                            <button onClick={() => setReportMode("leader")} className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left">
+                                                            <button
+                                                                onClick={() => setReportMode("leader")}
+                                                                className="group relative bg-slate-950 p-8 rounded-[3rem] border border-slate-800 shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-500 overflow-hidden text-left"
+                                                            >
                                                                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-950/30 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-indigo-900/40 transition-colors" />
                                                                 <div className="bg-slate-900 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-slate-800 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all duration-500 shadow-inner">
                                                                     <ShieldCheck className="w-8 h-8 text-indigo-400" />
                                                                 </div>
-                                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Báo cáo Leader</h3>
-                                                                <p className="text-sm text-slate-400 font-medium leading-relaxed">Dành cho Team Leader đánh giá chất lượng và quản lý nhân sự hàng ngày.</p>
+                                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                                                                    Báo cáo Leader
+                                                                </h3>
+                                                                <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                                                    Dành cho Team Leader đánh giá chất lượng và quản lý
+                                                                    nhân sự hàng ngày.
+                                                                </p>
                                                                 <div className="mt-8 flex items-center gap-2 text-indigo-500 font-black text-xs uppercase tracking-widest transition-all duration-500">
-                                                                    Bắt đầu đánh giá <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
+                                                                    Bắt đầu đánh giá{" "}
+                                                                    <ChevronDown className="-rotate-90 w-3 h-3 stroke-[3]" />
                                                                 </div>
                                                             </button>
                                                         )}
@@ -995,12 +1338,22 @@ const UserActivityPageContent = () => {
                                             ) : (
                                                 <div className="space-y-6">
                                                     <div className="flex items-center justify-between px-4">
-                                                        <button type="button" onClick={() => setReportMode("select")} className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer">
-                                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Quay lại chọn Đối tượng
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setReportMode("select")}
+                                                            className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer"
+                                                        >
+                                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+                                                            Quay lại chọn Đối tượng
                                                         </button>
                                                     </div>
                                                     <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-8 border border-slate-100 shadow-inner">
-                                                        <ChecklistContainer key="work" mode={reportMode} showOnlyWork={true} onSuccess={() => fetchReports(false)} />
+                                                        <ChecklistContainer
+                                                            key="work"
+                                                            mode={reportMode}
+                                                            showOnlyWork={true}
+                                                            onSuccess={() => fetchReports(false)}
+                                                        />
                                                     </div>
                                                 </div>
                                             )}
@@ -1010,14 +1363,23 @@ const UserActivityPageContent = () => {
                             ) : (
                                 <div className="space-y-6">
                                     <div className="px-4">
-                                        <button type="button" onClick={() => setReportType("select")} className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer">
-                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Quay lại chọn Loại
+                                        <button
+                                            type="button"
+                                            onClick={() => setReportType("select")}
+                                            className="relative z-[500] flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100/80 text-slate-700 hover:bg-slate-200 font-bold transition-all group border border-slate-200 shadow-sm cursor-pointer"
+                                        >
+                                            <ChevronDown className="rotate-90 w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+                                            Quay lại chọn Loại
                                         </button>
                                     </div>
                                     <div className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-20 border border-slate-100 shadow-inner text-center">
                                         <BarChart3 className="w-16 h-16 text-slate-200 mx-auto mb-6" />
-                                        <h3 className="text-xl font-black text-slate-400 uppercase tracking-[0.2em]">Tính năng Báo cáo tháng</h3>
-                                        <p className="text-slate-400 mt-2 text-sm">Đang được phát triển. Vui lòng quay lại sau!</p>
+                                        <h3 className="text-xl font-black text-slate-400 uppercase tracking-[0.2em]">
+                                            Tính năng Báo cáo tháng
+                                        </h3>
+                                        <p className="text-slate-400 mt-2 text-sm">
+                                            Đang được phát triển. Vui lòng quay lại sau!
+                                        </p>
                                     </div>
                                 </div>
                             )}
