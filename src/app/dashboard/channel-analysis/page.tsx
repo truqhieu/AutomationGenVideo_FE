@@ -150,6 +150,7 @@ export default function ChannelAnalysisHubPage() {
     const [scheduleAt, setScheduleAt] = useState(""); // yyyy-MM-ddTHH:mm
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
+    const [createMaxPosts, setCreateMaxPosts] = useState<number>(30); // New state
     const [larkSyncing, setLarkSyncing] = useState(false);
   const [modalWarning, setModalWarning] = useState('');
 
@@ -566,6 +567,52 @@ export default function ChannelAnalysisHubPage() {
     }
   }, []);
 
+  const executeAnalysisBatch = useCallback(
+    async (row: Row, startDate: string, endDate: string, maxPosts: number, isRerun: boolean) => {
+      // Mark channel as 'analyzing' immediately so table shows progress bar
+      try {
+        const key = getAnalysisKey(row.platform, row.username);
+        const existing = localStorage.getItem(key);
+        const prev = existing ? JSON.parse(existing) : {};
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            ...prev,
+            status: "analyzing",
+            startDate,
+            endDate,
+            maxPosts,
+            analyzingAt: Date.now(),
+          }),
+        );
+      } catch (_) {}
+      setStorageTick((x) => x + 1);
+
+      openFacebookInsightsPopup(row, startDate, endDate);
+
+      setTimeout(() => {
+        if (row.platform === "FACEBOOK") {
+          void Promise.all([
+            runFacebookInsights(row, startDate, endDate, isRerun, maxPosts),
+            runFacebookMetrics(row, startDate, endDate, isRerun, maxPosts),
+          ]);
+        } else {
+          void Promise.all([
+            runGenericInsights(row, startDate, endDate, isRerun, maxPosts),
+            runGenericMetrics(row, startDate, endDate, isRerun, maxPosts),
+          ]);
+        }
+      }, 0);
+    },
+    [
+      openFacebookInsightsPopup,
+      runFacebookInsights,
+      runFacebookMetrics,
+      runGenericInsights,
+      runGenericMetrics,
+    ],
+  );
+
   // Xóa Auto-run useEffect, để fetch cache / refresh rõ ràng
   const onView = useCallback((row: Row) => {
     let sDate = '';
@@ -759,7 +806,7 @@ export default function ChannelAnalysisHubPage() {
         try {
           localStorage.setItem(
             getAnalysisKey(platform, username),
-            JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, startDate: createStartDate, endDate: createEndDate, createdAt: Date.now() })
+            JSON.stringify({ status: 'scheduled', scheduledAt: scheduledTs, startDate: createStartDate, endDate: createEndDate, maxPosts: createMaxPosts, createdAt: Date.now() })
           );
         } catch (_) {}
         await fetchAll();
@@ -771,43 +818,36 @@ export default function ChannelAnalysisHubPage() {
         return;
       }
 
-      // Persist date range per channel for table display
-      try {
-        const key = getAnalysisKey(platform, username);
-        const existing = localStorage.getItem(key);
-        const prev = existing ? JSON.parse(existing) : {};
-        localStorage.setItem(key, JSON.stringify({ ...prev, status: prev?.status || 'not_analyzed', startDate: createStartDate, endDate: createEndDate }));
-      } catch (_) {}
-      setStorageTick((x) => x + 1);
+      if (runMode === 'now') {
+        const row: Row = {
+          id: `${Date.now()}`,
+          name: username,
+          url: buildChannelUrl(platform, username),
+          platform,
+          countLabel: '-',
+          maxAvailable: 0,
+          status: 'not_analyzed',
+          timeLabel: '-',
+          username,
+        };
+        setShowCreateModal(false);
+        
+        // Reset inputs
+        setNewInput('');
+        setExistingUsername('');
+        setCreateStartDate('');
+        setCreateEndDate('');
+        setCreateMaxPosts(30);
 
-            setShowCreateModal(false);
-            setNewInput("");
-            setExistingUsername("");
-            setCreateStartDate("");
-            setCreateEndDate("");
-            setScheduleAt("");
-            setRunMode("now");
-
-            openDateRangeChooser(
-                {
-                    id: `${Date.now()}`,
-                    name: username,
-                    url: buildChannelUrl(platform, username),
-                    platform,
-                    countLabel: "-",
-                    maxAvailable: 0,
-                    status: "not_analyzed",
-                    timeLabel: "-",
-                    username,
-                },
-                "open",
-            );
-        } catch (e: any) {
-            setCreateError((e?.message || "Không thể tạo báo cáo").toString());
-        } finally {
-            setCreating(false);
-        }
-    };
+        executeAnalysisBatch(row, createStartDate, createEndDate, createMaxPosts, false);
+        return;
+      }
+    } catch (e: any) {
+        setCreateError((e?.message || "Không thể tạo báo cáo").toString());
+    } finally {
+        setCreating(false);
+    }
+  };
 
     const rows = useMemo<Row[]>(() => {
         const mapped = (channels || []).map((ch) => {
@@ -911,39 +951,11 @@ export default function ChannelAnalysisHubPage() {
         openDateRangeChooser(row, row.status === "completed" ? "rerun" : "open");
     };
 
-    const confirmDateRangeAndRun = useCallback(() => {
-        const row = pendingRow;
-        if (!row) return;
-
-    // Mark channel as 'analyzing' immediately so table shows progress bar
-    try {
-      const key = getAnalysisKey(row.platform, row.username);
-      const existing = localStorage.getItem(key);
-      const prev = existing ? JSON.parse(existing) : {};
-      localStorage.setItem(key, JSON.stringify({
-        ...prev,
-        status: 'analyzing',
-        startDate: pendingStartDate,
-        endDate: pendingEndDate,
-        maxPosts: pendingMaxPosts,
-        analyzingAt: Date.now(),
-      }));
-    } catch (_) {}
-    setStorageTick((x) => x + 1);
-
-        setShowMaxPostsModal(false);
-
-        openFacebookInsightsPopup(row, pendingStartDate, pendingEndDate);
-
-    setTimeout(() => {
-      const isRerun = pendingMode === 'rerun';
-      if (row.platform === 'FACEBOOK') {
-        void Promise.all([runFacebookInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runFacebookMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
-      } else {
-        void Promise.all([runGenericInsights(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts), runGenericMetrics(row, pendingStartDate, pendingEndDate, isRerun, pendingMaxPosts)]);
-      }
-    }, 0);
-  }, [openFacebookInsightsPopup, pendingEndDate, pendingMode, pendingRow, pendingStartDate, pendingMaxPosts, runFacebookInsights, runFacebookMetrics, runGenericInsights, runGenericMetrics]);
+  const confirmDateRangeAndRun = useCallback(() => {
+    if (!pendingRow) return;
+    setShowMaxPostsModal(false);
+    executeAnalysisBatch(pendingRow, pendingStartDate, pendingEndDate, pendingMaxPosts, pendingMode === 'rerun');
+  }, [pendingRow, pendingStartDate, pendingEndDate, pendingMaxPosts, pendingMode, executeAnalysisBatch]);
 
     // Poll localStorage every 2s while any row is 'analyzing' to detect completion
     useEffect(() => {
@@ -1407,6 +1419,23 @@ export default function ChannelAnalysisHubPage() {
                                 </div>
                                 <p className="text-xs text-slate-500 mt-2">
                                     Hệ thống sẽ quét số lượng bài trong khoảng ngày này.
+                                </p>
+                            </div>
+
+                            {/* Max posts */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">Số lượng chạy bài (Max: 100)</label>
+                                <input
+                                    type="number"
+                                    min="5"
+                                    max="100"
+                                    step="5"
+                                    value={createMaxPosts}
+                                    onChange={(e) => setCreateMaxPosts(Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
+                                    className="w-full px-4 py-3 bg-white text-slate-900 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 font-semibold"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Giới hạn số bài quét giúp tiết kiệm token và phân tích nhanh hơn. Mặc định: 30 bài.
                                 </p>
                             </div>
 
