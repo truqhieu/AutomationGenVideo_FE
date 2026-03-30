@@ -344,7 +344,12 @@ function SidebarContent({
                         key={item.href}
                         href={item.href}
                         prefetch={true}
-                        onClick={handleLinkClick}
+                        onClick={() => {
+                            handleLinkClick();
+                            if (item.href.includes("tab=daily_report")) {
+                                window.dispatchEvent(new CustomEvent("resetUserActivityDailyReport", { detail: { type: item.href.includes("report=monthly") ? "monthly" : item.href.includes("report=daily") ? "daily" : "select" } }));
+                            }
+                        }}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 ease-out text-sm font-medium
                                              ${isActive
                             ? 'text-white bg-slate-800 shadow-lg shadow-slate-900/20'

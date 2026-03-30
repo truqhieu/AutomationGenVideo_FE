@@ -30,6 +30,13 @@ export default function NavSubPanel({ item, onMouseEnter }: NavSubPanelProps) {
                         <Link
                             key={card.label}
                             href={card.href}
+                            onClick={() => {
+                                if (card.href.includes("tab=daily_report&report=daily")) {
+                                    window.dispatchEvent(new CustomEvent("resetUserActivityDailyReport", { detail: { type: "daily" } }));
+                                } else if (card.href.includes("tab=daily_report&report=monthly")) {
+                                    window.dispatchEvent(new CustomEvent("resetUserActivityDailyReport", { detail: { type: "monthly" } }));
+                                }
+                            }}
                             className={`
                                 group/card relative bg-slate-950 p-5 rounded-2xl border overflow-hidden
                                 flex flex-col gap-3 transition-all duration-300

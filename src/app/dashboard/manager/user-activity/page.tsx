@@ -208,6 +208,20 @@ const UserActivityPageContent = () => {
         else if (r === "monthly") setReportType("monthly");
     }, [reportParam]);
 
+    React.useEffect(() => {
+        const handleResetReport = (e: any) => {
+            const detailType = e.detail?.type;
+            if (detailType) {
+                setReportType(detailType);
+            }
+            setActiveTab("daily_report");
+            setDailySubtype("select");
+            setReportMode("select");
+        };
+        window.addEventListener("resetUserActivityDailyReport", handleResetReport);
+        return () => window.removeEventListener("resetUserActivityDailyReport", handleResetReport);
+    }, []);
+
     // Infinite scroll: load more cards when sentinel enters viewport
     React.useEffect(() => {
         const el = loadMoreRef.current;
