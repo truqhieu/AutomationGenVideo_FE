@@ -11,11 +11,15 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, token } = useAuthStore(s => ({
+    user: s.user,
+    isAuthenticated: s.isAuthenticated,
+    logout: s.logout,
+    token: s.token,
+  }));
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [allowedMenuIds, setAllowedMenuIds] = useState<string[]>([]);
-  const { token } = useAuthStore();
 
   useEffect(() => {
     setIsHydrated(true);

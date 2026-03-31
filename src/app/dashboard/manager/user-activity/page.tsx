@@ -1,15 +1,17 @@
 "use client";
 
-import React, { Suspense, useEffect, useState, useCallback, useDeferredValue } from "react";
+import React, { Suspense, useEffect, useState, useCallback, useMemo, useDeferredValue } from "react";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import ActivityKPIs from "./components/ActivityKPIs";
-import DashboardAnalytics from "./components/DashboardAnalytics";
 import ActivityFilters from "./components/ActivityFilters";
 import UserActivityCard from "./components/UserActivityCard";
 import ReportCard from "./components/ReportCard";
-import RankingView from "./components/RankingView";
-import ChecklistContainer from "@/components/checklist/ChecklistContainer";
-import PersonalCharts from "./components/PersonalCharts";
+
+const DashboardAnalytics = dynamic(() => import("./components/DashboardAnalytics"), { ssr: false });
+const RankingView        = dynamic(() => import("./components/RankingView"),         { ssr: false });
+const PersonalCharts     = dynamic(() => import("./components/PersonalCharts"),      { ssr: false });
+const ChecklistContainer = dynamic(() => import("@/components/checklist/ChecklistContainer"), { ssr: false });
 import {
     RefreshCw,
     User,
@@ -117,7 +119,7 @@ const CardSkeleton = () => (
 );
 
 const UserActivityPageContent = () => {
-    const { user, token } = useAuthStore();
+    const user = useAuthStore(s => s.user);
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
@@ -283,8 +285,12 @@ const UserActivityPageContent = () => {
         [activeTeam, globalTeams, vnTeams],
     );
 
+    // Stable ISO strings for DashboardAnalytics — prevents refetch storms from object identity changes
+    const dashboardStartISO = useMemo(() => dateRange.start.toISOString(), [dateRange.start.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
+    const dashboardEndISO   = useMemo(() => dateRange.end.toISOString(),   [dateRange.end.getTime()]);   // eslint-disable-line react-hooks/exhaustive-deps
+
     // Role helpers (memoized to avoid re-compute on every render)
-    const sysRoles = user?.roles || [];
+    const sysRoles = useMemo(() => user?.roles ?? [], [user]);
     const isAdminUser = React.useMemo(
         () =>
             sysRoles.includes(UserRole.ADMIN) ||
@@ -528,7 +534,7 @@ const UserActivityPageContent = () => {
                 <main className="min-h-[60vh]">
                     {activeTab === "dashboard" ? (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                            <DashboardAnalytics dateRange={dateRange} activeTeam={activeTeam} />
+                            <DashboardAnalytics startDate={dashboardStartISO} endDate={dashboardEndISO} activeTeam={activeTeam} />
                         </div>
                     ) : activeTab === "performance" ? (
                         loading ? (
@@ -567,7 +573,7 @@ const UserActivityPageContent = () => {
                                                 }}
                                             >
                                                 <UserActivityCard
-                                                    data={{ ...report, reportStatus: report.status }}
+                                                    data={report}
                                                     timeType={timeType}
                                                     canClick={canClickCard}
                                                     onClick={() => {

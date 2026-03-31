@@ -82,6 +82,7 @@ const mapReportItem = (item: any) => {
         team: item.team,
         avatar: getAvatarUrl(item.avatar, item.name),
         status: item.status,
+        reportStatus: item.status,
         submittedAt: item.date,
         email: item.email,
         time: item.date
@@ -322,11 +323,29 @@ export function useActivityData({
 
     React.useEffect(() => {
         fetchReports(true);
-        const intervalId = setInterval(() => {
-            if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-            fetchReports(false);
-        }, 60000);
-        return () => clearInterval(intervalId);
+        let intervalId: ReturnType<typeof setInterval> | null = setInterval(() => fetchReports(false), 60_000);
+
+        const onVisibilityChange = () => {
+            if (document.hidden) {
+                // Tab hidden — pause polling to save server load
+                if (intervalId !== null) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+            } else {
+                // Tab visible again — fetch immediately then resume
+                fetchReports(false);
+                if (intervalId === null) {
+                    intervalId = setInterval(() => fetchReports(false), 60_000);
+                }
+            }
+        };
+
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        return () => {
+            if (intervalId !== null) clearInterval(intervalId);
+            document.removeEventListener("visibilitychange", onVisibilityChange);
+        };
     }, [fetchReports]);
 
     React.useEffect(() => {
