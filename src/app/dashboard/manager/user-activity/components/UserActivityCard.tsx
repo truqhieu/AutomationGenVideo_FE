@@ -35,10 +35,20 @@ const getAvatarUrl = (url: string | null, name: string) => {
     if (!url) return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
     if (url.includes('drive.google.com')) {
-        // Extract ID from various Drive formats
         const match = url.match(/\/d\/([^/]+)/) || url.match(/id=([^&]+)/);
         if (match && match[1]) {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+        }
+    }
+    // Strip auth params from Google user content URLs to avoid 403 Forbidden
+    if (url.includes('googleusercontent.com')) {
+        try {
+            const urlObj = new URL(url);
+            urlObj.searchParams.delete('authuser');
+            urlObj.searchParams.delete('sz');
+            return urlObj.toString().replace(/=[sw]\d+(-[sw]\d+)*(?=[?#]|$)/, '=w200');
+        } catch {
+            return url;
         }
     }
     return url;

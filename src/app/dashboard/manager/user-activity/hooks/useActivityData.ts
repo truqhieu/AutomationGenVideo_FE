@@ -50,6 +50,17 @@ const getAvatarUrl = (url: string | null, name: string) => {
             return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
         }
     }
+    // Strip auth params from Google user content URLs to avoid 403 Forbidden
+    if (url.includes("googleusercontent.com")) {
+        try {
+            const urlObj = new URL(url);
+            urlObj.searchParams.delete("authuser");
+            urlObj.searchParams.delete("sz");
+            return urlObj.toString().replace(/=[sw]\d+(-[sw]\d+)*(?=[?#]|$)/, "=w200");
+        } catch {
+            return url;
+        }
+    }
     return url;
 };
 
@@ -172,6 +183,11 @@ export function useActivityData({
         userActivity: null,
         members: [],
     });
+    const recoveredQueryRef = useRef<string | null>(null);
+    const reportsAbortRef = useRef<AbortController | null>(null);
+    const historyAbortRef = useRef<AbortController | null>(null);
+    const latestReportsReqIdRef = useRef(0);
+    const latestHistoryReqIdRef = useRef(0);
 
     // Store latest searchName/userRole in refs so fetchHistory doesn't depend on them directly.
     // This prevents re-fetching on every keystroke (Rule 5.15 - useRef for transient values).
@@ -182,6 +198,10 @@ export function useActivityData({
 
     const fetchReports = useCallback(async (showLoading = true) => {
         if (!user?.email) return;
+        reportsAbortRef.current?.abort();
+        const controller = new AbortController();
+        reportsAbortRef.current = controller;
+        const requestId = ++latestReportsReqIdRef.current;
         if (showLoading) setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -198,22 +218,55 @@ export function useActivityData({
             if (timeType) params.append("timeType", timeType);
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/user-activity?${params.toString()}`;
-            const response = await fetch(url, { cache: 'no-store' });
-            const data = await response.json();
+            const applyPayload = (data: any) => {
+                if (data.userRole) setUserRole(data.userRole.toLowerCase());
+                setUserTeam(data.userTeam || (user as any)?.team || null);
+                setReports((data.reports || []).map(mapReportItem));
+                setSummary(data.summary || null);
+                setRankings(data.rankings || null);
+                setTeamContributions(data.teamContributions || []);
+                setGroupContributions(data.groupContributions || null);
+                setReportOutstandings(data.reportOutstandings || []);
+                setKpiMeta(data.meta || null);
+            };
 
-            if (data.userRole) setUserRole(data.userRole.toLowerCase());
-            setUserTeam(data.userTeam || (user as any)?.team || null);
-            setReports((data.reports || []).map(mapReportItem));
-            setSummary(data.summary || null);
-            setRankings(data.rankings || null);
-            setTeamContributions(data.teamContributions || []);
-            setGroupContributions(data.groupContributions || null);
-            setReportOutstandings(data.reportOutstandings || []);
-            setKpiMeta(data.meta || null);
+            const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+            let data = await response.json();
+
+            const hasKpiInDb = Number(data?.meta?.kpiTotalInDb || 0) > 0;
+            const filteredKpiCount = Number(data?.meta?.kpiFilteredForMonth || 0);
+            const reportCount = Array.isArray(data?.reports) ? data.reports.length : 0;
+            const isSuspiciousEmptyFirstLoad =
+                hasKpiInDb &&
+                filteredKpiCount === 0 &&
+                reportCount === 0;
+
+            const queryKey = params.toString();
+            if (isSuspiciousEmptyFirstLoad && recoveredQueryRef.current !== queryKey) {
+                recoveredQueryRef.current = queryKey;
+                try {
+                    await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/clear-activity-cache`,
+                        { method: "POST", cache: "no-store", signal: controller.signal },
+                    );
+                    const retryResponse = await fetch(url, { cache: "no-store", signal: controller.signal });
+                    data = await retryResponse.json();
+                } catch (recoveryError) {
+                    console.warn("Activity recovery refetch failed:", recoveryError);
+                }
+            }
+
+            if (!controller.signal.aborted && requestId === latestReportsReqIdRef.current) {
+                applyPayload(data);
+            }
         } catch (error) {
-            console.error("Failed to fetch reports:", error);
+            if ((error as any)?.name !== "AbortError") {
+                console.error("Failed to fetch reports:", error);
+            }
         } finally {
-            if (showLoading) setLoading(false);
+            if (showLoading && requestId === latestReportsReqIdRef.current && !controller.signal.aborted) {
+                setLoading(false);
+            }
         }
     }, [user?.email, dateRange, activeTeam, timeType]);
 
@@ -221,6 +274,10 @@ export function useActivityData({
     // are read from refs so the effect doesn't re-run on every keystroke (Rule 5.15).
     const fetchHistory = useCallback(async () => {
         if (!user?.email) return;
+        historyAbortRef.current?.abort();
+        const controller = new AbortController();
+        historyAbortRef.current = controller;
+        const requestId = ++latestHistoryReqIdRef.current;
         try {
             const params = new URLSearchParams();
             params.append("email", user.email);
@@ -229,11 +286,15 @@ export function useActivityData({
                 params.append("name", searchNameRef.current);
             }
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/personal-history?${params.toString()}`;
-            const response = await fetch(url, { cache: 'no-store' });
+            const response = await fetch(url, { cache: "no-store", signal: controller.signal });
             const data = await response.json();
-            setPersonalHistory(data);
+            if (!controller.signal.aborted && requestId === latestHistoryReqIdRef.current) {
+                setPersonalHistory(data);
+            }
         } catch (error) {
-            console.error("Failed to fetch personal history:", error);
+            if ((error as any)?.name !== "AbortError") {
+                console.error("Failed to fetch personal history:", error);
+            }
         }
     }, [user?.email]);
 
@@ -261,15 +322,25 @@ export function useActivityData({
 
     React.useEffect(() => {
         fetchReports(true);
-        const intervalId = setInterval(() => fetchReports(false), 60000);
+        const intervalId = setInterval(() => {
+            if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+            fetchReports(false);
+        }, 60000);
         return () => clearInterval(intervalId);
     }, [fetchReports]);
 
     React.useEffect(() => {
-        if (activeTab === "personal" || activeTab === "performance") {
+        if (activeTab === "personal") {
             fetchHistory();
         }
     }, [activeTab, fetchHistory]);
+
+    React.useEffect(() => {
+        return () => {
+            reportsAbortRef.current?.abort();
+            historyAbortRef.current?.abort();
+        };
+    }, []);
 
     return {
         reports, summary, rankings, teamContributions, groupContributions,

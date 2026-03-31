@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import ActivityKPIs from "./components/ActivityKPIs";
 import DashboardAnalytics from "./components/DashboardAnalytics";
 import ActivityFilters from "./components/ActivityFilters";
-import UserActivityCard, { UserActivity } from "./components/UserActivityCard";
+import UserActivityCard from "./components/UserActivityCard";
 import ReportCard from "./components/ReportCard";
 import RankingView from "./components/RankingView";
 import ChecklistContainer from "@/components/checklist/ChecklistContainer";
