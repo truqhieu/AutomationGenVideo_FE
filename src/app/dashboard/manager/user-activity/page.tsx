@@ -326,17 +326,22 @@ const UserActivityPageContent = () => {
             window.scrollTo(0, 0);
             await new Promise((r) => setTimeout(r, 600));
 
+            const contentArea = container.querySelector(".relative.z-10.space-y-2") as HTMLElement;
+            const captureTarget = contentArea || container;
+
             const filter = (node: HTMLElement) => {
                 if (node.tagName === "LINK" && (node as HTMLLinkElement).rel === "prefetch") return false;
+                if (node.classList?.contains("sticky")) return false;
+                if (node.tagName === "NAV") return false;
                 return true;
             };
 
             let dataUrl: string | null = null;
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
-                    dataUrl = await toPng(container, {
-                        quality: 0.95,
-                        pixelRatio: window.devicePixelRatio > 1 ? 1.5 : 1,
+                    dataUrl = await toPng(captureTarget, {
+                        quality: 1,
+                        pixelRatio: 2,
                         backgroundColor: "#f8fafc",
                         cacheBust: true,
                         includeQueryParams: true,
