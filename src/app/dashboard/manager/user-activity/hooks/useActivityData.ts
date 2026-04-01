@@ -322,21 +322,20 @@ export function useActivityData({
     }, [user?.full_name]);
 
     React.useEffect(() => {
+        const POLL_INTERVAL = 90_000;
         fetchReports(true);
-        let intervalId: ReturnType<typeof setInterval> | null = setInterval(() => fetchReports(false), 60_000);
+        let intervalId: ReturnType<typeof setInterval> | null = setInterval(() => fetchReports(false), POLL_INTERVAL);
 
         const onVisibilityChange = () => {
             if (document.hidden) {
-                // Tab hidden — pause polling to save server load
                 if (intervalId !== null) {
                     clearInterval(intervalId);
                     intervalId = null;
                 }
             } else {
-                // Tab visible again — fetch immediately then resume
                 fetchReports(false);
                 if (intervalId === null) {
-                    intervalId = setInterval(() => fetchReports(false), 60_000);
+                    intervalId = setInterval(() => fetchReports(false), POLL_INTERVAL);
                 }
             }
         };

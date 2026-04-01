@@ -36,10 +36,24 @@ export default function DashboardLayout({
     }
   }, [isHydrated, isAuthenticated, user, router, isLoggingOut]);
 
-  // Fetch dynamic sidebar/header permissions
   useEffect(() => {
+    const CACHE_KEY = 'perm_menu_ids';
+    const CACHE_TTL = 5 * 60 * 1000;
+
     const fetchPermissions = async () => {
       if (!token) return;
+
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) {
+            setAllowedMenuIds(data);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
       try {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/role-permissions/my-tabs`,
@@ -48,6 +62,7 @@ export default function DashboardLayout({
         if (response.ok) {
           const data = await response.json();
           setAllowedMenuIds(data);
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch { /* ignore */ }
         }
       } catch (err) {
         console.error('Failed to fetch header permissions', err);
@@ -58,6 +73,7 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    try { sessionStorage.removeItem('perm_menu_ids'); } catch { /* ignore */ }
     router.replace('/');
     setTimeout(() => {
       logout();

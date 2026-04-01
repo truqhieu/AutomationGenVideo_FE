@@ -324,13 +324,36 @@ const UserActivityPageContent = () => {
             const { toPng } = await import("html-to-image");
             const scrollY = window.scrollY;
             window.scrollTo(0, 0);
-            await new Promise((r) => setTimeout(r, 1000));
-            const dataUrl = await toPng(container, {
-                quality: 1.0,
-                pixelRatio: 2,
-                backgroundColor: "#ffffff",
-                style: { transform: "scale(1)", transformOrigin: "top left" },
-            });
+            await new Promise((r) => setTimeout(r, 600));
+
+            const filter = (node: HTMLElement) => {
+                if (node.tagName === "LINK" && (node as HTMLLinkElement).rel === "prefetch") return false;
+                return true;
+            };
+
+            let dataUrl: string | null = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    dataUrl = await toPng(container, {
+                        quality: 0.95,
+                        pixelRatio: window.devicePixelRatio > 1 ? 1.5 : 1,
+                        backgroundColor: "#f8fafc",
+                        cacheBust: true,
+                        includeQueryParams: true,
+                        skipAutoScale: true,
+                        filter: filter as any,
+                        fetchRequestInit: { mode: "cors", cache: "force-cache" } as any,
+                        imagePlaceholder:
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23e2e8f0' rx='20'/%3E%3C/svg%3E",
+                    });
+                    if (dataUrl) break;
+                } catch {
+                    await new Promise((r) => setTimeout(r, 500));
+                }
+            }
+
+            if (!dataUrl) throw new Error("Screenshot failed after retries");
+
             const now = new Date();
             const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
             const link = document.createElement("a");
