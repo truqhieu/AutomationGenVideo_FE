@@ -439,10 +439,13 @@ const ChecklistContainer = ({
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
                 const url = new URL(`${beBaseUrl}/lark/channel`, window.location.origin);
 
+                // Send both email and owner so the backend can match channels by EITHER field.
+                // This ensures correct results even if the channel.email enrichment was incomplete.
                 if (user.email) {
                     url.searchParams.append('email', user.email);
-                } else {
-                    url.searchParams.append('owner', user.full_name || '');
+                }
+                if (user.full_name) {
+                    url.searchParams.append('owner', user.full_name);
                 }
                 if (selectedTeam) {
                     url.searchParams.append('team', selectedTeam);
