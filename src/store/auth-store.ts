@@ -63,35 +63,42 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       login: async (credentials: LoginRequest) => {
-        try {
-          set({ isLoading: true, error: null });
+        const MAX_RETRIES = 2;
+        set({ isLoading: true, error: null });
 
-          console.log('Auth store: Calling login API...');
-          const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-          console.log('Auth store: Login API response received', response.data);
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+            const { access_token, user } = response.data;
 
-          const { access_token, user } = response.data;
+            localStorage.setItem('auth_token', access_token);
+            localStorage.setItem('auth_user', JSON.stringify(user));
 
-          // Save to localStorage
-          localStorage.setItem('auth_token', access_token);
-          localStorage.setItem('auth_user', JSON.stringify(user));
+            set({
+              user,
+              token: access_token,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return;
+          } catch (error: any) {
+            const isNetworkOrTimeout =
+              error.code === 'ECONNABORTED' ||
+              error.code === 'ERR_NETWORK' ||
+              !error.response;
 
-          set({
-            user,
-            token: access_token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+            if (isNetworkOrTimeout && attempt < MAX_RETRIES) {
+              await new Promise(r => setTimeout(r, 1000 * attempt));
+              continue;
+            }
 
-          console.log('Auth store: Login successful, state updated');
-        } catch (error: any) {
-          console.error('Auth store: Login failed', error);
-          let errorMessage = error.response?.data?.message || 'Login failed';
-          if (Array.isArray(errorMessage)) {
-            errorMessage = errorMessage.join(', ');
+            let errorMessage = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+            if (Array.isArray(errorMessage)) {
+              errorMessage = errorMessage.join(', ');
+            }
+            set({ error: errorMessage, isLoading: false });
+            throw error;
           }
-          set({ error: errorMessage, isLoading: false });
-          throw error;
         }
       },
 
