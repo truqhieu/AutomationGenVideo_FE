@@ -241,6 +241,7 @@ const UserActivityPageContent = () => {
     }, [reports.length]);
 
     // Team categorization: accumulate known teams across fetches, then categorize
+    // Split combined teams like "Team K1, Đồ Da" into individual entries
     const [allKnownTeams, setAllKnownTeams] = React.useState<string[]>([]);
     React.useEffect(() => {
         if (!teamContributions || teamContributions.length === 0) return;
@@ -249,9 +250,13 @@ const UserActivityPageContent = () => {
             let changed = false;
             teamContributions.forEach((item) => {
                 const t = item.team;
-                if (t && t !== "Khác" && !next.has(t)) {
-                    next.add(t);
-                    changed = true;
+                if (!t || t === "Khác") return;
+                const parts = t.includes(",") ? t.split(",").map((p: string) => p.trim()).filter(Boolean) : [t];
+                for (const part of parts) {
+                    if (part && part !== "Khác" && !next.has(part)) {
+                        next.add(part);
+                        changed = true;
+                    }
                 }
             });
             return changed ? Array.from(next) : prev;
@@ -274,13 +279,14 @@ const UserActivityPageContent = () => {
         (teamName: string | null | undefined): boolean => {
             if (activeTeam === "All") return true;
 
-            const safeTeam = normalize(teamName || "Khác");
+            const raw = teamName || "Khác";
+            const parts = raw.includes(",") ? raw.split(",").map((p) => normalize(p.trim())) : [normalize(raw)];
             const safeActive = normalize(activeTeam);
 
-            if (activeTeam === "All Global") return globalTeams.some((t) => normalize(t) === safeTeam);
-            if (activeTeam === "All VN") return vnTeams.some((t) => normalize(t) === safeTeam);
+            if (activeTeam === "All Global") return parts.some((p) => globalTeams.some((t) => normalize(t) === p));
+            if (activeTeam === "All VN") return parts.some((p) => vnTeams.some((t) => normalize(t) === p));
 
-            return safeTeam === safeActive;
+            return parts.includes(safeActive);
         },
         [activeTeam, globalTeams, vnTeams],
     );
@@ -309,9 +315,9 @@ const UserActivityPageContent = () => {
     // Filter Logic: If not Admin, handle team routing
     React.useEffect(() => {
         if (!isAdminUser && userTeam) {
-            // Everyone (Leader or Member) - set to userTeam only initially
             if (!initialTeamSet) {
-                setActiveTeam(userTeam);
+                const firstTeam = userTeam.includes(",") ? userTeam.split(",")[0].trim() : userTeam;
+                setActiveTeam(firstTeam);
                 setInitialTeamSet(true);
             }
         }
@@ -426,7 +432,9 @@ const UserActivityPageContent = () => {
         return reportOutstandings.filter((r) => {
             // --- NEW RULES for Workflow Priority ---
             const isMyReport = user?.email && r.email && normalize(r.email) === normalize(user.email);
-            const isMyTeam = userTeam && r.team && normalize(r.team) === normalize(userTeam);
+            const userTeamParts = (userTeam || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+            const reportTeamParts = (r.team || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+            const isMyTeam = userTeamParts.length > 0 && reportTeamParts.some((rp: string) => userTeamParts.includes(rp));
             const rRole = (r.role || "").toLowerCase();
             const rPos = (r.position || "").toLowerCase();
             const isReportFromLeader = rRole.includes("leader") || rPos.includes("leader");
@@ -584,12 +592,12 @@ const UserActivityPageContent = () => {
                                             user?.email &&
                                             normalize(report.email) === normalize(user.email);
                                         const isOwnCard = isOwnName || isOwnEmail;
+                                        const _utParts = (userTeam || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+                                        const _rtParts = (report.team || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+                                        const isReportMyTeam = _utParts.length > 0 && _rtParts.some((rp: string) => _utParts.includes(rp));
                                         const canClickCard =
                                             isAdminUser ||
-                                            (isLeaderUser &&
-                                                report.team &&
-                                                userTeam &&
-                                                normalize(report.team) === normalize(userTeam)) ||
+                                            (isLeaderUser && isReportMyTeam) ||
                                             isOwnCard;
                                         return (
                                             <div
@@ -753,13 +761,16 @@ const UserActivityPageContent = () => {
 
                                                         // Permissions
                                                         // BỔ SUNG: Nếu report là từ Leader, hoặc KHÔNG CÓ TEAM, thì chỉ Admin mới được duyệt.
+                                                        const _lUtParts = (userTeam || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+                                                        const _lRtParts = (r.team || "").split(",").map((p: string) => normalize(p.trim())).filter(Boolean);
+                                                        const _isLeaderTeamMatch = _lUtParts.length > 0 && _lRtParts.some((rp: string) => _lUtParts.includes(rp));
                                                         const canLeaderAction =
                                                             !isExpired &&
                                                             isLeaderUser &&
                                                             !isAdminUser &&
                                                             r.team &&
                                                             r.team.trim() !== "" &&
-                                                            r.team === userTeam &&
+                                                            _isLeaderTeamMatch &&
                                                             !isAdminHandled &&
                                                             !isReportFromLeader;
                                                         const canAdminAction = !isExpired && isAdminUser; // Màn Admin có thể thao tác hết
@@ -864,7 +875,7 @@ const UserActivityPageContent = () => {
                                                                                             Đã từ chối
                                                                                         </span>
                                                                                     ) : !canLeaderAction &&
-                                                                                      r.team === userTeam &&
+                                                                                      _isLeaderTeamMatch &&
                                                                                       !isAdminHandled ? (
                                                                                         isLeaderApproved ? (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">

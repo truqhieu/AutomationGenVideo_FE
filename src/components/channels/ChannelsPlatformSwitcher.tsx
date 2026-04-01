@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Facebook, Instagram, Music2, Music, BookOpen } from 'lucide-react';
+import { Facebook, Instagram, Music2, Music, BookOpen, Youtube } from 'lucide-react';
 
 type Item = {
-  id: 'facebook' | 'instagram' | 'tiktok' | 'douyin' | 'xiaohongshu';
+  id: 'facebook' | 'instagram' | 'tiktok' | 'douyin' | 'xiaohongshu' | 'youtube';
   label: string;
   href: string;
   icon: any;
@@ -18,6 +18,7 @@ const PLATFORM_ITEMS: Item[] = [
   { id: 'tiktok', label: 'TikTok', href: '/dashboard/ai/channels', icon: Music2 },
   { id: 'douyin', label: 'Douyin', href: '/dashboard/douyin/channels', icon: Music },
   { id: 'xiaohongshu', label: 'Xiaohongshu', href: '/dashboard/xiaohongshu/channels', icon: BookOpen },
+  { id: 'youtube', label: 'YouTube', href: '/dashboard/youtube/channels', icon: Youtube },
 ];
 
 export default function ChannelsPlatformSwitcher() {

@@ -5,7 +5,7 @@ import ChecklistSection, { CHECKLIST_ITEMS } from './ChecklistSection';
 import DetailSection, { DETAIL_ITEMS } from './DetailSection';
 import LeaderEvaluationSection, { LEADER_QUESTIONS } from './LeaderEvaluationSection';
 import TrafficReportSection, { TrafficData, initialTrafficData, initialTrafficChannels } from './TrafficReportSection';
-import { Send, AlertCircle, Calendar, ChevronDown, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, AlertCircle, Calendar, ChevronDown, Check, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/auth-store';
 import { UserRole } from '@/types/auth';
@@ -198,6 +198,7 @@ const ChecklistContainer = ({
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
+    const [selectedTeam, setSelectedTeam] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
     const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({} as any);
     const [hasFetchedReport, setHasFetchedReport] = useState(false);   // đã fetch xong chưa?
@@ -424,7 +425,13 @@ const ChecklistContainer = ({
         fetchReportDetails();
     }, [user?.email, reportDate]);
 
-    // Fetch user channels
+    // Parse user teams for multi-team selector
+    const userTeams = React.useMemo(() => {
+        if (!user?.team) return [];
+        return user.team.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }, [user?.team]);
+
+    // Fetch user channels (re-fetch when selectedTeam changes)
     useEffect(() => {
         const fetchChannels = async () => {
             if (!user?.email && !user?.full_name) return;
@@ -436,7 +443,9 @@ const ChecklistContainer = ({
                     url.searchParams.append('email', user.email);
                 } else {
                     url.searchParams.append('owner', user.full_name || '');
-                    if (user.team) url.searchParams.append('team', user.team);
+                }
+                if (selectedTeam) {
+                    url.searchParams.append('team', selectedTeam);
                 }
 
                 const res = await fetch(url.toString());
@@ -449,7 +458,7 @@ const ChecklistContainer = ({
             }
         };
         fetchChannels();
-    }, [user?.email, user?.full_name, user?.team]);
+    }, [user?.email, user?.full_name, selectedTeam]);
 
     const roles = user?.roles || [];
     const isAdmin = roles.includes(UserRole.ADMIN) || roles.includes(UserRole.MANAGER) || larkRole?.toLowerCase() === 'admin';
@@ -804,6 +813,39 @@ const ChecklistContainer = ({
                 {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
                 {(showForm12 || showForm3) && !showOnlyWork && (
                     <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
+                        {userTeams.length > 1 && (
+                            <div className="flex flex-wrap items-center gap-3 mb-5 px-1 py-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                                <div className="flex items-center gap-2 px-2">
+                                    <Layers className="w-5 h-5 text-blue-500" />
+                                    <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
+                                    <button
+                                        onClick={() => setSelectedTeam('')}
+                                        className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
+                                            !selectedTeam
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                        }`}
+                                    >
+                                        Tất cả
+                                    </button>
+                                    {userTeams.map((team: string) => (
+                                        <button
+                                            key={team}
+                                            onClick={() => setSelectedTeam(team)}
+                                            className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
+                                                selectedTeam === team
+                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                    : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                            }`}
+                                        >
+                                            {team}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <TrafficReportSection
                             key={`${submitCount}-${reportDate}`}
                             values={traffic}

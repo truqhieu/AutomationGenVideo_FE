@@ -174,6 +174,7 @@ export function useNavMenus(
                     "/dashboard/tiktok",
                     "/dashboard/douyin",
                     "/dashboard/xiaohongshu",
+                    "/dashboard/youtube",
                     "/dashboard/ai",
                     "/dashboard/search-video",
                     "/dashboard/channel-analysis",

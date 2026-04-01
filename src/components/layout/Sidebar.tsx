@@ -129,6 +129,7 @@ function SidebarContent({
       pathname.startsWith('/dashboard/tiktok') ||
       pathname.startsWith('/dashboard/douyin') ||
       pathname.startsWith('/dashboard/xiaohongshu') ||
+      pathname.startsWith('/dashboard/youtube') ||
       pathname.startsWith('/dashboard/ai') ||
       pathname.startsWith('/dashboard/search-video') ||
       pathname.startsWith('/dashboard/channel-analysis')

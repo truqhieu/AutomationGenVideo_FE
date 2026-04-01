@@ -4,6 +4,7 @@
 import Image from "next/image";
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader2, Video, RotateCcw, Facebook, ThumbsUp, MessageCircle, Share2, Link as LinkIcon, BarChart3, DownloadCloud } from 'lucide-react';
+import { ChannelCardSkeletonGrid } from '@/components/channels/ChannelCardSkeleton';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -52,7 +53,6 @@ export default function FacebookChannelsPage() {
   // Track only channels that were NEWLY imported in this session — only these show Apify loading spinner
   const [newlyImportedUsernames, setNewlyImportedUsernames] = useState<Set<string>>(new Set());
   const bgRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const loadFacebookChannels = async (): Promise<ChannelProfile[]> => {
     const token = localStorage.getItem('auth_token');
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -504,7 +504,7 @@ export default function FacebookChannelsPage() {
               </button>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-4 flex-wrap">
             <ChannelsPlatformSwitcher />
           </div>
         </div>
@@ -513,26 +513,13 @@ export default function FacebookChannelsPage() {
       {/* Content */}
       <div className="container mx-auto px-4 max-w-7xl pt-8">
 
-        {/* Loading State */}
-        {(loadingInitial || globalHrBusy) && (
-          <div className="flex flex-col items-center justify-center py-24 px-4 min-h-[320px]">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-6" />
-            <p className="text-slate-800 font-semibold text-lg text-center">
-              {longSyncHint || hrSyncing || globalHrBusy
-                ? 'Đang đồng bộ HR & lấy số liệu Apify…'
-                : 'Đang tải danh sách kênh…'}
-            </p>
-            {(longSyncHint || hrSyncing || globalHrBusy) && (
-              <p className="text-slate-500 text-sm mt-3 max-w-md text-center leading-relaxed">
-                Vui lòng đợi — có thể mất vài phút. Không đóng trang cho đến khi số followers / likes
-                hiển thị đầy đủ.
-              </p>
-            )}
-          </div>
+        {/* Loading State — skeleton cards khi chưa có kênh nào */}
+        {loadingInitial && channels.length === 0 && (
+          <ChannelCardSkeletonGrid count={8} />
         )}
 
         {/* Empty State */}
-        {!loadingInitial && !globalHrBusy && channels.length === 0 && (
+        {!loadingInitial && channels.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -556,7 +543,7 @@ export default function FacebookChannelsPage() {
         )}
 
         {/* Channels Grid */}
-        {!loadingInitial && !globalHrBusy && channels.length > 0 && (
+        {channels.length > 0 && (
           <>
             {/* Stats Bar */}
             <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-slate-100 flex flex-wrap items-center justify-between gap-4">
@@ -625,12 +612,12 @@ export default function FacebookChannelsPage() {
                     </div>
                   </div>
 
-                  {/* Stats Wrapper — hiển thị spinner khi mới import hoặc đang click refresh */}
+                  {/* Stats Wrapper — hiển thị spinner khi mới import, đang refresh, hoặc chưa có số liệu */}
                   <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-4">
-                    {(newlyImportedUsernames.has(channel.username) || refreshingIds.has(channel.username)) && (
-                      <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
-                        <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
-                        <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-100">AI đang quét số liệu...</span>
+                    {(newlyImportedUsernames.has(channel.username) || refreshingIds.has(channel.username) || (!channel.total_followers && !channel.total_likes)) && (
+                      <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center border border-slate-100/50">
+                        <Loader2 className="w-6 h-6 text-blue-500 animate-spin mb-1.5" />
+                        <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-blue-100">Đang lấy số liệu...</span>
                       </div>
                     )}
                     {/* Stats Grid - Show Followers only */}

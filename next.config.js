@@ -6,7 +6,10 @@ const nextConfig = {
   // Standalone output cho Docker (giảm image size ~70%)
   output: 'standalone',
   swcMinify: true,
-  // Note: compiler.removeConsole is not supported in Turbopack
+  // Strip console.log in production builds (keeps warn/error)
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
   images: {
     domains: [
       'localhost',
@@ -34,8 +37,37 @@ const nextConfig = {
       'framer-motion',
       'recharts',
       '@radix-ui/react-dialog',
-      '@radix-ui/react-label'
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-label',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
     ],
+  },
+  // HTTP response headers — long-lived cache for immutable Next.js static chunks,
+  // short no-store for API proxies (if any), no-cache for HTML pages.
+  async headers() {
+    return [
+      {
+        // Next.js build artifacts are content-hashed → safe to cache 1 year
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        // Static public files (images, fonts, icons)
+        source: '/favicon.ico',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
+      },
+      {
+        source: '/:path*.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
+      },
+      {
+        source: '/:path*.svg',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
+      },
+    ];
   },
 }
 

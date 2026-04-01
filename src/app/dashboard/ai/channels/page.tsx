@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, TrendingUp, Eye, Heart, Users, ArrowRight, X, Loader, Loader2, Video, RotateCcw, DownloadCloud } from 'lucide-react';
+import { ChannelCardSkeletonGrid } from '@/components/channels/ChannelCardSkeleton';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/api-client';
@@ -52,7 +53,6 @@ export default function TrackedChannelsPage() {
   // Track only channels that were NEWLY imported in this session — only these show Apify loading spinner
   const [newlyImportedUsernames, setNewlyImportedUsernames] = useState<Set<string>>(new Set());
   const bgRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const loadPlatformChannels = async (): Promise<ChannelProfile[]> => {
     try {
       const response = await apiClient.get(`/tracked-channels?platform=${platform.toUpperCase()}`);
@@ -441,7 +441,7 @@ export default function TrackedChannelsPage() {
               </button>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-4 flex-wrap">
             <ChannelsPlatformSwitcher />
           </div>
         </div>
@@ -449,21 +449,11 @@ export default function TrackedChannelsPage() {
 
       {/* Content */}
       <div className="container mx-auto px-4 max-w-7xl pt-8">
-        {listLoading || globalHrBusy ? (
-          <div className="flex flex-col items-center justify-center py-24 px-4 min-h-[320px]">
-            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-6" />
-            <p className="text-slate-800 font-semibold text-lg text-center">
-              {longSyncHint || hrSyncing || globalHrBusy
-                ? 'Đang đồng bộ HR & lấy số liệu Apify…'
-                : `Đang tải kênh ${platformName}…`}
-            </p>
-            {(longSyncHint || hrSyncing || globalHrBusy) && (
-              <p className="text-slate-500 text-sm mt-3 max-w-md text-center">
-                Có thể vài phút — không đóng trang cho đến khi followers / likes hiển thị.
-              </p>
-            )}
-          </div>
-        ) : (
+        {/* Skeleton cards khi chưa có kênh nào */}
+        {listLoading && channels.length === 0 && (
+          <ChannelCardSkeletonGrid count={8} />
+        )}
+        {(!listLoading || channels.length > 0) && (
           <>
         {/* Stats Bar */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-slate-100">
@@ -543,12 +533,12 @@ export default function TrackedChannelsPage() {
                   </button>
                 </div>
 
-                {/* Stats Wrapper — chỉ hiện spinner nếu kênh này MỚI được import trong session này */}
+                {/* Stats Wrapper — hiển thị spinner khi mới import, đang refresh, hoặc chưa có số liệu */}
                 <div className="relative mt-auto flex-1 flex flex-col justify-end min-h-[100px] mb-5">
-                  {newlyImportedUsernames.has(channel.username) && (
-                    <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center animate-pulse border border-slate-100/50">
-                      <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mb-2" />
-                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-200">AI đang quét số liệu...</span>
+                  {(newlyImportedUsernames.has(channel.username) || refreshingIds.has(channel.username) || (!channel.total_followers && !channel.total_likes && !channel.total_videos)) && (
+                    <div className="absolute inset-[-8px] bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center border border-slate-100/50">
+                      <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mb-1.5" />
+                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-white/90 px-3 py-1 rounded-full shadow-sm border border-indigo-200">Đang lấy số liệu...</span>
                     </div>
                   )}
                   {/* Followers Section with Chart */}
