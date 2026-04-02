@@ -454,7 +454,7 @@ const ActivityFilters = ({
                                                     <Image
                                                         src="/indo-flag.png"
                                                         alt="INDO"
-                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                        className="w-5 h-3.5 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]"
                                                         width={20}
                                                         height={14}
                                                         unoptimized
@@ -464,7 +464,7 @@ const ActivityFilters = ({
                                                     <Image
                                                         src="/thailand-flag.png"
                                                         alt="TH"
-                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                        className="w-5 h-3.5 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]"
                                                         width={20}
                                                         height={14}
                                                         unoptimized
@@ -475,7 +475,7 @@ const ActivityFilters = ({
                                                     <Image
                                                         src="/japan-flag.png"
                                                         alt="JP"
-                                                        className="w-5 h-3.5 object-contain rounded-sm border border-gray-100"
+                                                        className="w-5 h-3.5 object-contain rounded-sm border border-gray-100 filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]"
                                                         width={20}
                                                         height={14}
                                                         unoptimized
@@ -485,7 +485,7 @@ const ActivityFilters = ({
                                                     <Image
                                                         src="/taiwan-flag.png"
                                                         alt="TW"
-                                                        className="w-5 h-3.5 object-contain rounded-sm"
+                                                        className="w-5 h-3.5 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]"
                                                         width={20}
                                                         height={14}
                                                         unoptimized
@@ -511,7 +511,7 @@ const ActivityFilters = ({
                                     : "bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
                             }`}
                         >
-                            <Image src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm shadow-sm" width={28} height={20} unoptimized />
+                            <Image src="/vn-flag.png" alt="VN" className="w-7 h-5 object-contain rounded-sm filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" width={28} height={20} unoptimized />
                             {getVNLabel()}
                             <ChevronDown
                                 className={`w-5 h-5 transition-transform duration-300 ${openDropdown === "vietnam" ? "rotate-180 text-blue-400" : ""}`}
@@ -540,7 +540,7 @@ const ActivityFilters = ({
                                             <Image
                                                 src="/vn-flag.png"
                                                 alt="VN"
-                                                className="w-6 h-4 object-contain rounded-sm shadow-sm"
+                                                className="w-6 h-4 object-contain rounded-sm filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
                                                 width={24}
                                                 height={16}
                                                 unoptimized

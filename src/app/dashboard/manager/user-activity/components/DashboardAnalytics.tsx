@@ -137,19 +137,19 @@ const DashboardAnalytics = ({ startDate, endDate, activeTeam }: DashboardAnalyti
                                                 <td className="px-3 py-1.5 border-b border-slate-50">
                                                     <div className="flex items-center gap-1.5">
                                                         {member.team?.toLowerCase().includes('global - indo') && (
-                                                            <Image src="/indo-flag.png" alt="INDO" className="w-4 h-3 object-contain rounded-sm" width={16} height={12} unoptimized />
+                                                            <Image src="/indo-flag.png" alt="INDO" className="w-4 h-3 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                                                         )}
                                                         {member.team?.toLowerCase().includes('thái lan') && (
-                                                            <Image src="/thailand-flag.png" alt="TH" className="w-4 h-3 object-contain rounded-sm" width={16} height={12} unoptimized />
+                                                            <Image src="/thailand-flag.png" alt="TH" className="w-4 h-3 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                                                         )}
                                                         {(member.team?.toLowerCase().includes('jp') || member.team?.toLowerCase().includes('nhật bản')) && (
-                                                            <Image src="/japan-flag.png" alt="JP" className="w-4 h-3 object-contain rounded-sm border border-gray-100" width={16} height={12} unoptimized />
+                                                            <Image src="/japan-flag.png" alt="JP" className="w-4 h-3 object-contain rounded-sm border border-gray-100 filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                                                         )}
                                                         {member.team?.toLowerCase().includes('đài loan') && (
-                                                            <Image src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain rounded-sm" width={16} height={12} unoptimized />
+                                                            <Image src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                                                         )}
                                                         {member.team?.toLowerCase().includes('việt nam') && (
-                                                            <Image src="/vn-flag.png" alt="VN" className="w-4 h-3 object-contain rounded-sm" width={16} height={12} unoptimized />
+                                                            <Image src="/vn-flag.png" alt="VN" className="w-4 h-3 object-contain rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                                                         )}
                                                         <span className="text-[11px] font-black text-blue-600 italic uppercase">{member.team}</span>
                                                     </div>

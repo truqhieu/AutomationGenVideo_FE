@@ -129,19 +129,20 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                 : `${style.glow}`
                 }`}>
 
-            {/* Flag background - visible like reference photo */}
-            <div
-                className="absolute inset-0 z-0 pointer-events-none"
-                style={{
-                    backgroundImage: `url(${flagBg})`,
-                    backgroundSize: flagBg === '/japan-flag.png' ? '155%' : flagBg === '/thailand-flag.png' ? '110%' : 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    opacity: 0.35,
-                }}
-            />
-            {/* White overlay to keep text readable */}
-            <div className="absolute inset-0 z-0 pointer-events-none bg-white/45" />
+            <div className="absolute top-0 left-0 pointer-events-none z-10" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))' }}>
+                <div
+                    style={{
+                        width: '130px',
+                        height: '100px',
+                        backgroundImage: `url(${flagBg})`,
+                        backgroundSize: '130px 85px',
+                        backgroundPosition: '-30px 75px',
+                        clipPath: 'polygon(0 0, 100% 0, 0 100%)',
+                        opacity: 0.45,
+                        filter: 'blur(0.4px)',
+                    }}
+                />
+            </div>
 
             <div className="p-4 flex flex-col items-center relative z-10">
                 {/* Warning/Status Icon */}
@@ -190,19 +191,19 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                         <span className="text-[10px] font-black text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200 shadow-xs flex items-center gap-1">
                             {data.team}
                             {data.team?.toLowerCase().includes('thái lan') && (
-                                <Image src="/thailand-flag.png" alt="TH" className="w-3.5 h-2.5 object-contain" width={14} height={10} unoptimized />
+                                <Image src="/thailand-flag.png" alt="TH" className="w-3.5 h-2.5 object-contain filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={14} height={10} unoptimized />
                             )}
                             {data.team?.toLowerCase().includes('global - indo') && (
-                                <Image src="/indo-flag.png" alt="INDO" className="w-3.5 h-2.5 object-contain" width={14} height={10} unoptimized />
+                                <Image src="/indo-flag.png" alt="INDO" className="w-3.5 h-2.5 object-contain filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={14} height={10} unoptimized />
                             )}
                             {data.team?.toLowerCase().includes('việt nam') && (
-                                <Image src="/vn-flag.png" alt="VN" className="w-3.5 h-2.5 object-contain" width={14} height={10} unoptimized />
+                                <Image src="/vn-flag.png" alt="VN" className="w-3.5 h-2.5 object-contain filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={14} height={10} unoptimized />
                             )}
                             {(data.team?.toLowerCase().includes('jp') || data.team?.toLowerCase().includes('nhật bản')) && (
-                                <Image src="/japan-flag.png" alt="JP" className="w-3.5 h-2.5 object-contain border border-gray-100" width={14} height={10} unoptimized />
+                                <Image src="/japan-flag.png" alt="JP" className="w-3.5 h-2.5 object-contain border border-gray-100 filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={14} height={10} unoptimized />
                             )}
                             {data.team?.toLowerCase().includes('đài loan') && (
-                                <Image src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain" width={16} height={12} unoptimized />
+                                <Image src="/taiwan-flag.png" alt="TW" className="w-4 h-3 object-contain filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={12} unoptimized />
                             )}
                         </span>
                     </div>
@@ -213,7 +214,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                     <div className="flex items-center justify-between p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-2">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">TGBC</span>
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">TBBC</span>
                         </div>
                         <span className="text-xs font-black text-slate-800">{data.time}</span>
                     </div>
@@ -236,10 +237,10 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                 </div>
 
                 {/* Report Status Badge */}
-                <div className="w-full flex justify-center mb-4">
-                    <div className={`px-5 py-1.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] shadow-md transition-all ${isReportedOnTime
-                        ? 'bg-emerald-600 text-white ring-2 ring-emerald-500/20'
-                        : 'bg-red-600 text-white ring-2 ring-red-500/20'
+                <div className="w-full flex justify-center mb-4 px-2">
+                    <div className={`w-full py-2.5 rounded-full text-[13px] font-black uppercase tracking-widest shadow-lg text-center transition-all ${isReportedOnTime
+                        ? 'bg-emerald-600 text-white shadow-emerald-200/50'
+                        : 'bg-red-600 text-white shadow-red-200/50'
                         }`}>
                         {data.reportStatus || 'Chưa báo cáo'}
                     </div>

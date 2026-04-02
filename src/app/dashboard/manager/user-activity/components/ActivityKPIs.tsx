@@ -75,8 +75,8 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((kpi, idx) => (
-                <Card key={idx} className="bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
-                    <CardContent className="p-3">
+                <Card key={idx} className="relative bg-gradient-to-br from-white to-blue-50/30 border-slate-200/60 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300 border-b-2 border-b-blue-500">
+                    <CardContent className="p-3 relative z-10">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">{kpi.title}</h3>
                             <div className="bg-blue-600/5 p-1 rounded-lg">
@@ -144,7 +144,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     </span>
                                 </div>
                                 <div className="text-[9px] font-black text-blue-600/70 uppercase flex items-center gap-0.5">
-                                    VN <Image src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm" width={16} height={10} unoptimized />
+                                    VN <Image src="/vn-flag.png" alt="VN" className="w-4 h-2.5 rounded-sm filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]" width={16} height={10} unoptimized />
                                 </div>
                             </div>
                         </div>

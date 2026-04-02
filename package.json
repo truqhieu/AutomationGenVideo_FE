@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
-    "dev:turbo": "next dev -p 3001 --turbo",
+    "dev": "set \"NODE_OPTIONS=--max-old-space-size=4096\" && next dev -p 3001",
+    "dev:turbo": "set \"NODE_OPTIONS=--max-old-space-size=4096\" && next dev -p 3001 --turbo",
     "build": "rimraf .next && set \"NEXT_DISABLE_SWC_WORKER=1\" && next build",
     "start": "next start -p 3001",
     "lint": "next lint",
