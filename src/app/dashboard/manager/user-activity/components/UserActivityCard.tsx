@@ -68,17 +68,17 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
 
     const statusStyles = {
         neutral: {
-            card: `border-slate-200/90 border-2 bg-white/95 ${canClick ? 'hover:bg-white transition-all shadow-[0_8px_30px_rgba(15,23,42,0.06)]' : ''}`,
+            card: `border-red-500 border-[3px] bg-red-100/40 ${canClick ? 'hover:bg-red-100/60 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]' : ''}`,
             avatar: 'border-slate-200 ring-2 ring-slate-100',
             icon: 'text-slate-500',
             badge: 'bg-slate-600 text-white',
             text: 'text-slate-800',
             doneRow: 'text-slate-800',
-            glow: canClick ? 'hover:shadow-slate-200/50' : '',
-            accent: 'bg-slate-50'
+            glow: canClick ? 'hover:shadow-red-300/40' : '',
+            accent: 'bg-red-100/60'
         },
         completed: {
-            card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
+            card: `border-emerald-500 border-[3px] bg-emerald-100/70 ${canClick ? 'hover:bg-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.1)]' : ''}`,
             avatar: 'border-emerald-500 ring-4 ring-emerald-100',
             icon: 'text-emerald-500',
             badge: 'bg-emerald-600 text-white',
@@ -89,7 +89,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
         },
         exceeded: {
             // Vượt mục tiêu: cùng nền xanh với đạt mục tiêu (chỉ khác accent tím ở vài ô con)
-            card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
+            card: `border-emerald-500 border-[3px] bg-emerald-100/70 ${canClick ? 'hover:bg-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.1)]' : ''}`,
             avatar: 'border-emerald-500 ring-4 ring-emerald-100',
             icon: 'text-emerald-600',
             badge: 'bg-emerald-600 text-white',
@@ -124,7 +124,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
     return (
         <div
             onClick={canClick ? onClick : undefined}
-            className={`relative rounded-2xl overflow-hidden border transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
+            className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${canClick ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-default'} ${style.card} ${isActive
                 ? 'ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] z-10 border-blue-500'
                 : `${style.glow}`
                 }`}>
