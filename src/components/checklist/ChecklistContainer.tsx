@@ -550,7 +550,43 @@ const ChecklistContainer = ({
                 return;
             }
 
-            // Validate Evidence for each platform with traffic > 0
+            // #region agent log
+            if (typeof window !== 'undefined') {
+                const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+                const evidenceCounts = platforms.reduce((acc: any, k) => {
+                    acc[k] = (platformEvidences?.[k] || []).length;
+                    return acc;
+                }, {} as Record<string, number>);
+                const positiveTrafficPlatforms = platforms.filter((k) => {
+                    const v = traffic?.[k as keyof TrafficData];
+                    return v && Number(v) > 0;
+                });
+                fetch('http://127.0.0.1:7242/ingest/50a1c944-63a6-4094-af64-9a73a105402a', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: 'ChecklistContainer.tsx:handleSubmit',
+                        message: 'traffic submit precheck (evidence optional)',
+                        data: {
+                            hasTrafficData,
+                            showOnlyWork,
+                            showOnlyTraffic,
+                            positiveTrafficPlatforms,
+                            evidenceCounts,
+                        },
+                        timestamp: Date.now(),
+                        hypothesisId: 'H1',
+                        runId: 'post-fix',
+                    }),
+                }).catch(() => {});
+            }
+            // #endregion
+
+            // Evidence is optional: do not block submission when missing.
+            // (Backend already accepts empty evidences and will store evidence_* only when provided.)
+
+            /*
+            // Validate Evidence for each platform with traffic > 0 (REMOVED)
             const platforms = [
                 { id: 'fb', label: 'FB' },
                 { id: 'ig', label: 'IG' },
@@ -572,6 +608,7 @@ const ChecklistContainer = ({
                     }
                 }
             }
+            */
         }
 
         // Validate Form Chi Tiết (Member)
