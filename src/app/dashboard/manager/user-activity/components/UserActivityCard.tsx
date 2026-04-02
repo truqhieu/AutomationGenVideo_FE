@@ -55,23 +55,27 @@ const getAvatarUrl = (url: string | null, name: string) => {
 };
 
 const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
-    const dailyGoal = data.dailyGoal || 0;
-    const done = data.done || 0;
+    const dailyGoal = Number(data.dailyGoal) || 0;
+    const done = Number(data.done) || 0;
 
-    let statusType: 'warning' | 'completed' | 'exceeded' = 'warning';
-    if (done > dailyGoal) statusType = 'exceeded';
-    else if (done === dailyGoal) statusType = 'completed';
-    else statusType = 'warning';
+    // KPI màu card: chỉ dựa trên Đã xong vs Mục tiêu ngày (không trộn với trạng thái báo cáo / traffic).
+    let statusType: 'neutral' | 'completed' | 'exceeded' = 'neutral';
+    if (dailyGoal > 0) {
+        if (done > dailyGoal) statusType = 'exceeded';
+        else if (done >= dailyGoal) statusType = 'completed';
+        else statusType = 'neutral';
+    }
 
     const statusStyles = {
-        warning: {
-            card: `border-red-400 border-2 bg-red-100/60 ${canClick ? 'hover:bg-red-100/80 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]' : ''}`,
-            avatar: 'border-red-500 ring-4 ring-red-100',
-            icon: 'text-red-500',
-            badge: 'bg-red-600 text-white',
-            text: 'text-red-600',
-            glow: canClick ? 'hover:shadow-red-300/40' : '',
-            accent: 'bg-red-100'
+        neutral: {
+            card: `border-slate-200/90 border-2 bg-white/95 ${canClick ? 'hover:bg-white transition-all shadow-[0_8px_30px_rgba(15,23,42,0.06)]' : ''}`,
+            avatar: 'border-slate-200 ring-2 ring-slate-100',
+            icon: 'text-slate-500',
+            badge: 'bg-slate-600 text-white',
+            text: 'text-slate-800',
+            doneRow: 'text-slate-800',
+            glow: canClick ? 'hover:shadow-slate-200/50' : '',
+            accent: 'bg-slate-50'
         },
         completed: {
             card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
@@ -79,17 +83,20 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
             icon: 'text-emerald-500',
             badge: 'bg-emerald-600 text-white',
             text: 'text-emerald-600',
+            doneRow: 'text-emerald-700',
             glow: canClick ? 'hover:shadow-emerald-300/40' : '',
             accent: 'bg-emerald-100'
         },
         exceeded: {
-            card: `border-purple-400 border-2 bg-purple-100/60 ${canClick ? 'hover:bg-purple-100/80 transition-all shadow-[0_8px_30px_rgba(168,85,247,0.1)]' : ''}`,
-            avatar: 'border-purple-500 ring-4 ring-purple-100',
-            icon: 'text-purple-600',
-            badge: 'bg-purple-600 text-white',
-            text: 'text-purple-700',
-            glow: canClick ? 'hover:shadow-purple-300/40' : '',
-            accent: 'bg-purple-100'
+            // Vượt mục tiêu: cùng nền xanh với đạt mục tiêu (chỉ khác accent tím ở vài ô con)
+            card: `border-emerald-400 border-2 bg-emerald-100/60 ${canClick ? 'hover:bg-emerald-100/80 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.08)]' : ''}`,
+            avatar: 'border-emerald-500 ring-4 ring-emerald-100',
+            icon: 'text-emerald-600',
+            badge: 'bg-emerald-600 text-white',
+            text: 'text-emerald-700',
+            doneRow: 'text-purple-700',
+            glow: canClick ? 'hover:shadow-emerald-300/40' : '',
+            accent: 'bg-emerald-100'
         }
     };
 
@@ -144,8 +151,8 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                             <Target className="w-4 h-4 text-purple-600" />
                         </div>
                     ) : (
-                        <div className={`${!isReportedOnTime ? 'bg-red-100 border-red-200' : 'bg-gray-100 border-gray-200'} p-2 rounded-xl border`}>
-                            <AlertCircle className={`w-4 h-4 ${!isReportedOnTime ? 'text-red-500 animate-pulse' : style.icon}`} />
+                        <div className={`${statusType === 'completed' ? 'bg-emerald-100 border-emerald-200' : 'bg-gray-100 border-gray-200'} p-2 rounded-xl border`}>
+                            <AlertCircle className={`w-4 h-4 ${style.icon}`} />
                         </div>
                     )}
                 </div>
@@ -211,20 +218,20 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive,
                         <span className="text-xs font-black text-slate-800">{data.time}</span>
                     </div>
 
-                    <div className={`flex items-center justify-between p-2 rounded-2xl border transition-colors ${statusType === 'exceeded' ? 'bg-purple-50/50 border-purple-100' : 'bg-white border-slate-100'}`}>
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border transition-colors ${statusType === 'exceeded' ? 'bg-purple-50/50 border-purple-100' : statusType === 'completed' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
-                            <Target className={`w-3.5 h-3.5 ${statusType === 'exceeded' ? 'text-purple-500' : 'text-slate-400'}`} />
+                            <Target className={`w-3.5 h-3.5 ${statusType === 'exceeded' ? 'text-purple-500' : statusType === 'completed' ? 'text-emerald-500' : 'text-slate-400'}`} />
                             <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{goalLabel}</span>
                         </div>
-                        <span className={`text-sm font-black ${statusType === 'exceeded' ? 'text-purple-700' : 'text-slate-900'}`}>{dailyGoal}</span>
+                        <span className={`text-sm font-black ${statusType === 'exceeded' ? 'text-purple-700' : statusType === 'completed' ? 'text-emerald-800' : 'text-slate-900'}`}>{dailyGoal}</span>
                     </div>
 
-                    <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-purple-100 border-purple-200' : 'bg-white border-slate-100'}`}>
+                    <div className={`flex items-center justify-between p-2 rounded-2xl border shadow-sm ${statusType === 'exceeded' ? 'bg-purple-100 border-purple-200' : statusType === 'completed' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
                         <div className="flex items-center gap-2">
                             <CheckCircle2 className={`w-3.5 h-3.5 ${style.icon}`} />
                             <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">ĐÃ XONG</span>
                         </div>
-                        <span className={`text-sm font-black ${style.text}`}>{done}</span>
+                        <span className={`text-sm font-black ${style.doneRow}`}>{done}</span>
                     </div>
                 </div>
 
