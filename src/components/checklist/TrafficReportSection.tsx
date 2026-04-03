@@ -122,8 +122,8 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         const total = currentEntries.reduce((sum, e) => {
             const d = digitsOnly(e.value);
             return d ? sum + BigInt(d) : sum;
-        }, 0n);
-        onChange(platformId as keyof TrafficData, total > 0n ? total.toString() : '');
+        }, BigInt(0));
+        onChange(platformId as keyof TrafficData, total > BigInt(0) ? total.toString() : '');
         
         // Joined channel names
         const joinedChannels = currentEntries
