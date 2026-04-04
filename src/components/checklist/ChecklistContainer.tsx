@@ -196,7 +196,6 @@ const ChecklistContainer = ({
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [larkRole, setLarkRole] = useState<string | null>(null);
-    const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
     const [selectedTeam, setSelectedTeam] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
@@ -229,31 +228,6 @@ const ChecklistContainer = ({
         };
 
         fetchLarkRole();
-    }, [user?.email]);
-
-    // Fetch reporting status (open/closed)
-    useEffect(() => {
-        const fetchStatus = async () => {
-            if (!user?.email) return;
-
-            try {
-                const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
-                const base = djangoBase.replace(/\/$/, '');
-                const url = `${base}/api/checklist/status/?email=${encodeURIComponent(user.email)}`;
-
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    setStatus(data);
-                }
-            } catch (err) {
-                console.error('Failed to fetch reporting status:', err);
-            }
-        };
-
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 5 * 60 * 1000);
-        return () => clearInterval(interval);
     }, [user?.email]);
 
     // Fetch historical report for checking read-only status
@@ -764,33 +738,14 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {/* Chỉ hiện cảnh báo khi xem ngày quá khứ - đã bỏ check khung giờ */}
             {(reportDate < new Date().toLocaleDateString('en-CA')) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
-                        {`Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.`}
+                        {`Ngày ${reportDate.split('-').reverse().join('/')} đã qua (theo lịch). Chỉ xem dữ liệu đã gửi — không gửi hay sửa thêm cho ngày này.`}
                     </p>
                 </div>
             )}
-
-
-            {/* Tạm ẩn báo cáo khung giờ 
-            {!isReadOnly && showOnlyTraffic && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (
-                <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
-                    (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
-                        ? 'bg-blue-50 border border-blue-200 text-blue-800'
-                        : 'bg-red-50 border border-red-200 text-red-800'
-                }`}>
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <p className="text-sm font-bold uppercase tracking-tight">
-                        {(new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
-                            ? 'Đang trong khung giờ báo cáo Traffic (17:00 - 18:00)'
-                            : 'Ngoài khung giờ báo cáo Traffic (Quy định: 17:00 - 18:00 hàng ngày)'}
-                    </p>
-                </div>
-            )}
-            */}
 
             <div className="grid grid-cols-1 gap-4 items-stretch">
 
@@ -911,16 +866,11 @@ const ChecklistContainer = ({
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={
-                            loading ||
-                            isReadOnly
-                            // ⚠️ TẠM BỎ CHECK KHUNG GIỜ - bật lại bằng cách uncommnet dòng dưới
-                            // || (!status.is_open && !showOnlyTraffic)
-                        }
+                        disabled={loading || isReadOnly}
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}
