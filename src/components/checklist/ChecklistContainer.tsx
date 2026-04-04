@@ -15,6 +15,14 @@ const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
 const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
 
+/** Ngày theo lịch máy dạng YYYY-MM-DD (không dùng toLocaleDateString('en-CA') để so sánh — iOS Safari có thể trả M/D/YYYY và làm sai chuỗi). */
+function localCalendarYMD(d: Date = new Date()): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const date = new Date(value);
@@ -192,11 +200,10 @@ const ChecklistContainer = ({
     const [entryDetails, setEntryDetails] = useState<Record<string, any>>({});
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
 
-    const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [reportDate, setReportDate] = useState<string>(() => localCalendarYMD());
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [larkRole, setLarkRole] = useState<string | null>(null);
-    const [status, setStatus] = useState<{ is_open: boolean; message: string }>({ is_open: true, message: '' });
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
     const [selectedTeam, setSelectedTeam] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
@@ -231,31 +238,6 @@ const ChecklistContainer = ({
         fetchLarkRole();
     }, [user?.email]);
 
-    // Fetch reporting status (open/closed)
-    useEffect(() => {
-        const fetchStatus = async () => {
-            if (!user?.email) return;
-
-            try {
-                const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
-                const base = djangoBase.replace(/\/$/, '');
-                const url = `${base}/api/checklist/status/?email=${encodeURIComponent(user.email)}`;
-
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    setStatus(data);
-                }
-            } catch (err) {
-                console.error('Failed to fetch reporting status:', err);
-            }
-        };
-
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 5 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [user?.email]);
-
     // Fetch historical report for checking read-only status
     useEffect(() => {
         const fetchReportDetails = async () => {
@@ -282,7 +264,7 @@ const ChecklistContainer = ({
                     const data = await response.json();
                     
                     // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
-                    const todayStr = new Date().toLocaleDateString('en-CA'); // Lấy YYYY-MM-DD local
+                    const todayStr = localCalendarYMD();
                     const isPastDate = reportDate < todayStr;
 
                     if (isPastDate) {
@@ -550,7 +532,43 @@ const ChecklistContainer = ({
                 return;
             }
 
-            // Validate Evidence for each platform with traffic > 0
+            // #region agent log
+            if (typeof window !== 'undefined') {
+                const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+                const evidenceCounts = platforms.reduce((acc: any, k) => {
+                    acc[k] = (platformEvidences?.[k] || []).length;
+                    return acc;
+                }, {} as Record<string, number>);
+                const positiveTrafficPlatforms = platforms.filter((k) => {
+                    const v = traffic?.[k as keyof TrafficData];
+                    return v && Number(v) > 0;
+                });
+                fetch('http://127.0.0.1:7242/ingest/50a1c944-63a6-4094-af64-9a73a105402a', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: 'ChecklistContainer.tsx:handleSubmit',
+                        message: 'traffic submit precheck (evidence optional)',
+                        data: {
+                            hasTrafficData,
+                            showOnlyWork,
+                            showOnlyTraffic,
+                            positiveTrafficPlatforms,
+                            evidenceCounts,
+                        },
+                        timestamp: Date.now(),
+                        hypothesisId: 'H1',
+                        runId: 'post-fix',
+                    }),
+                }).catch(() => {});
+            }
+            // #endregion
+
+            // Evidence is optional: do not block submission when missing.
+            // (Backend already accepts empty evidences and will store evidence_* only when provided.)
+
+            /*
+            // Validate Evidence for each platform with traffic > 0 (REMOVED)
             const platforms = [
                 { id: 'fb', label: 'FB' },
                 { id: 'ig', label: 'IG' },
@@ -572,6 +590,7 @@ const ChecklistContainer = ({
                     }
                 }
             }
+            */
         }
 
         // Validate Form Chi Tiết (Member)
@@ -727,38 +746,19 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {/* Chỉ hiện cảnh báo khi xem ngày quá khứ - đã bỏ check khung giờ */}
-            {(reportDate < new Date().toLocaleDateString('en-CA')) && (
+            {(reportDate < localCalendarYMD()) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
-                        {`Đã quá hạn gửi báo cáo ngày ${reportDate.split('-').reverse().join('/')}. Bạn chỉ có thể xem dữ liệu cũ.`}
+                        {`Ngày ${reportDate.split('-').reverse().join('/')} đã qua (theo lịch). Chỉ xem dữ liệu đã gửi — không gửi hay sửa thêm cho ngày này.`}
                     </p>
                 </div>
             )}
-
-
-            {/* Tạm ẩn báo cáo khung giờ 
-            {!isReadOnly && showOnlyTraffic && (reportDate === new Date().toISOString().split('T')[0] || reportDate === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`) && (
-                <div className={`p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500 ${
-                    (new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
-                        ? 'bg-blue-50 border border-blue-200 text-blue-800'
-                        : 'bg-red-50 border border-red-200 text-red-800'
-                }`}>
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <p className="text-sm font-bold uppercase tracking-tight">
-                        {(new Date().getHours() >= 17 && new Date().getHours() < 18) || isAdmin
-                            ? 'Đang trong khung giờ báo cáo Traffic (17:00 - 18:00)'
-                            : 'Ngoài khung giờ báo cáo Traffic (Quy định: 17:00 - 18:00 hàng ngày)'}
-                    </p>
-                </div>
-            )}
-            */}
 
             <div className="grid grid-cols-1 gap-4 items-stretch">
 
                 {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && !showOnlyTraffic && (
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
                     <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
                         <span className="text-2xl">📋</span>
                         <div>
@@ -769,7 +769,7 @@ const ChecklistContainer = ({
                 )}
 
                 {/* Số liệu traffic chưa báo cáo */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && showOnlyTraffic && (
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
                     <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
                         <span className="text-2xl">📊</span>
                         <div>
@@ -874,16 +874,11 @@ const ChecklistContainer = ({
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={
-                            loading ||
-                            isReadOnly
-                            // ⚠️ TẠM BỎ CHECK KHUNG GIỜ - bật lại bằng cách uncommnet dòng dưới
-                            // || (!status.is_open && !showOnlyTraffic)
-                        }
+                        disabled={loading || isReadOnly}
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'HẾT HẠN BÁO CÁO' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}

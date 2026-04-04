@@ -114,11 +114,16 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
         }
     }, [initialEntries]);
 
+    const digitsOnly = (s: string) => (s || '').replace(/\D/g, '');
+
     // Update parent whenever entries change
     const updateParent = (platformId: string, currentEntries: TrafficEntry[], allEntries: Record<string, TrafficEntry[]>) => {
-        // Aggregated total
-        const total = currentEntries.reduce((sum, e) => sum + (parseInt(e.value) || 0), 0);
-        onChange(platformId as keyof TrafficData, total > 0 ? total.toString() : '');
+        // Aggregated total — BigInt avoids float precision loss on very large traffic totals
+        const total = currentEntries.reduce((sum, e) => {
+            const d = digitsOnly(e.value);
+            return d ? sum + BigInt(d) : sum;
+        }, BigInt(0));
+        onChange(platformId as keyof TrafficData, total > BigInt(0) ? total.toString() : '');
         
         // Joined channel names
         const joinedChannels = currentEntries
@@ -321,11 +326,13 @@ const TrafficReportSection: React.FC<TrafficReportSectionProps> = ({
                                             </div>
                                             <input
                                                 type="text"
+                                                inputMode="numeric"
+                                                autoComplete="off"
                                                 placeholder="Số lượt..."
                                                 readOnly={readOnly}
-                                                value={entry.value !== '' ? Number(entry.value).toLocaleString('en-US') : ''}
+                                                value={digitsOnly(entry.value)}
                                                 onChange={(e) => {
-                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                    const rawValue = digitsOnly(e.target.value);
                                                     updateRow(platform.id, entry.id, { value: rawValue });
                                                 }}
                                                 className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 text-base font-black focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100 transition-all outline-none"
