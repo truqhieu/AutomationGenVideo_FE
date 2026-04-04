@@ -15,6 +15,14 @@ const initialChecks = () => Array(CHECKLIST_ITEMS.length).fill(false);
 const initialDetails = () => Array(DETAIL_ITEMS.length).fill('');
 const initialLeaderAnswers = () => Array(LEADER_QUESTIONS.length).fill('');
 
+/** Ngày theo lịch máy dạng YYYY-MM-DD (không dùng toLocaleDateString('en-CA') để so sánh — iOS Safari có thể trả M/D/YYYY và làm sai chuỗi). */
+function localCalendarYMD(d: Date = new Date()): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const date = new Date(value);
@@ -192,7 +200,7 @@ const ChecklistContainer = ({
     const [entryDetails, setEntryDetails] = useState<Record<string, any>>({});
     const [platformEvidences, setPlatformEvidences] = useState<Record<string, string[]>>({});
 
-    const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [reportDate, setReportDate] = useState<string>(() => localCalendarYMD());
     const [submitCount, setSubmitCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [larkRole, setLarkRole] = useState<string | null>(null);
@@ -256,7 +264,7 @@ const ChecklistContainer = ({
                     const data = await response.json();
                     
                     // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
-                    const todayStr = new Date().toLocaleDateString('en-CA'); // Lấy YYYY-MM-DD local
+                    const todayStr = localCalendarYMD();
                     const isPastDate = reportDate < todayStr;
 
                     if (isPastDate) {
@@ -738,7 +746,7 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {(reportDate < new Date().toLocaleDateString('en-CA')) && (
+            {(reportDate < localCalendarYMD()) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
@@ -750,7 +758,7 @@ const ChecklistContainer = ({
             <div className="grid grid-cols-1 gap-4 items-stretch">
 
                 {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && !showOnlyTraffic && (
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
                     <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
                         <span className="text-2xl">📋</span>
                         <div>
@@ -761,7 +769,7 @@ const ChecklistContainer = ({
                 )}
 
                 {/* Số liệu traffic chưa báo cáo */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= new Date().toLocaleDateString('en-CA') && showOnlyTraffic && (
+                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
                     <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
                         <span className="text-2xl">📊</span>
                         <div>
@@ -870,7 +878,7 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < new Date().toLocaleDateString('en-CA') ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}
