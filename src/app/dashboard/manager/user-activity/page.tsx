@@ -40,6 +40,15 @@ import { useActivityFilters, CARDS_PER_BATCH, CHECKLIST_PAGE_SIZE } from "./hook
 
 const normalize = (str: any) => (str || "").toString().toLowerCase().trim().replace(/\s+/g, "");
 
+type ActiveTab =
+    | "dashboard"
+    | "performance"
+    | "ranking"
+    | "personal"
+    | "daily_checklist"
+    | "daily_report"
+    | "daily_outstanding";
+
 const TAB_MAP: Record<string, ActiveTab> = {
     activity_performance: "performance",
     performance: "performance",
@@ -75,14 +84,65 @@ function activeTabFromSearchParam(tab: string | null): ActiveTab | null {
     return null;
 }
 
-type ActiveTab =
-    | "dashboard"
-    | "performance"
-    | "ranking"
-    | "personal"
-    | "daily_checklist"
-    | "daily_report"
-    | "daily_outstanding";
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+    });
+}
+
+/** html-to-image không vẽ được ảnh cross-origin (Drive, Lark, …) → mất avatar; inline qua API same-origin. */
+async function embedCrossOriginImagesForCapture(root: HTMLElement): Promise<() => void> {
+    const imgs = Array.from(root.querySelectorAll("img"));
+    const backup = imgs.map((img) => ({
+        img,
+        src: img.getAttribute("src"),
+        srcset: img.getAttribute("srcset"),
+    }));
+
+    await Promise.all(
+        imgs.map(async (img) => {
+            const raw = img.currentSrc || img.src || "";
+            if (!raw || raw.startsWith("data:") || raw.startsWith("blob:")) return;
+
+            let absolute: URL;
+            try {
+                absolute = new URL(raw, window.location.href);
+            } catch {
+                return;
+            }
+
+            if (absolute.origin === window.location.origin) return;
+
+            const proxyUrl = `/api/capture-image?url=${encodeURIComponent(absolute.href)}`;
+            try {
+                const r = await fetch(proxyUrl);
+                if (!r.ok) return;
+                const dataUrl = await blobToDataUrl(await r.blob());
+                img.src = dataUrl;
+                img.removeAttribute("srcset");
+                try {
+                    await img.decode();
+                } catch {
+                    await new Promise((res) => setTimeout(res, 50));
+                }
+            } catch {
+                /* giữ ảnh gốc */
+            }
+        }),
+    );
+
+    return () => {
+        backup.forEach(({ img, src, srcset }) => {
+            if (src != null) img.setAttribute("src", src);
+            else img.removeAttribute("src");
+            if (srcset != null) img.setAttribute("srcset", srcset);
+            else img.removeAttribute("srcset");
+        });
+    };
+}
 
 const CardSkeleton = () => (
     <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-white animate-pulse">
@@ -326,14 +386,20 @@ const UserActivityPageContent = () => {
     const handleCaptureFullPage = async () => {
         const container = document.getElementById("report-view-container");
         if (!container) return;
+
+        const scrollY = window.scrollY;
+        let revertImgs: (() => void) | undefined;
+
         try {
             const { toPng } = await import("html-to-image");
-            const scrollY = window.scrollY;
             window.scrollTo(0, 0);
             await new Promise((r) => setTimeout(r, 600));
 
             const contentArea = container.querySelector(".relative.z-10.space-y-2") as HTMLElement;
             const captureTarget = contentArea || container;
+
+            revertImgs = await embedCrossOriginImagesForCapture(captureTarget);
+            await new Promise((r) => setTimeout(r, 150));
 
             const filter = (node: HTMLElement) => {
                 if (node.tagName === "LINK" && (node as HTMLLinkElement).rel === "prefetch") return false;
@@ -371,10 +437,12 @@ const UserActivityPageContent = () => {
             link.href = dataUrl;
             link.download = `VCB_Report_${ts}.png`;
             link.click();
-            window.scrollTo(0, scrollY);
         } catch (e) {
             console.error("Capture screenshot failed:", e);
             alert("Lỗi chụp màn hình. Hãy thử lại.");
+        } finally {
+            revertImgs?.();
+            window.scrollTo(0, scrollY);
         }
     };
 
