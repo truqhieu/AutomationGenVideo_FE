@@ -9,9 +9,10 @@ import UserActivityCard from "./components/UserActivityCard";
 import ReportCard from "./components/ReportCard";
 
 const DashboardAnalytics = dynamic(() => import("./components/DashboardAnalytics"), { ssr: false });
-const RankingView        = dynamic(() => import("./components/RankingView"),         { ssr: false });
-const PersonalCharts     = dynamic(() => import("./components/PersonalCharts"),      { ssr: false });
+const RankingView = dynamic(() => import("./components/RankingView"), { ssr: false });
+const PersonalCharts = dynamic(() => import("./components/PersonalCharts"), { ssr: false });
 const ChecklistContainer = dynamic(() => import("@/components/checklist/ChecklistContainer"), { ssr: false });
+import { MOCK_CHECKLIST_REPORTS } from "@/app/dashboard/manager/user-activity/mockData";
 import {
     RefreshCw,
     User,
@@ -186,7 +187,7 @@ const UserActivityPageContent = () => {
     const reportParam = searchParams.get("report");
 
     const [activeTab, setActiveTab] = React.useState<ActiveTab>(
-        () => activeTabFromSearchParam(tabParam) ?? "performance",
+        () => activeTabFromSearchParam(tabParam) ?? "daily_checklist",
     );
     const [reportType, setReportType] = React.useState<"select" | "daily" | "monthly">(() => {
         const r = reportParam?.trim().toLowerCase();
@@ -353,7 +354,7 @@ const UserActivityPageContent = () => {
 
     // Stable ISO strings for DashboardAnalytics — prevents refetch storms from object identity changes
     const dashboardStartISO = useMemo(() => dateRange.start.toISOString(), [dateRange.start.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
-    const dashboardEndISO   = useMemo(() => dateRange.end.toISOString(),   [dateRange.end.getTime()]);   // eslint-disable-line react-hooks/exhaustive-deps
+    const dashboardEndISO = useMemo(() => dateRange.end.toISOString(), [dateRange.end.getTime()]);   // eslint-disable-line react-hooks/exhaustive-deps
 
     // Role helpers (memoized to avoid re-compute on every render)
     const sysRoles = useMemo(() => user?.roles ?? [], [user]);
@@ -540,6 +541,9 @@ const UserActivityPageContent = () => {
     }, [reportOutstandings, matchTeam, deferredSearchName, isAdminUser, userTeam]);
 
     const checklistFilteredReports = React.useMemo(() => {
+        // --- INJECT MOCK DATA ---
+        const mockReports = MOCK_CHECKLIST_REPORTS;
+
         // Bước 1: Lọc theo text search và dropdown team
         let roleFiltered = reports.filter((r) => {
             if (!matchTeam(r.team)) return false;
@@ -547,8 +551,11 @@ const UserActivityPageContent = () => {
             return true;
         });
 
+        // Kết hợp với mock data
+        const combined = [...mockReports, ...roleFiltered];
+
         // Bước 2: Áp filter Leader/Member button filter
-        return roleFiltered.filter((r) => {
+        return combined.filter((r) => {
             if (checklistRoleFilter === "all") return true;
             const pos = (r.position || "").toLowerCase();
             const isReportLeader = pos === "leader" || pos.includes("leader") || pos.includes("trưởng nhóm");
@@ -869,11 +876,10 @@ const UserActivityPageContent = () => {
                                                                 </td>
                                                                 <td className="px-6 py-3 border-r border-slate-50 text-center">
                                                                     <span
-                                                                        className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${
-                                                                            r.category?.toLowerCase().includes("win")
+                                                                        className={`px-3 py-2 rounded-xl text-[12px] font-black uppercase tracking-tight ${r.category?.toLowerCase().includes("win")
                                                                                 ? "bg-purple-100 text-purple-800 border-2 border-purple-200 shadow-sm shadow-purple-100"
                                                                                 : "bg-amber-100 text-amber-800 border-2 border-amber-200 shadow-sm shadow-amber-100"
-                                                                        }`}
+                                                                            }`}
                                                                     >
                                                                         {r.category || "-"}
                                                                     </span>
@@ -919,9 +925,9 @@ const UserActivityPageContent = () => {
                                                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
                                                                                             <Clock className="w-3.5 h-3.5" />{" "}
                                                                                             {isReportFromLeader ||
-                                                                                            !r.team ||
-                                                                                            r.team.trim() === "" ||
-                                                                                            normalize(r.team) === "khac"
+                                                                                                !r.team ||
+                                                                                                r.team.trim() === "" ||
+                                                                                                normalize(r.team) === "khac"
                                                                                                 ? "Chờ Admin duyệt"
                                                                                                 : "Chờ Leader duyệt"}
                                                                                         </span>
@@ -943,8 +949,8 @@ const UserActivityPageContent = () => {
                                                                                             Đã từ chối
                                                                                         </span>
                                                                                     ) : !canLeaderAction &&
-                                                                                      _isLeaderTeamMatch &&
-                                                                                      !isAdminHandled ? (
+                                                                                        _isLeaderTeamMatch &&
+                                                                                        !isAdminHandled ? (
                                                                                         isLeaderApproved ? (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
                                                                                                 <CheckCircle2 className="w-3.5 h-3.5" />{" "}
@@ -956,10 +962,10 @@ const UserActivityPageContent = () => {
                                                                                                 Đã từ chối (Đã khóa)
                                                                                             </span>
                                                                                         ) : isReportFromLeader ||
-                                                                                          !r.team ||
-                                                                                          r.team.trim() === "" ||
-                                                                                          normalize(r.team) ===
-                                                                                              "khac" ? (
+                                                                                            !r.team ||
+                                                                                            r.team.trim() === "" ||
+                                                                                            normalize(r.team) ===
+                                                                                            "khac" ? (
                                                                                             <span className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-200 flex items-center gap-1">
                                                                                                 <Clock className="w-3.5 h-3.5" />{" "}
                                                                                                 Chờ Admin duyệt
@@ -1054,8 +1060,8 @@ const UserActivityPageContent = () => {
                                                                                                     ? isLeaderApproved
                                                                                                         ? "Leader đã duyệt"
                                                                                                         : isLeaderRejected
-                                                                                                          ? "Leader từ chối"
-                                                                                                          : "Chưa duyệt"
+                                                                                                            ? "Leader từ chối"
+                                                                                                            : "Chưa duyệt"
                                                                                                     : `Admin đã duyệt | ${isLeaderApproved ? "Leader đã duyệt" : isLeaderRejected ? "Leader từ chối" : ""}`,
                                                                                             )
                                                                                         }
@@ -1077,8 +1083,8 @@ const UserActivityPageContent = () => {
                                                                                                     ? isLeaderApproved
                                                                                                         ? "Leader đã duyệt"
                                                                                                         : isLeaderRejected
-                                                                                                          ? "Leader từ chối"
-                                                                                                          : "Chưa duyệt"
+                                                                                                            ? "Leader từ chối"
+                                                                                                            : "Chưa duyệt"
                                                                                                     : `Admin từ chối | ${isLeaderApproved ? "Leader đã duyệt" : isLeaderRejected ? "Leader từ chối" : ""}`,
                                                                                             )
                                                                                         }
