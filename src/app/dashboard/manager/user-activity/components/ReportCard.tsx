@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React from "react";
-import { Check, PieChart as PieIcon, AlertCircle, ChevronRight } from "lucide-react";
+import { Check, AlertCircle, ChevronRight } from "lucide-react";
 import { SiFacebook, SiInstagram, SiTiktok, SiThreads } from "react-icons/si";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -111,6 +111,8 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
     const isCompleted = statusRaw === "ĐÃ BÁO CÁO ĐỦ" || statusRaw === "SUBMITTED" || statusRaw === "ĐÚNG HẠN";
     const isLate = statusRaw.includes("TRỄ") || statusRaw.includes("LATE");
     const isUnreported = statusRaw === "CHƯA BÁO CÁO" || statusRaw === "" || statusRaw === "PENDING" || statusRaw === "CHƯA NỘP";
+    /** Đã nộp báo cáo ngày nhưng chưa có traffic (lark.service: CHƯA BÁO CÁO TRAFFIC) */
+    const isTrafficNotReported = statusRaw.includes("CHƯA BÁO CÁO TRAFFIC");
     const isOnTime = isCompleted && !isLate;
     
     // Determine the max traffic for scale
@@ -185,23 +187,21 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Traffic Section */}
-                            <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 shadow-inner">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h4 className="text-[13px] font-black text-black uppercase tracking-[0.1em] flex items-center gap-2">
-                                        <PieIcon className="w-4 h-4" /> Traffic hôm qua
-                                    </h4>
-                                    <span className="text-[18px] font-black text-slate-900">
-                                        {formatTrafficNumber(report.trafficToday?.total || 0)}
-                                    </span>
+                            {!isTrafficNotReported && (
+                                <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 shadow-inner">
+                                    <div className="flex justify-end items-center mb-4">
+                                        <span className="text-[18px] font-black text-slate-900">
+                                            {formatTrafficNumber(report.trafficToday?.total || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <ProgressBar label="TikTok" value={tiktokVal} max={maxVal} color="#1f2937" icon={SiTiktok} />
+                                        <ProgressBar label="Facebook" value={fbVal} max={maxVal} color="#3b82f6" icon={SiFacebook} />
+                                        <ProgressBar label="Instagram" value={igVal} max={maxVal} color="#ec4899" icon={SiInstagram} />
+                                        <ProgressBar label="Threads" value={threadVal} max={maxVal} color="#64748b" icon={SiThreads} />
+                                    </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <ProgressBar label="TikTok" value={tiktokVal} max={maxVal} color="#1f2937" icon={SiTiktok} />
-                                    <ProgressBar label="Facebook" value={fbVal} max={maxVal} color="#3b82f6" icon={SiFacebook} />
-                                    <ProgressBar label="Instagram" value={igVal} max={maxVal} color="#ec4899" icon={SiInstagram} />
-                                    <ProgressBar label="Threads" value={threadVal} max={maxVal} color="#64748b" icon={SiThreads} />
-                                </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
