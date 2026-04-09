@@ -108,6 +108,8 @@ const mapReportItem = (item: any) => {
             : 0,
         task_progress: item.task_progress || null,
         trafficToday: item.trafficToday || null,
+        /** false = không thuộc danh sách kênh traffic (vd. Leader) — ẩn block traffic trên card báo cáo ngày */
+        needsTraffic: item.needsTraffic !== false,
         questions: [
             {
                 question: isLeaderReport
