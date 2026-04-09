@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Check, AlertCircle, ChevronRight } from "lucide-react";
-import { SiFacebook, SiInstagram, SiTiktok, SiThreads } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTiktok, SiThreads, SiYoutube } from "react-icons/si";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -120,6 +120,7 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
         Number(report.trafficToday?.fb || 0) > 0 ||
         Number(report.trafficToday?.ig || 0) > 0 ||
         Number(report.trafficToday?.tiktok || 0) > 0 ||
+        Number(report.trafficToday?.yt || 0) > 0 ||
         Number(report.trafficToday?.thread || 0) > 0;
     const trafficSatisfied = !needsTraffic || hasTrafficData || !isTrafficNotReported;
     const bothComplete = trafficSatisfied && !isUnreported;
@@ -138,8 +139,9 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
     const tiktokVal = trafficData?.tiktok || 0;
     const fbVal = trafficData?.fb || 0;
     const igVal = trafficData?.ig || 0;
+    const ytVal = trafficData?.yt || 0;
     const threadVal = trafficData?.thread || 0;
-    const maxVal = Math.max(tiktokVal, fbVal, igVal, threadVal, 1000); // at least 1000 for scale
+    const maxVal = Math.max(tiktokVal, fbVal, igVal, ytVal, threadVal, 1000); // at least 1000 for scale
 
     const qaBlock =
         memberBlockVisible && report.questions ? (
@@ -237,6 +239,7 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
                                         <ProgressBar label="TikTok" value={tiktokVal} max={maxVal} color="#1f2937" icon={SiTiktok} />
                                         <ProgressBar label="Facebook" value={fbVal} max={maxVal} color="#3b82f6" icon={SiFacebook} />
                                         <ProgressBar label="Instagram" value={igVal} max={maxVal} color="#ec4899" icon={SiInstagram} />
+                                        <ProgressBar label="YouTube" value={ytVal} max={maxVal} color="#ff0000" icon={SiYoutube} />
                                         <ProgressBar label="Threads" value={threadVal} max={maxVal} color="#64748b" icon={SiThreads} />
                                     </div>
                                 </div>
