@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import React from "react";
 import { Check, AlertCircle, ChevronRight } from "lucide-react";
 import { SiFacebook, SiInstagram, SiTiktok, SiThreads } from "react-icons/si";
@@ -47,6 +46,8 @@ interface EmployeeReport {
     };
     videoCount: number;
     trafficToday?: TrafficToday | null;
+    /** false: không bắt buộc báo cáo traffic (backend needsTraffic) */
+    needsTraffic?: boolean;
     isMock?: boolean;
     questions: {
         question: string;
@@ -104,7 +105,6 @@ const ProgressBar = ({ label, value, max, color, icon: Icon }: { label: string, 
 };
 
 const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSmall?: boolean }) => {
-    const [showQuestions, setShowQuestions] = React.useState(false);
     const avatarSrc = getAvatarUrl(report.avatar, report.name);
 
     const statusRaw = (report.status || "").toString().toUpperCase();
@@ -114,6 +114,17 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
     /** Đã nộp báo cáo ngày nhưng chưa có traffic (lark.service: CHƯA BÁO CÁO TRAFFIC) */
     const isTrafficNotReported = statusRaw.includes("CHƯA BÁO CÁO TRAFFIC");
     const isOnTime = isCompleted && !isLate;
+    const needsTraffic = report.needsTraffic !== false;
+    const trafficSatisfied = !needsTraffic || !isTrafficNotReported;
+    const bothComplete = trafficSatisfied && !isUnreported;
+    const showTrafficBlock = needsTraffic && !isTrafficNotReported;
+    const memberBlockVisible = Boolean(!isUnreported && report.questions?.length);
+    /** Khi đã hoàn tất traffic + member: mặc định thu gọn (false). Chưa xong traffic: luôn mở nội dung (state không ảnh hưởng hiển thị). */
+    const [showQuestions, setShowQuestions] = React.useState(() => !bothComplete);
+
+    React.useEffect(() => {
+        setShowQuestions(!bothComplete);
+    }, [report.id, bothComplete]);
     
     // Determine the max traffic for scale
     const trafficData = report.trafficToday;
@@ -122,6 +133,27 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
     const igVal = trafficData?.ig || 0;
     const threadVal = trafficData?.thread || 0;
     const maxVal = Math.max(tiktokVal, fbVal, igVal, threadVal, 1000); // at least 1000 for scale
+
+    const qaBlock =
+        memberBlockVisible && report.questions ? (
+            <div className="mt-6 pt-6 border-t-2 border-slate-50 space-y-5">
+                {report.questions.map((q, i) => (
+                    <div key={i} className="space-y-2">
+                        <div className="flex items-start gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-700 mt-1.5 shrink-0" />
+                            <p className="text-[13px] font-black text-black uppercase tracking-wide leading-relaxed">
+                                {q.question}
+                            </p>
+                        </div>
+                        <div className="pl-3.5 border-l-2 border-slate-50 ml-0.5">
+                            <p className="text-[13px] font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                {q.answer}
+                            </p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ) : null;
 
     return (
         <div 
@@ -187,7 +219,7 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {!isTrafficNotReported && (
+                            {showTrafficBlock && (
                                 <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 shadow-inner">
                                     <div className="flex justify-end items-center mb-4">
                                         <span className="text-[18px] font-black text-slate-900">
@@ -205,40 +237,30 @@ const ReportCard = ({ report, isSmall = false }: { report: EmployeeReport; isSma
                         </div>
                     )}
 
-                    {/* Questions Section (Expandable) */}
-                    <AnimatePresence>
-                        {showQuestions && !isUnreported && report.questions && report.questions.length > 0 && (
-                            <motion.div 
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
-                                className="overflow-hidden"
-                            >
-                                <div className="mt-6 pt-6 border-t-2 border-slate-50 space-y-5">
-                                    {report.questions.map((q, i) => (
-                                        <div key={i} className="space-y-2">
-                                            <div className="flex items-start gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-blue-700 mt-1.5 shrink-0" />
-                                                <p className="text-[13px] font-black text-black uppercase tracking-wide leading-relaxed">
-                                                    {q.question}
-                                                </p>
-                                            </div>
-                                            <div className="pl-3.5 border-l-2 border-slate-50 ml-0.5">
-                                                <p className="text-[13px] font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                                    {q.answer}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* Chưa xong traffic (khi bắt buộc): luôn hiện Q&A. Đã xong hết: mặc định thu gọn, có nút mở/đóng */}
+                    {memberBlockVisible &&
+                        (!bothComplete ? (
+                            qaBlock
+                        ) : (
+                            <AnimatePresence initial={false}>
+                                {showQuestions && (
+                                    <motion.div
+                                        key="qa"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
+                                        className="overflow-hidden"
+                                    >
+                                        {qaBlock}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        ))}
                 </div>
 
-                {/* Footer Section */}
-                {!isUnreported && report.questions && report.questions.length > 0 && (
+                {/* Footer: chỉ khi đã hoàn tất traffic (nếu bắt buộc) + báo cáo member */}
+                {bothComplete && memberBlockVisible && (
                     <button 
                         onClick={() => setShowQuestions(!showQuestions)}
                         className={`mt-8 group/btn w-full py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 border 
