@@ -33,6 +33,16 @@ export function LeaderHeader({ tab, onTabChange }: LeaderHeaderProps) {
                     >
                         KPI & Mục tiêu
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => onTabChange(2)}
+                        className={cn(
+                            "rounded-lg px-5 py-2 text-sm font-medium",
+                            tab === 2 ? "bg-amber-500 text-white shadow" : "text-gray-500 hover:bg-gray-50",
+                        )}
+                    >
+                        Xét duyệt video
+                    </button>
                 </nav>
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
                     <span className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">

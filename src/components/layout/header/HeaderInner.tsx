@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Settings, LogOut, Menu, X } from "lucide-react";
+import { Settings, LogOut, Menu, X, Video } from "lucide-react";
 import { UserRole } from "@/types/auth";
 import { HeaderProps } from "./types";
 import { useNavMenus } from "./use-nav-menus";
@@ -169,6 +169,20 @@ export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderPr
                                 isItemActive={isItemActive}
                             />
                         ))}
+
+                        {/* Xét duyệt video — luôn hiển thị, trang tự check quyền */}
+                        <div className="w-px h-5 bg-white/10 self-center mx-0.5" />
+                        <Link
+                            href="/dashboard/video-review"
+                            className={`flex items-center gap-1.5 px-3 h-full text-sm font-medium transition-colors duration-150 border-b-2 ${
+                                pathname.startsWith("/dashboard/video-review")
+                                    ? "text-amber-400 border-amber-400"
+                                    : "text-slate-300 border-transparent hover:text-white hover:border-white/30"
+                            }`}
+                        >
+                            <Video className="w-3.5 h-3.5" />
+                            Xét duyệt Video
+                        </Link>
                     </nav>
 
                     {/* Portal slot */}

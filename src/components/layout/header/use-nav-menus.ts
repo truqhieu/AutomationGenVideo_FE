@@ -13,6 +13,7 @@ import {
     BarChart3,
     Calendar,
     Crown,
+    CheckCircle2,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
@@ -93,6 +94,16 @@ export function useNavMenus(
                                 icon: User,
                                 description: "Lịch sử & biểu đồ tiến độ cá nhân",
                             },
+                            ...((isLeader || isAdmin || isManager)
+                                ? [
+                                      {
+                                          label: "Xét duyệt video",
+                                          href: "/dashboard/video-review",
+                                          icon: CheckCircle2,
+                                          description: "Duyệt video do thành viên gửi lên",
+                                      },
+                                  ]
+                                : []),
                         ],
                     },
                     {
