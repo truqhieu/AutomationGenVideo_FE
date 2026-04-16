@@ -14,6 +14,7 @@ import {
     Calendar,
     Crown,
     Bookmark,
+    Languages,
     Globe,
 } from "lucide-react";
 import { NavMenu } from "./types";
@@ -181,6 +182,7 @@ export function useNavMenus(
                     "/dashboard/search-video",
                     "/dashboard/channel-analysis",
                     "/dashboard/video-library",
+                    "/dashboard/content/generate",
                 ],
                 sections: [
                     {
@@ -226,6 +228,12 @@ export function useNavMenus(
                                 href: "/dashboard/video-library",
                                 icon: Bookmark,
                                 description: "Video hay do Leader & Manager tuyển chọn cho team",
+                            },
+                            {
+                                label: "Dịch Content",
+                                href: "/dashboard/content/generate?mode=translate-only",
+                                icon: Languages,
+                                description: "Dịch content có sẵn và recheck bằng bảng 3 cột",
                             },
                         ],
                     },
