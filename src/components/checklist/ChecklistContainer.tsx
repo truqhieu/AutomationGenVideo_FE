@@ -23,6 +23,12 @@ function localCalendarYMD(d: Date = new Date()): string {
     return `${y}-${m}-${day}`;
 }
 
+/** Deadline báo cáo: 10:00 sáng (múi giờ máy local = Asia/Ho_Chi_Minh trên NAS). Trả về true nếu đã qua 10h hôm nay. */
+function isPastDailyDeadline(): boolean {
+    const now = new Date();
+    return now.getHours() >= 10;
+}
+
 const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const date = new Date(value);
@@ -210,6 +216,17 @@ const ChecklistContainer = ({
     const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({} as any);
     const [hasFetchedReport, setHasFetchedReport] = useState(false);   // đã fetch xong chưa?
     const [hasReportData, setHasReportData] = useState(false);          // có dữ liệu báo cáo chưa?
+
+    // Deadline 10h: khoá toàn bộ form nếu đã qua 10h sáng hôm nay (chỉ áp dụng cho ngày hôm nay)
+    const [isDeadlinePassed, setIsDeadlinePassed] = useState<boolean>(() => isPastDailyDeadline());
+    useEffect(() => {
+        setIsDeadlinePassed(isPastDailyDeadline());
+        // Re-check mỗi phút để UI tự khoá khi đến 10h
+        const timer = setInterval(() => setIsDeadlinePassed(isPastDailyDeadline()), 60_000);
+        return () => clearInterval(timer);
+    }, []);
+    // Chỉ khoá deadline nếu đang xem ngày hôm nay (ngày quá khứ đã khoá bởi isPastDate rồi)
+    const isDeadlineLockedToday = isDeadlinePassed && reportDate === localCalendarYMD();
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -513,6 +530,11 @@ const ChecklistContainer = ({
     }, [checks, details, leaderAnswers, showForm3]);
 
     const handleSubmit = async () => {
+        // Khoá tuyệt đối nếu đã quá 10h và đang báo cáo ngày hôm nay
+        if (isDeadlineLockedToday) {
+            toast.error('⏰ Đã qua 10:00 sáng — Báo cáo hôm nay đã bị khoá. Liên hệ quản lý nếu cần ghi nhận muộn.');
+            return;
+        }
         if (!user) {
             toast.error('Vui lòng đăng nhập để gửi báo cáo.');
             return;
@@ -755,121 +777,134 @@ const ChecklistContainer = ({
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 items-stretch">
+            {/* Banner cảnh báo khoá sau 10h — chỉ hiện khi đang xem ngày hôm nay */}
+            {isDeadlineLockedToday && (
+                <div className="bg-red-50 border-2 border-red-400 text-red-800 p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top duration-300 shadow-sm">
+                    <AlertCircle className="w-6 h-6 flex-shrink-0 text-red-500" />
+                    <div>
+                        <p className="text-sm font-black uppercase tracking-tight">🔒 Đã khoá — Quá 10:00 sáng</p>
+                        <p className="text-xs font-medium mt-0.5">Deadline báo cáo hằng ngày là <strong>10:00 sáng</strong>. Báo cáo hôm nay đã bị khoá. Lần trễ này sẽ được ghi nhận.</p>
+                    </div>
+                </div>
+            )}
 
-                {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
-                    <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
-                        <span className="text-2xl">📋</span>
-                        <div>
-                            <p className="text-sm font-black text-orange-700 uppercase tracking-tight">Chưa báo cáo</p>
-                            <p className="text-xs text-orange-500 font-medium">Bạn chưa gửi báo cáo công việc hôm nay. Hãy điền vào form bên dưới nhé!</p>
+            {/* Chỉ hiện form khi CHƯA khoá deadline hôm nay (isDeadlineLockedToday = false)
+                 Ngày quá khứ: vẫn hiện form nhưng readOnly — để user xem lại dữ liệu đã gửi
+                 Đã khoá 10h hôm nay mà chưa gửi: ẩn form hoàn toàn, chỉ hiện banner đỏ */}
+            {!isDeadlineLockedToday && (
+                <div className="grid grid-cols-1 gap-4 items-stretch">
+
+                    {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
+                    {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
+                        <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                            <span className="text-2xl">📋</span>
+                            <div>
+                                <p className="text-sm font-black text-orange-700 uppercase tracking-tight">Chưa báo cáo</p>
+                                <p className="text-xs text-orange-500 font-medium">Bạn chưa gửi báo cáo công việc hôm nay. Hãy điền vào form bên dưới nhé!</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Số liệu traffic chưa báo cáo */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
-                    <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
-                        <span className="text-2xl">📊</span>
-                        <div>
-                            <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic</p>
-                            <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
+                    {/* Số liệu traffic chưa báo cáo */}
+                    {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
+                        <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                            <span className="text-2xl">📊</span>
+                            <div>
+                                <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic</p>
+                                <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
-                {(showForm12 || showForm3) && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <ChecklistSection
-                            values={checks}
-                            onChange={handleCheckChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
+                    {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
+                    {(showForm12 || showForm3) && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <ChecklistSection
+                                values={checks}
+                                onChange={handleCheckChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
 
+                    {/* Show Detail Section for Member/Staff - Hide if only traffic */}
+                    {showForm12 && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <DetailSection
+                                values={details}
+                                onChange={handleDetailChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
 
-                {/* Show Detail Section for Member/Staff - Hide if only traffic */}
-                {showForm12 && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <DetailSection
-                            values={details}
-                            onChange={handleDetailChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
+                    {/* Leader Section - Show for Leader mode - Hide if only traffic */}
+                    {showForm3 && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <LeaderEvaluationSection
+                                values={leaderAnswers}
+                                onChange={handleLeaderAnswerChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
 
-                {/* Leader Section - Show for Leader mode - Hide if only traffic */}
-                {showForm3 && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <LeaderEvaluationSection
-                            values={leaderAnswers}
-                            onChange={handleLeaderAnswerChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
-
-                {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
-                {(showForm12 || showForm3) && !showOnlyWork && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
-                        {userTeams.length > 1 && (
-                            <div className="flex flex-wrap items-center gap-3 mb-5 px-1 py-3 bg-blue-50/60 rounded-xl border border-blue-100">
-                                <div className="flex items-center gap-2 px-2">
-                                    <Layers className="w-5 h-5 text-blue-500" />
-                                    <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
-                                    <button
-                                        onClick={() => setSelectedTeam('')}
-                                        className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
-                                            !selectedTeam
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                        }`}
-                                    >
-                                        Tất cả
-                                    </button>
-                                    {userTeams.map((team: string) => (
+                    {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
+                    {(showForm12 || showForm3) && !showOnlyWork && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
+                            {userTeams.length > 1 && (
+                                <div className="flex flex-wrap items-center gap-3 mb-5 px-1 py-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                                    <div className="flex items-center gap-2 px-2">
+                                        <Layers className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
                                         <button
-                                            key={team}
-                                            onClick={() => setSelectedTeam(team)}
+                                            onClick={() => setSelectedTeam('')}
                                             className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
-                                                selectedTeam === team
+                                                !selectedTeam
                                                     ? 'bg-blue-600 text-white shadow-md'
                                                     : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
                                             }`}
                                         >
-                                            {team}
+                                            Tất cả
                                         </button>
-                                    ))}
+                                        {userTeams.map((team: string) => (
+                                            <button
+                                                key={team}
+                                                onClick={() => setSelectedTeam(team)}
+                                                className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
+                                                    selectedTeam === team
+                                                        ? 'bg-blue-600 text-white shadow-md'
+                                                        : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            >
+                                                {team}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                        <TrafficReportSection
-                            key={`${submitCount}-${reportDate}`}
-                            values={traffic}
-                            channels={trafficChannels}
-                            availableChannels={availableChannels}
-                            onChange={handleTrafficChange}
-                            onChannelChange={handleChannelChange}
-                            onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
-                            onEntriesChange={setEntryDetails}
-                            readOnly={isReadOnly}
-                            initialEvidences={historicalEvidences}
-                            initialEntries={entryDetails}
-                        />
+                            )}
+                            <TrafficReportSection
+                                key={`${submitCount}-${reportDate}`}
+                                values={traffic}
+                                channels={trafficChannels}
+                                availableChannels={availableChannels}
+                                onChange={handleTrafficChange}
+                                onChannelChange={handleChannelChange}
+                                onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                                onEntriesChange={setEntryDetails}
+                                readOnly={isReadOnly}
+                                initialEvidences={historicalEvidences}
+                                initialEntries={entryDetails}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
-                    </div>
-                )}
-            </div>
-
-
-
-            {!(showOnlyTraffic && availableChannels.length === 0) && (
+            {/* Nút submit — ẩn khi đã khoá deadline hôm nay */}
+            {!isDeadlineLockedToday && !(showOnlyTraffic && availableChannels.length === 0) && (
                 <div className="flex justify-center pt-8 border-t border-gray-100">
                     <button
                         type="button"

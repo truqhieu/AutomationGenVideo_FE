@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Check, CheckCircle2, Upload, PenLine, AlertCircle } from 'lucide-react';
+import { Check, CheckCircle2, Upload, PenLine, AlertCircle, Lock } from 'lucide-react';
+
+/** Deadline báo cáo: 10:00 sáng. Trả true nếu đã qua 10h hôm nay. */
+function isPastDailyDeadline(): boolean {
+    const now = new Date();
+    return now.getHours() >= 10;
+}
 
 type TabMode = 'daily' | 'monthly';
 
@@ -44,13 +50,21 @@ export default function DailyReportWorkspace() {
 
   const [timeLeftStr, setTimeLeftStr] = useState('00:00:00');
 
+  // Khoá form sau 10h sáng
+  const [isDeadlineLockedToday, setIsDeadlineLockedToday] = useState<boolean>(() => isPastDailyDeadline());
+  useEffect(() => {
+      setIsDeadlineLockedToday(isPastDailyDeadline());
+      const timer = setInterval(() => setIsDeadlineLockedToday(isPastDailyDeadline()), 60_000);
+      return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       const target = new Date();
-      target.setHours(9, 0, 0, 0);
+      target.setHours(10, 0, 0, 0); // Deadline 10h sáng
 
-      // Nếu hiện tại đã quá 9h sáng, đếm ngược tới 9h sáng hôm sau
+      // Nếu hiện tại đã quá 10h sáng, đếm ngược tới 10h sáng hôm sau
       if (now.getTime() > target.getTime()) {
         target.setDate(target.getDate() + 1);
       }
@@ -119,14 +133,29 @@ export default function DailyReportWorkspace() {
         <>
           <div className="rounded-2xl border border-[#FDE047] bg-[#FFFdf0] p-6 flex items-center justify-between shadow-md">
             <div>
-              <p className="font-black text-amber-900 text-[18px]">Deadline: 9:00 sáng</p>
+              <p className="font-black text-amber-900 text-[18px]">Deadline: 10:00 sáng</p>
               <p className="text-[15px] font-bold text-slate-500 mt-1">Trễ báo cáo sẽ bị trừ lương. Trễ 5+ lần/tháng = cảnh cáo.</p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-black text-red-600 tracking-tighter leading-none">{timeLeftStr}</p>
+              {isDeadlineLockedToday ? (
+                <p className="text-[18px] font-black text-red-600 flex items-center gap-2"><Lock className="w-5 h-5" /> Đã khoá</p>
+              ) : (
+                <p className="text-4xl font-black text-red-600 tracking-tighter leading-none">{timeLeftStr}</p>
+              )}
               <p className="text-[13px] font-black text-amber-600 mt-1.5 uppercase tracking-wider">Lần trễ tháng này: 1/5</p>
             </div>
           </div>
+
+          {/* Banner khoá sau 10h */}
+          {isDeadlineLockedToday && (
+            <div className="bg-red-50 border-2 border-red-400 text-red-800 p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top duration-300">
+              <AlertCircle className="w-6 h-6 flex-shrink-0 text-red-500" />
+              <div>
+                <p className="text-sm font-black uppercase">🔒 Báo cáo đã khoá — Quá 10:00 sáng</p>
+                <p className="text-xs font-medium mt-0.5">Liên hệ quản lý nếu cần ghi nhận muộn.</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-center py-2">
             <button onClick={() => setStep(1)} className={`flex items-center gap-2 text-sm font-bold transition-colors ${step === 1 ? 'text-[#10B981]' : 'text-slate-600'}`}>
@@ -325,8 +354,14 @@ export default function DailyReportWorkspace() {
 
               <div className="flex items-center justify-between pt-2">
                 <button className="text-slate-500 font-medium text-[13px] flex items-center hover:text-slate-800 transition-colors" onClick={() => setStep(1)}>← Quay lại</button>
-                <button className="bg-[#10B981] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#059669] transition shadow-sm" onClick={() => setConfirmOpen(true)}>
-                  Gửi báo cáo
+                <button
+                  disabled={isDeadlineLockedToday}
+                  className={`px-8 py-3 rounded-xl font-bold text-white transition shadow-sm ${
+                    isDeadlineLockedToday ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#10B981] hover:bg-[#059669]'
+                  }`}
+                  onClick={() => !isDeadlineLockedToday && setConfirmOpen(true)}
+                >
+                  {isDeadlineLockedToday ? '🔒 Đã khoá' : 'Gửi báo cáo'}
                 </button>
               </div>
             </div>
@@ -538,11 +573,11 @@ export default function DailyReportWorkspace() {
             <div className="mt-6 flex items-center justify-between">
               <button className="text-slate-500 font-bold text-[13px] hover:text-slate-800 transition-colors" onClick={() => setConfirmOpen(false)}>← Quay lại</button>
               <button
-                disabled={!confirmed}
-                className={`px-6 py-2.5 rounded-xl font-bold text-white transition-all shadow-sm ${confirmed ? 'bg-[#1D4ED8] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`}
+                disabled={!confirmed || isDeadlineLockedToday}
+                className={`px-6 py-2.5 rounded-xl font-bold text-white transition-all shadow-sm ${confirmed && !isDeadlineLockedToday ? 'bg-[#1D4ED8] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`}
                 onClick={handleSubmit}
               >
-                Gửi báo cáo ngày
+                {isDeadlineLockedToday ? '🔒 Đã khoá' : 'Gửi báo cáo ngày'}
               </button>
             </div>
           </div>
