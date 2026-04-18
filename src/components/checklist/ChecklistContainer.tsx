@@ -23,11 +23,10 @@ function localCalendarYMD(d: Date = new Date()): string {
     return `${y}-${m}-${day}`;
 }
 
-/** Deadline báo cáo: 10:00 sáng. Trả về true nếu đã qua 10h hôm nay. (Tạm thời tắt theo yêu cầu) */
+/** Deadline báo cáo: 10:00 sáng. Trả về true nếu đã qua 10h hôm nay. */
 function isPastDailyDeadline(): boolean {
-    return false; // TEMPORARILY DISABLED
-    // const now = new Date();
-    // return now.getHours() >= 10;
+    const now = new Date();
+    return now.getHours() >= 10;
 }
 
 const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
