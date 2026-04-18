@@ -551,8 +551,8 @@ const UserActivityPageContent = () => {
     const checklistFilteredReports = React.useMemo(() => {
         // Bước 1: Lọc theo text search và dropdown team
         let roleFiltered = reports.filter((r) => {
-            if (!r.is_from_lark_report) return false; // CHỈ lấy dữ liệu gốc rễ từ lark_reports
-            if (!matchTeam(r.checklist_source_team || r.team)) return false; // Xác định team chuẩn từ lark_reports
+            // Xác định team chuẩn từ lark_reports, ngược lại lấy team default
+            if (!matchTeam(r.checklist_source_team || r.team)) return false; 
             if (!(r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase())) return false;
             return true;
         });
