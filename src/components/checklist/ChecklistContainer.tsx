@@ -210,11 +210,18 @@ const ChecklistContainer = ({
     const [loading, setLoading] = useState(false);
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
-    const [selectedTeam, setSelectedTeam] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState(() => {
+        if (!user?.team) return '';
+        const teams = user.team.split(',').map((t: string) => t.trim()).filter(Boolean);
+        // Multi-team users must pick a specific team — default to first
+        return teams.length > 1 ? teams[0] : '';
+    });
     const [isReadOnly, setIsReadOnly] = useState(false);
     const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({} as any);
     const [hasFetchedReport, setHasFetchedReport] = useState(false);   // đã fetch xong chưa?
     const [hasReportData, setHasReportData] = useState(false);          // có dữ liệu báo cáo chưa?
+    const [reportedTeams, setReportedTeams] = useState<string[]>([]);  // Các team đã báo cáo traffic
+    const [serverTrafficRecords, setServerTrafficRecords] = useState<any[]>([]); // Lưu raw records từ BE để lọc theo team
 
     // Deadline 10h: khoá toàn bộ form nếu đã qua 10h sáng hôm nay (chỉ áp dụng cho ngày hôm nay)
     const [isDeadlinePassed, setIsDeadlinePassed] = useState<boolean>(() => isPastDailyDeadline());
@@ -270,6 +277,8 @@ const ChecklistContainer = ({
             setTrafficChannels(initialTrafficChannels());
             setEntryDetails({});
             setHistoricalEvidences({} as any);
+            setReportedTeams([]);
+            setServerTrafficRecords([]);
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -288,17 +297,23 @@ const ChecklistContainer = ({
                     } else if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
-                            shouldBeReadOnly = !!data.traffic;
+                            // Traffic is now team-aware, we handle its readOnly status separately
+                            // but for the global lock, we check if ALL user's teams have been reported
+                            const allTeamsReported = (user?.team || '').split(',').every(t => (data.reportedTeams || []).includes(t.trim()));
+                            shouldBeReadOnly = allTeamsReported;
                         } else if (showOnlyWork) {
                             shouldBeReadOnly = !!data.report;
                         } else {
-                            // If showing both, base it on whether either exists, but allow submission of the missing part
                             shouldBeReadOnly = !!data.report && !!data.traffic;
                         }
                         setIsReadOnly(shouldBeReadOnly);
-                    } else {
-                        // Nếu không có dữ liệu và không phải ngày quá khứ thì reset
-                        if (!isPastDate) setIsReadOnly(false);
+                    }
+
+                    if (data?.reportedTeams) {
+                        setReportedTeams(data.reportedTeams);
+                    }
+                    if (data?.trafficRecords) {
+                        setServerTrafficRecords(data.trafficRecords);
                     }
 
                     if (data && (data.report || data.traffic)) {
@@ -423,6 +438,75 @@ const ChecklistContainer = ({
         fetchReportDetails();
     }, [user?.email, reportDate]);
 
+    // Switch traffic data when selectedTeam changes (Isolation)
+    useEffect(() => {
+        if (!selectedTeam) return;
+
+        // If this team has already reported, load its data
+        const teamRecords = serverTrafficRecords.filter(r => r.team === selectedTeam);
+        
+        if (teamRecords.length > 0) {
+            const newTraffic = initialTrafficData();
+            const newChannels = initialTrafficChannels();
+            const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
+            const newEntries: Record<string, any[]> = {};
+
+            const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+            
+            teamRecords.forEach(rec => {
+                platforms.forEach(p => {
+                    const tk = `traffic_${p}`;
+                    const ck = `channel_${p}`;
+                    const ek = `evidence_${p}`;
+                    
+                    if (rec[tk] && Number(rec[tk]) > 0) {
+                        newTraffic[p as keyof TrafficData] = (Number(newTraffic[p as keyof TrafficData] || 0) + Number(rec[tk])).toString();
+                        
+                        if (rec[ck]) {
+                            newChannels[p as keyof TrafficData] = newChannels[p as keyof TrafficData] 
+                                ? `${newChannels[p as keyof TrafficData]}, ${rec[ck]}` 
+                                : rec[ck];
+                        }
+
+                        if (rec[ek]) {
+                            try {
+                                const evs = JSON.parse(rec[ek]);
+                                if (Array.isArray(evs)) {
+                                    const processedEvs = evs.map((ev: any) => ({
+                                        url: typeof ev === 'string' ? ev : (ev.url || ''),
+                                        name: typeof ev === 'string' ? 'Minh chứng' : (ev.name || 'Minh chứng'),
+                                        token: typeof ev === 'string' ? '' : (ev.token || '')
+                                    }));
+                                    newEvidences[p] = [...(newEvidences[p] || []), ...processedEvs];
+                                }
+                            } catch(e){}
+                        }
+
+                        // Reconstruct entries
+                        if (!newEntries[p]) newEntries[p] = [];
+                        newEntries[p].push({
+                            id: rec.id,
+                            value: String(rec[tk]),
+                            channel: rec[ck] || '',
+                            evidences: newEvidences[p] || []
+                        });
+                    }
+                });
+            });
+
+            setTraffic(newTraffic);
+            setTrafficChannels(newChannels);
+            setHistoricalEvidences(newEvidences);
+            setEntryDetails(newEntries);
+        } else {
+            // If not reported yet, reset form for this team
+            setTraffic(initialTrafficData());
+            setTrafficChannels(initialTrafficChannels());
+            setHistoricalEvidences({});
+            setEntryDetails({});
+        }
+    }, [selectedTeam, serverTrafficRecords]);
+
     // Parse user teams for multi-team selector
     const userTeams = React.useMemo(() => {
         if (!user?.team) return [];
@@ -529,6 +613,7 @@ const ChecklistContainer = ({
     }, [checks, details, leaderAnswers, showForm3]);
 
     const handleSubmit = async () => {
+        const currentSelectedTeam = (selectedTeam || user?.team || '').trim();
         // Khoá tuyệt đối nếu đã quá 10h và đang báo cáo ngày hôm nay
         if (isDeadlineLockedToday) {
             toast.error('⏰ Đã qua 10:00 sáng — Báo cáo hôm nay đã bị khoá. Liên hệ quản lý nếu cần ghi nhận muộn.');
@@ -642,7 +727,7 @@ const ChecklistContainer = ({
                     ...payload,
                     userEmail: user.email,
                     userName: user.full_name,
-                    userTeam: user.team,
+                    userTeam: currentSelectedTeam, // Use exactly the team selected in the UI
                     userRoles: user.roles,
                     reportDate: reportDate,
                 };
@@ -684,6 +769,7 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
+                        team: currentSelectedTeam, // Team selected in tab
                         trafficDetails: {
                             breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
                                 acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
@@ -705,7 +791,10 @@ const ChecklistContainer = ({
 
                 if (showOnlyTraffic) {
                     if (trafficRes.ok) {
-                        toast.success('Báo cáo Traffic thành công');
+                        toast.success(`Gửi báo cáo ${currentSelectedTeam} thành công`);
+                        if (currentSelectedTeam) {
+                            setReportedTeams(prev => [...prev, currentSelectedTeam]);
+                        }
                     } else {
                         const errData = await trafficRes.json().catch(() => ({}));
                         toast.error(errData.message || 'Gửi báo cáo traffic thất bại');
@@ -714,10 +803,22 @@ const ChecklistContainer = ({
                     }
                 }
 
+                // Reset form
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
-                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
+                
+                // Do not lock globally if user has other teams to report
+                if (showOnlyTraffic) {
+                    const allTeams = (user?.team || '').split(',').map(t => t.trim()).filter(Boolean);
+                    const newlyReported = [...reportedTeams, currentSelectedTeam];
+                    if (allTeams.every(t => newlyReported.includes(t))) {
+                        setIsReadOnly(true);
+                    }
+                } else {
+                    setIsReadOnly(true);
+                }
+                
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             } else {
@@ -784,12 +885,12 @@ const ChecklistContainer = ({
                     )}
 
                     {/* Số liệu traffic chưa báo cáo */}
-                    {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
+                    {hasFetchedReport && !reportedTeams.includes(selectedTeam) && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
                         <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
                             <span className="text-2xl">📊</span>
                             <div>
-                                <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic</p>
-                                <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
+                                <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic {selectedTeam}</p>
+                                <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic cho {selectedTeam} hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
                             </div>
                         </div>
                     )}
@@ -837,16 +938,6 @@ const ChecklistContainer = ({
                                         <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
                                     </div>
                                     <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
-                                        <button
-                                            onClick={() => setSelectedTeam('')}
-                                            className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
-                                                !selectedTeam
-                                                    ? 'bg-blue-600 text-white shadow-md'
-                                                    : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                            }`}
-                                        >
-                                            Tất cả
-                                        </button>
                                         {userTeams.map((team: string) => (
                                             <button
                                                 key={team}
@@ -864,7 +955,7 @@ const ChecklistContainer = ({
                                 </div>
                             )}
                             <TrafficReportSection
-                                key={`${submitCount}-${reportDate}`}
+                                key={`${submitCount}-${reportDate}-${selectedTeam}`}
                                 values={traffic}
                                 channels={trafficChannels}
                                 availableChannels={availableChannels}
@@ -872,7 +963,7 @@ const ChecklistContainer = ({
                                 onChannelChange={handleChannelChange}
                                 onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
                                 onEntriesChange={setEntryDetails}
-                                readOnly={isReadOnly}
+                                readOnly={isReadOnly || reportedTeams.includes(selectedTeam)}
                                 initialEvidences={historicalEvidences}
                                 initialEntries={entryDetails}
                             />
@@ -891,7 +982,10 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : 
+                         (isReadOnly || reportedTeams.includes(selectedTeam)) ? 
+                         (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : `ĐÃ BÁO CÁO XONG ${selectedTeam || ''}`) : 
+                         'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}
