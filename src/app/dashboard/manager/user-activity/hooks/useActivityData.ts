@@ -300,7 +300,13 @@ export function useActivityData({
             const response = await fetch(url, { cache: "no-store", signal: controller.signal });
             const data = await response.json();
             if (!controller.signal.aborted && requestId === latestHistoryReqIdRef.current) {
-                setPersonalHistory(data);
+                setPersonalHistory({
+                    history: data?.history ?? [],
+                    teamStats: data?.teamStats ?? null,
+                    companyStats: data?.companyStats ?? null,
+                    userActivity: data?.userActivity ?? null,
+                    members: data?.members ?? [],
+                });
             }
         } catch (error) {
             if ((error as any)?.name !== "AbortError") {
