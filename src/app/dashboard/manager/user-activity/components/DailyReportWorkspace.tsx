@@ -61,12 +61,12 @@ export default function DailyReportWorkspace() {
 
       {mode === 'daily' ? (
         <>
-          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex items-center justify-between">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-center justify-between">
             <div>
-              <p className="font-semibold text-amber-900">Deadline: 9:00 sáng hôm nay</p>
-              <p className="text-xs text-amber-700">Trễ báo cáo sẽ bị trừ lương.</p>
+              <p className="font-semibold text-blue-900">Báo cáo tiến độ hôm nay</p>
+              <p className="text-xs text-blue-700">Mọi báo cáo đều được ghi nhận tự động.</p>
             </div>
-            <p className="text-3xl font-bold text-red-600">2:09:31</p>
+            <p className="text-3xl font-bold text-blue-600">∞:∞</p>
           </div>
 
           <div className="flex items-center justify-center gap-10 text-sm">

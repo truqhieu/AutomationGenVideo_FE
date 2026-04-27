@@ -23,7 +23,7 @@ function localCalendarYMD(d: Date = new Date()): string {
     return `${y}-${m}-${day}`;
 }
 
-/** Deadline báo cáo: 10:00 sáng. Đã bỏ logic khoá. */
+/** Deadline báo cáo: Đã tạm thời gỡ bỏ mọi logic khoá. */
 function isPastDailyDeadline(): boolean {
     return false;
 }
@@ -283,11 +283,11 @@ const ChecklistContainer = ({
                     
                     // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
                     const todayStr = localCalendarYMD();
-                    const isPastDate = reportDate < todayStr;
+                    // const isPastDate = reportDate < todayStr;
 
-                    if (isPastDate) {
-                        setIsReadOnly(true);
-                    } else if (data && (data.report || data.traffic)) {
+                    // if (isPastDate) {
+                    //     setIsReadOnly(true);
+                    // } else if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
                             // Traffic is now team-aware, we handle its readOnly status separately
@@ -846,14 +846,14 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {(reportDate < localCalendarYMD()) && (
+            {/* {(reportDate < localCalendarYMD()) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
                         {`Ngày ${reportDate.split('-').reverse().join('/')} đã qua (theo lịch). Chỉ xem dữ liệu đã gửi — không gửi hay sửa thêm cho ngày này.`}
                     </p>
                 </div>
-            )}
+            )} */}
 
 
             {/* Chỉ hiện form khi CHƯA khoá deadline hôm nay (isDeadlineLockedToday = false)
