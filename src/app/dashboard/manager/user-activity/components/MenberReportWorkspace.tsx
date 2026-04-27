@@ -52,27 +52,9 @@ export default function DailyReportWorkspace() {
   // Deadline 10h: Đã bỏ logic khoá.
   const isDeadlineLockedToday = false;
 
+  // Deadline 10h: Đã gỡ bỏ hoàn toàn logic đếm ngược.
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const target = new Date();
-      target.setHours(10, 0, 0, 0); // Deadline 10h sáng
-
-      // Nếu hiện tại đã quá 10h sáng, đếm ngược tới 10h sáng hôm sau
-      if (now.getTime() > target.getTime()) {
-        target.setDate(target.getDate() + 1);
-      }
-
-      const diff = Math.max(0, target.getTime() - now.getTime());
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setTimeLeftStr(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    setTimeLeftStr('--:--:--');
   }, []);
 
   const handleSubmit = () => {
@@ -125,14 +107,14 @@ export default function DailyReportWorkspace() {
 
       {mode === 'daily' ? (
         <>
-          <div className="rounded-2xl border border-[#FDE047] bg-[#FFFdf0] p-6 flex items-center justify-between shadow-md">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 flex items-center justify-between shadow-sm">
             <div>
-              <p className="font-black text-amber-900 text-[18px]">Gửi báo cáo hằng ngày</p>
-              <p className="text-[15px] font-bold text-slate-500 mt-1">Vui lòng báo cáo đầy đủ các chỉ số trước khi kết thúc ngày.</p>
+              <p className="font-black text-blue-900 text-[18px]">Gửi báo cáo hằng ngày</p>
+              <p className="text-[15px] font-bold text-slate-500 mt-1">Vui lòng báo cáo đầy đủ các chỉ số hôm nay.</p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-black text-red-600 tracking-tighter leading-none">{timeLeftStr}</p>
-              <p className="text-[13px] font-black text-amber-600 mt-1.5 uppercase tracking-wider">Thời gian còn lại trong ngày</p>
+              <p className="text-4xl font-black text-blue-600 tracking-tighter leading-none">∞:∞</p>
+              <p className="text-[13px] font-black text-blue-600 mt-1.5 uppercase tracking-wider">Không giới hạn thời gian</p>
             </div>
           </div>
 
