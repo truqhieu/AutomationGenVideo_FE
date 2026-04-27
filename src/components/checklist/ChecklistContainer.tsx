@@ -300,7 +300,6 @@ const ChecklistContainer = ({
                             shouldBeReadOnly = !!data.report && !!data.traffic;
                         }
                         setIsReadOnly(shouldBeReadOnly);
-                    }
 
                     if (data?.reportedTeams) {
                         setReportedTeams(data.reportedTeams);
