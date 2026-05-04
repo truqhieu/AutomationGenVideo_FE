@@ -203,6 +203,9 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         // Do not persist isAuthenticated; derive it from a valid token + profile
       }),
+      // Ngăn Zustand gọi setState trong lúc React đang hydrate (gây hydration mismatch).
+      // Rehydrate thủ công trong AuthHydration component sau khi React hydrate xong.
+      skipHydration: true,
     }
   )
 );

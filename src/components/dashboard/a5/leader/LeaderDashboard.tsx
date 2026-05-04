@@ -5,7 +5,7 @@ import { AdminOverviewFiltersProvider } from "../admin/AdminOverviewFiltersConte
 import { LeaderHeader } from "./LeaderHeader";
 import { LeaderKpiTab } from "./LeaderKpiTab";
 import { LeaderOverviewTab } from "./LeaderOverviewTab";
-import { LeaderVideoReview } from "./LeaderVideoReview";
+
 
 export function LeaderDashboard() {
   const [tab, setTab] = useState(0);
@@ -16,10 +16,8 @@ export function LeaderDashboard() {
         <LeaderHeader tab={tab} onTabChange={setTab} />
         {tab === 0 ? (
           <LeaderOverviewTab />
-        ) : tab === 1 ? (
-          <LeaderKpiTab />
         ) : (
-          <LeaderVideoReview />
+          <LeaderKpiTab />
         )}
       </div>
     </AdminOverviewFiltersProvider>

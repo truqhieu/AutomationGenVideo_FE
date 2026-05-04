@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Roboto } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
+import AuthHydration from '@/components/AuthHydration';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -23,8 +24,9 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${roboto.className} antialiased`}>
+        <AuthHydration />
         {children}
-        <Toaster 
+        <Toaster
           position="top-right" 
           toastOptions={{
             duration: 3000,

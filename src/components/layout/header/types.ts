@@ -1,6 +1,6 @@
 import { User } from "@/types/auth";
 
-export type SectionColor = "blue" | "violet" | "slate";
+export type SectionColor = "blue" | "violet" | "slate" | "indigo";
 
 export interface SubPanelCard {
     label: string;

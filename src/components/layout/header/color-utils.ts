@@ -24,6 +24,14 @@ export function getSectionClasses(color: SectionColor): SectionClasses {
             activeRowClass: "bg-slate-600/20 text-white",
         };
     }
+    if (color === "indigo") {
+        return {
+            badgeClass: "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20",
+            activeIconClass: "bg-indigo-500/20 text-indigo-400",
+            activeDotClass: "bg-indigo-400",
+            activeRowClass: "bg-indigo-500/10 text-white",
+        };
+    }
     return {
         badgeClass: "text-blue-400 bg-blue-500/10 border border-blue-500/20",
         activeIconClass: "bg-blue-500/20 text-blue-400",

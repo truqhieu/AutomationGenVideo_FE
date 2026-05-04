@@ -14,6 +14,11 @@ import {
     Calendar,
     Crown,
     CheckCircle2,
+    Send,
+    Link2,
+    History,
+    TrendingUp,
+    CalendarDays,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
@@ -94,16 +99,6 @@ export function useNavMenus(
                                 icon: User,
                                 description: "Lịch sử & biểu đồ tiến độ cá nhân",
                             },
-                            ...((isLeader || isAdmin || isManager)
-                                ? [
-                                      {
-                                          label: "Xét duyệt video",
-                                          href: "/dashboard/video-review",
-                                          icon: CheckCircle2,
-                                          description: "Duyệt video do thành viên gửi lên",
-                                      },
-                                  ]
-                                : []),
                         ],
                     },
                     {
@@ -174,6 +169,69 @@ export function useNavMenus(
                               },
                           ]
                         : []),
+                ],
+            },
+            {
+                id: "social-publishing",
+                label: "Đăng bài MXH",
+                activePathPrefixes: [
+                    "/dashboard/social",
+                ],
+                sections: [
+                    {
+                        section: "TÀI KHOẢN",
+                        color: "blue",
+                        items: [
+                            {
+                                label: "Kết nối tài khoản",
+                                href: "/dashboard/social/channels",
+                                icon: Link2,
+                                description: "Kết nối Facebook, Instagram, TikTok, Threads, YouTube, Zalo",
+                            },
+                        ],
+                    },
+                    {
+                        section: "ĐĂNG BÀI",
+                        color: "indigo",
+                        items: [
+                            {
+                                label: "Soạn & đăng bài",
+                                href: "/dashboard/social/compose",
+                                icon: Send,
+                                description: "Tạo và đăng bài lên nhiều nền tảng",
+                            },
+                            {
+                                label: "Lịch đăng",
+                                href: "/dashboard/social/schedule",
+                                icon: Calendar,
+                                description: "Quản lý bài đăng theo lịch tự động",
+                            },
+                            {
+                                label: "Lịch tháng",
+                                href: "/dashboard/social/calendar",
+                                icon: CalendarDays,
+                                description: "Xem bài đặt lịch dạng calendar theo tháng",
+                            },
+                        ],
+                    },
+                    {
+                        section: "THỐNG KÊ",
+                        color: "slate",
+                        items: [
+                            {
+                                label: "Lịch sử đăng",
+                                href: "/dashboard/social/history",
+                                icon: History,
+                                description: "Theo dõi toàn bộ lịch sử bài đã đăng",
+                            },
+                            {
+                                label: "Thống kê",
+                                href: "/dashboard/social/stats",
+                                icon: TrendingUp,
+                                description: "Biểu đồ & phân tích hiệu suất đăng bài",
+                            },
+                        ],
+                    },
                 ],
             },
             {

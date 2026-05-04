@@ -327,26 +327,6 @@ export default function MobileDrawer({
                                 );
                             })}
 
-                            {/* Xét duyệt Video */}
-                            <Link
-                                href="/dashboard/video-review"
-                                onClick={onClose}
-                                className={`flex items-center gap-3 px-5 py-4 transition-colors duration-100 ${
-                                    pathname.startsWith("/dashboard/video-review")
-                                        ? "text-amber-400 bg-amber-500/10"
-                                        : "text-slate-300 hover:bg-white/[0.04]"
-                                }`}
-                            >
-                                <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${
-                                    pathname.startsWith("/dashboard/video-review")
-                                        ? "bg-amber-500/20 text-amber-400"
-                                        : "bg-white/[0.06] text-slate-500"
-                                }`}>
-                                    <Video className="w-4 h-4" />
-                                </div>
-                                <span className="text-base font-bold">Xét duyệt Video</span>
-                            </Link>
-                            <div className="mx-5 border-t border-white/[0.05]" />
 
                             {/* Settings */}
                             {(allowedMenuIds.includes("settings") || isManagerOrAdmin) && (

@@ -7,7 +7,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 180000, // Tăng lên 3 phút để tránh timeout khi đăng Instagram Reels
 });
 
 // In-flight GET request deduplication: prevents multiple identical simultaneous GET calls.

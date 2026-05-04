@@ -62,6 +62,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [bgMusicFile, setBgMusicFile] = useState<File | null>(null);
     const [bgMusicVolume, setBgMusicVolume] = useState(10); // 10% volume
+    const [coverImage, setCoverImage] = useState<File | null>(null);
     const [numOutputs, setNumOutputs] = useState(5);
     const [useGpu, setUseGpu] = useState<'auto' | 'true' | 'false'>('auto');
     const [useA4Formula, setUseA4Formula] = useState(false);
@@ -144,6 +145,7 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
 
 
     const audioInputRef = useRef<HTMLInputElement>(null);
+    const coverInputRef = useRef<HTMLInputElement>(null);
     const hasAutoIndexedRef = useRef(false);
 
     // Load cache stats and voices on mount
@@ -746,6 +748,9 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                 formData.append('background_music', bgMusicFile);
                 formData.append('bg_music_volume', (bgMusicVolume / 100).toString());
             }
+            if (coverImage) {
+                formData.append('cover_image', coverImage);
+            }
             formData.append('num_outputs', numOutputs.toString());
             formData.append('width', '540');
             formData.append('height', '960');
@@ -1334,6 +1339,51 @@ export default function SmartMixVideo({ generatedScript, contentType, productId,
                         </div>
                     </div>
                 )}
+
+                {/* Cover Image */}
+                <div className="px-5 pb-5">
+                    <div className="bg-[#0a0a0a] rounded-xl p-4 border border-gray-800/50">
+                        <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                            <Film className="w-3.5 h-3.5 text-pink-400" /> Ảnh bìa (Cover Image) - <span className="text-gray-600 font-normal">Optional</span>
+                        </label>
+                        <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) { 
+                                    if (!file.type.startsWith('image/')) {
+                                        toast.error('❌ Vui lòng chọn file ảnh!');
+                                        return;
+                                    }
+                                    setCoverImage(file); 
+                                    toast.success(`✅ Đã chọn ảnh bìa: ${file.name}`); 
+                                }
+                            }} />
+                        
+                        {!coverImage ? (
+                            <button onClick={() => coverInputRef.current?.click()}
+                                className="w-full py-4 flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-pink-400 hover:bg-pink-500/3 transition-all group border border-dashed border-gray-800 rounded-lg">
+                                <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                <span className="text-xs font-semibold">Tải ảnh bìa lên (để làm frame đầu tiên)</span>
+                                <span className="text-[10px] text-gray-700">★ Khi đăng, các nền tảng sẽ tự động lấy frame này làm thumbnail.</span>
+                            </button>
+                        ) : (
+                            <div className="flex items-center justify-between bg-[#141414] border border-gray-800 rounded-lg p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded overflow-hidden border border-gray-700">
+                                        <img src={URL.createObjectURL(coverImage)} alt="Cover preview" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-white text-xs font-semibold truncate">{coverImage.name}</p>
+                                        <p className="text-[10px] text-gray-500">{(coverImage.size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setCoverImage(null)} className="text-xs text-red-400 hover:text-red-300 font-bold px-2 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all">
+                                    ✕ Xóa
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* ──── STEP 3: Audio ──── */}
