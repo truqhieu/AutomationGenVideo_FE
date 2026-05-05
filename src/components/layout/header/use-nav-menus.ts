@@ -13,12 +13,13 @@ import {
     BarChart3,
     Calendar,
     Crown,
-    CheckCircle2,
     Send,
     Link2,
     History,
     TrendingUp,
     CalendarDays,
+    Bookmark,
+    Languages,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
@@ -247,6 +248,8 @@ export function useNavMenus(
                     "/dashboard/ai",
                     "/dashboard/search-video",
                     "/dashboard/channel-analysis",
+                    "/dashboard/video-library",
+                    "/dashboard/content/generate",
                 ],
                 sections: [
                     {
@@ -267,15 +270,37 @@ export function useNavMenus(
                             },
                         ],
                     },
+                    ...(isManagement
+                        ? [
+                              {
+                                  section: "KHÁM PHÁ",
+                                  color: "slate" as const,
+                                  items: [
+                                      {
+                                          label: "Tìm kiếm Video (Hub)",
+                                          href: "/dashboard/search-video",
+                                          icon: Search,
+                                          description: "Tìm kiếm video trên toàn nền tảng",
+                                      },
+                                  ],
+                              },
+                          ]
+                        : []),
                     {
-                        section: "KHÁM PHÁ",
-                        color: "slate",
+                        section: "BỘ SƯU TẬP",
+                        color: "violet" as const,
                         items: [
                             {
-                                label: "Tìm kiếm Video (Hub)",
-                                href: "/dashboard/search-video",
-                                icon: Search,
-                                description: "Tìm kiếm video trên toàn nền tảng",
+                                label: "Bộ sưu tập",
+                                href: "/dashboard/video-library",
+                                icon: Bookmark,
+                                description: "Video hay do Leader & Manager tuyển chọn cho team",
+                            },
+                            {
+                                label: "Dịch Content",
+                                href: "/dashboard/content/generate?mode=translate-only",
+                                icon: Languages,
+                                description: "Dịch content có sẵn và recheck bằng bảng 3 cột",
                             },
                         ],
                     },

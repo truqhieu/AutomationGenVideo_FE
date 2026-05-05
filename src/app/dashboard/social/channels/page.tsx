@@ -246,7 +246,7 @@ export default function ChannelsPage() {
           pollTimerRef.current = setInterval(async () => {
             pollCount++;
             try {
-              const data = await socialApi.accounts.list();
+              const data = await socialApi.accounts.list(true); // force: bypass cache khi poll
               const platformAccounts = data.filter(a => a.platform === platform);
 
               // Detect thành công: có account mới (id chưa có trong snapshot) HOẶC count tăng
@@ -313,6 +313,7 @@ export default function ChannelsPage() {
     setDisconnecting(account.id);
     try {
       await socialApi.accounts.disconnect(account.id);
+      socialApi.accounts.invalidate();
       toast.success('Đã gỡ kết nối');
       // Reload từ server để đảm bảo child accounts (pages, IG) cũng được gỡ khỏi UI
       // Không dùng filter local vì server đã cascade deactivate children

@@ -23,6 +23,11 @@ function localCalendarYMD(d: Date = new Date()): string {
     return `${y}-${m}-${day}`;
 }
 
+/** Deadline báo cáo: Đã tạm thời gỡ bỏ mọi logic khoá. */
+function isPastDailyDeadline(): boolean {
+    return false;
+}
+
 const ChecklistDatePicker = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const date = new Date(value);
@@ -205,11 +210,22 @@ const ChecklistContainer = ({
     const [loading, setLoading] = useState(false);
     const [larkRole, setLarkRole] = useState<string | null>(null);
     const [availableChannels, setAvailableChannels] = useState<any[]>([]);
-    const [selectedTeam, setSelectedTeam] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState(() => {
+        if (!user?.team) return '';
+        const teams = user.team.split(',').map((t: string) => t.trim()).filter(Boolean);
+        // Multi-team users must pick a specific team — default to first
+        return teams.length > 1 ? teams[0] : '';
+    });
     const [isReadOnly, setIsReadOnly] = useState(false);
     const [historicalEvidences, setHistoricalEvidences] = useState<Record<string, { url: string; name: string; token: string }[]>>({} as any);
     const [hasFetchedReport, setHasFetchedReport] = useState(false);   // đã fetch xong chưa?
     const [hasReportData, setHasReportData] = useState(false);          // có dữ liệu báo cáo chưa?
+    const [reportedTeams, setReportedTeams] = useState<string[]>([]);  // Các team đã báo cáo traffic
+    const [serverTrafficRecords, setServerTrafficRecords] = useState<any[]>([]); // Lưu raw records từ BE để lọc theo team
+
+    // Deadline 10h: Đã bỏ logic khoá.
+    const isDeadlinePassed = false;
+    const isDeadlineLockedToday = false;
 
     // Fetch Lark Permission Role on mount
     useEffect(() => {
@@ -254,6 +270,8 @@ const ChecklistContainer = ({
             setTrafficChannels(initialTrafficChannels());
             setEntryDetails({});
             setHistoricalEvidences({} as any);
+            setReportedTeams([]);
+            setServerTrafficRecords([]);
 
             try {
                 const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -265,24 +283,29 @@ const ChecklistContainer = ({
                     
                     // Logic: Nếu ngày chọn < ngày hiện tại -> Luôn ReadOnly
                     const todayStr = localCalendarYMD();
-                    const isPastDate = reportDate < todayStr;
+                    // const isPastDate = reportDate < todayStr;
 
-                    if (isPastDate) {
-                        setIsReadOnly(true);
-                    } else if (data && (data.report || data.traffic)) {
+                    // if (isPastDate) {
+                    //     setIsReadOnly(true);
+                    // } else if (data && (data.report || data.traffic)) {
                         let shouldBeReadOnly = false;
                         if (showOnlyTraffic) {
-                            shouldBeReadOnly = !!data.traffic;
+                            // Traffic is now team-aware, we handle its readOnly status separately
+                            // but for the global lock, we check if ALL user's teams have been reported
+                            const allTeamsReported = (user?.team || '').split(',').every(t => (data.reportedTeams || []).includes(t.trim()));
+                            shouldBeReadOnly = allTeamsReported;
                         } else if (showOnlyWork) {
                             shouldBeReadOnly = !!data.report;
                         } else {
-                            // If showing both, base it on whether either exists, but allow submission of the missing part
                             shouldBeReadOnly = !!data.report && !!data.traffic;
                         }
                         setIsReadOnly(shouldBeReadOnly);
-                    } else {
-                        // Nếu không có dữ liệu và không phải ngày quá khứ thì reset
-                        if (!isPastDate) setIsReadOnly(false);
+
+                    if (data?.reportedTeams) {
+                        setReportedTeams(data.reportedTeams);
+                    }
+                    if (data?.trafficRecords) {
+                        setServerTrafficRecords(data.trafficRecords);
                     }
 
                     if (data && (data.report || data.traffic)) {
@@ -407,6 +430,75 @@ const ChecklistContainer = ({
         fetchReportDetails();
     }, [user?.email, reportDate]);
 
+    // Switch traffic data when selectedTeam changes (Isolation)
+    useEffect(() => {
+        if (!selectedTeam) return;
+
+        // If this team has already reported, load its data
+        const teamRecords = serverTrafficRecords.filter(r => r.team === selectedTeam);
+        
+        if (teamRecords.length > 0) {
+            const newTraffic = initialTrafficData();
+            const newChannels = initialTrafficChannels();
+            const newEvidences: Record<string, { url: string; name: string; token: string }[]> = {};
+            const newEntries: Record<string, any[]> = {};
+
+            const platforms = ['fb', 'ig', 'tiktok', 'yt', 'thread', 'lemon8', 'zalo', 'twitter'];
+            
+            teamRecords.forEach(rec => {
+                platforms.forEach(p => {
+                    const tk = `traffic_${p}`;
+                    const ck = `channel_${p}`;
+                    const ek = `evidence_${p}`;
+                    
+                    if (rec[tk] && Number(rec[tk]) > 0) {
+                        newTraffic[p as keyof TrafficData] = (Number(newTraffic[p as keyof TrafficData] || 0) + Number(rec[tk])).toString();
+                        
+                        if (rec[ck]) {
+                            newChannels[p as keyof TrafficData] = newChannels[p as keyof TrafficData] 
+                                ? `${newChannels[p as keyof TrafficData]}, ${rec[ck]}` 
+                                : rec[ck];
+                        }
+
+                        if (rec[ek]) {
+                            try {
+                                const evs = JSON.parse(rec[ek]);
+                                if (Array.isArray(evs)) {
+                                    const processedEvs = evs.map((ev: any) => ({
+                                        url: typeof ev === 'string' ? ev : (ev.url || ''),
+                                        name: typeof ev === 'string' ? 'Minh chứng' : (ev.name || 'Minh chứng'),
+                                        token: typeof ev === 'string' ? '' : (ev.token || '')
+                                    }));
+                                    newEvidences[p] = [...(newEvidences[p] || []), ...processedEvs];
+                                }
+                            } catch(e){}
+                        }
+
+                        // Reconstruct entries
+                        if (!newEntries[p]) newEntries[p] = [];
+                        newEntries[p].push({
+                            id: rec.id,
+                            value: String(rec[tk]),
+                            channel: rec[ck] || '',
+                            evidences: newEvidences[p] || []
+                        });
+                    }
+                });
+            });
+
+            setTraffic(newTraffic);
+            setTrafficChannels(newChannels);
+            setHistoricalEvidences(newEvidences);
+            setEntryDetails(newEntries);
+        } else {
+            // If not reported yet, reset form for this team
+            setTraffic(initialTrafficData());
+            setTrafficChannels(initialTrafficChannels());
+            setHistoricalEvidences({});
+            setEntryDetails({});
+        }
+    }, [selectedTeam, serverTrafficRecords]);
+
     // Parse user teams for multi-team selector
     const userTeams = React.useMemo(() => {
         if (!user?.team) return [];
@@ -513,6 +605,8 @@ const ChecklistContainer = ({
     }, [checks, details, leaderAnswers, showForm3]);
 
     const handleSubmit = async () => {
+        const currentSelectedTeam = (selectedTeam || user?.team || '').trim();
+        // Deadline lock removed
         if (!user) {
             toast.error('Vui lòng đăng nhập để gửi báo cáo.');
             return;
@@ -621,43 +715,32 @@ const ChecklistContainer = ({
                     ...payload,
                     userEmail: user.email,
                     userName: user.full_name,
-                    userTeam: user.team,
+                    userTeam: currentSelectedTeam, // Use exactly the team selected in the UI
                     userRoles: user.roles,
                     reportDate: reportDate,
                 };
 
-                // Checklist API nằm trên Django (AutomationGenVideo_AI), dùng AI_SERVICE_URL (mặc định port 8001)
-                const djangoBase = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8001';
-                const base = djangoBase.replace(/\/$/, '');
-                const url = `${base}/api/checklist/submit/`;
+                // Checklist API được chuyển sang NestJS BE (NEXT_PUBLIC_API_URL) thay vì Django AI
+                // NestJS ghi thẳng vào lüc_reports qua Prisma → đúng DB server luôn
+                const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+                const url = `${beBaseUrl}/lark/checklist-report`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(fullPayload),
                 });
                 const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    const errMsg = typeof data.error === 'string' ? data.error : 'Gửi báo cáo thất bại.';
-                    const detail = typeof data.detail === 'string' ? data.detail : '';
-                    const hint = typeof data.hint === 'string' ? data.hint : '';
-                    const parts = [errMsg];
-                    if (detail) parts.push(`Chi tiết: ${detail}`);
-                    if (hint) parts.push(hint);
-                    toast.error(parts.join(' '));
+                if (!response.ok || data.success === false) {
+                    const errMsg = typeof data.message === 'string' ? data.message :
+                        typeof data.error === 'string' ? data.error : 'Gửi báo cáo thất bại.';
+                    toast.error(errMsg);
                     setLoading(false);
                     return;
                 }
                 toast.success(data.message || 'Báo cáo thành công');
                 
-                // --- Xoá cache trên Backend (NestJS) lập tức để hiển thị luôn ở Checklist ---
-                try {
-                    const beBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-                    await fetch(`${beBaseUrl}/lark/clear-activity-cache`, { method: 'POST' });
-                } catch (err) {
-                    console.log('Failed to flush cache', err);
-                }
-                
                 setIsReadOnly(true); // Khóa form ngay lập tức sau khi gửi thành công
+
             }
 
             // Gửi báo cáo traffic tới AutomationGenVideo_BE nếu có nhập dữ liệu traffic
@@ -674,6 +757,7 @@ const ChecklistContainer = ({
                         traffic: traffic,
                         channels: trafficChannels,
                         platformEvidences: platformEvidences,
+                        team: currentSelectedTeam, // Team selected in tab
                         trafficDetails: {
                             breakdown: Object.keys(entryDetails).reduce((acc, platformId) => {
                                 acc[platformId] = (entryDetails[platformId] || []).map((entry: any) => ({
@@ -695,7 +779,10 @@ const ChecklistContainer = ({
 
                 if (showOnlyTraffic) {
                     if (trafficRes.ok) {
-                        toast.success('Báo cáo Traffic thành công');
+                        toast.success(`Gửi báo cáo ${currentSelectedTeam} thành công`);
+                        if (currentSelectedTeam) {
+                            setReportedTeams(prev => [...prev, currentSelectedTeam]);
+                        }
                     } else {
                         const errData = await trafficRes.json().catch(() => ({}));
                         toast.error(errData.message || 'Gửi báo cáo traffic thất bại');
@@ -704,10 +791,22 @@ const ChecklistContainer = ({
                     }
                 }
 
+                // Reset form
                 setTraffic(initialTrafficData());
                 setTrafficChannels(initialTrafficChannels());
                 setPlatformEvidences({});
-                setIsReadOnly(true); // Khóa traffic sau khi gửi thành công
+                
+                // Do not lock globally if user has other teams to report
+                if (showOnlyTraffic) {
+                    const allTeams = (user?.team || '').split(',').map(t => t.trim()).filter(Boolean);
+                    const newlyReported = [...reportedTeams, currentSelectedTeam];
+                    if (allTeams.every(t => newlyReported.includes(t))) {
+                        setIsReadOnly(true);
+                    }
+                } else {
+                    setIsReadOnly(true);
+                }
+                
                 setSubmitCount(prev => prev + 1);
                 if (onSuccess) onSuccess();
             } else {
@@ -746,129 +845,122 @@ const ChecklistContainer = ({
                 </div>
             </div>
 
-            {(reportDate < localCalendarYMD()) && (
+            {/* {(reportDate < localCalendarYMD()) && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl mb-6 flex items-center gap-3 animate-in slide-in-from-top duration-500">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
                     <p className="text-sm font-semibold">
                         {`Ngày ${reportDate.split('-').reverse().join('/')} đã qua (theo lịch). Chỉ xem dữ liệu đã gửi — không gửi hay sửa thêm cho ngày này.`}
                     </p>
                 </div>
+            )} */}
+
+
+            {/* Chỉ hiện form khi CHƯA khoá deadline hôm nay (isDeadlineLockedToday = false)
+                 Ngày quá khứ: vẫn hiện form nhưng readOnly — để user xem lại dữ liệu đã gửi
+                 Đã khoá 10h hôm nay mà chưa gửi: ẩn form hoàn toàn, chỉ hiện banner đỏ */}
+            {!isDeadlineLockedToday && (
+                <div className="grid grid-cols-1 gap-4 items-stretch">
+
+                    {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
+                    {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
+                        <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                            <span className="text-2xl">📋</span>
+                            <div>
+                                <p className="text-sm font-black text-orange-700 uppercase tracking-tight">Chưa báo cáo</p>
+                                <p className="text-xs text-orange-500 font-medium">Bạn chưa gửi báo cáo công việc hôm nay. Hãy điền vào form bên dưới nhé!</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Số liệu traffic chưa báo cáo */}
+                    {hasFetchedReport && !reportedTeams.includes(selectedTeam) && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
+                        <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
+                            <span className="text-2xl">📊</span>
+                            <div>
+                                <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic {selectedTeam}</p>
+                                <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic cho {selectedTeam} hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
+                    {(showForm12 || showForm3) && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <ChecklistSection
+                                values={checks}
+                                onChange={handleCheckChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
+
+                    {/* Show Detail Section for Member/Staff - Hide if only traffic */}
+                    {showForm12 && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <DetailSection
+                                values={details}
+                                onChange={handleDetailChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
+
+                    {/* Leader Section - Show for Leader mode - Hide if only traffic */}
+                    {showForm3 && !showOnlyTraffic && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
+                            <LeaderEvaluationSection
+                                values={leaderAnswers}
+                                onChange={handleLeaderAnswerChange}
+                                readOnly={isReadOnly}
+                            />
+                        </div>
+                    )}
+
+                    {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
+                    {(showForm12 || showForm3) && !showOnlyWork && (
+                        <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
+                            {userTeams.length > 1 && (
+                                <div className="flex flex-wrap items-center gap-3 mb-5 px-1 py-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                                    <div className="flex items-center gap-2 px-2">
+                                        <Layers className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
+                                        {userTeams.map((team: string) => (
+                                            <button
+                                                key={team}
+                                                onClick={() => setSelectedTeam(team)}
+                                                className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
+                                                    selectedTeam === team
+                                                        ? 'bg-blue-600 text-white shadow-md'
+                                                        : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            >
+                                                {team}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <TrafficReportSection
+                                key={`${submitCount}-${reportDate}-${selectedTeam}`}
+                                values={traffic}
+                                channels={trafficChannels}
+                                availableChannels={availableChannels}
+                                onChange={handleTrafficChange}
+                                onChannelChange={handleChannelChange}
+                                onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
+                                onEntriesChange={setEntryDetails}
+                                readOnly={isReadOnly || reportedTeams.includes(selectedTeam)}
+                                initialEvidences={historicalEvidences}
+                                initialEntries={entryDetails}
+                            />
+                        </div>
+                    )}
+                </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 items-stretch">
-
-                {/* Nếu đã fetch xong mà chưa có báo cáo và không phải ngày quá khứ - hiện badge "Chưa báo cáo" */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && !showOnlyTraffic && (
-                    <div className="flex items-center gap-3 bg-orange-50 border-2 border-orange-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
-                        <span className="text-2xl">📋</span>
-                        <div>
-                            <p className="text-sm font-black text-orange-700 uppercase tracking-tight">Chưa báo cáo</p>
-                            <p className="text-xs text-orange-500 font-medium">Bạn chưa gửi báo cáo công việc hôm nay. Hãy điền vào form bên dưới nhé!</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Số liệu traffic chưa báo cáo */}
-                {hasFetchedReport && !hasReportData && !isReadOnly && reportDate >= localCalendarYMD() && showOnlyTraffic && (
-                    <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-4 animate-in slide-in-from-top duration-300">
-                        <span className="text-2xl">📊</span>
-                        <div>
-                            <p className="text-sm font-black text-purple-700 uppercase tracking-tight">Chưa báo cáo traffic</p>
-                            <p className="text-xs text-purple-500 font-medium">Bạn chưa gửi số liệu traffic hôm nay. Hãy nhập số liệu vào form bên dưới!</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Always show Checklist Section for both Member and Leader - Hide if only traffic */}
-                {(showForm12 || showForm3) && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <ChecklistSection
-                            values={checks}
-                            onChange={handleCheckChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
-
-
-                {/* Show Detail Section for Member/Staff - Hide if only traffic */}
-                {showForm12 && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <DetailSection
-                            values={details}
-                            onChange={handleDetailChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
-
-                {/* Leader Section - Show for Leader mode - Hide if only traffic */}
-                {showForm3 && !showOnlyTraffic && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 border-2 border-blue-500/30">
-                        <LeaderEvaluationSection
-                            values={leaderAnswers}
-                            onChange={handleLeaderAnswerChange}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                )}
-
-                {/* Traffic Section - Show for both Member and Leader if needed - Hide if only work */}
-                {(showForm12 || showForm3) && !showOnlyWork && (
-                    <div className="bg-slate-50/50 backdrop-blur-sm rounded-2xl p-3 shadow-lg shadow-blue-500/5 lg:col-span-2 border-2 border-blue-500/30">
-                        {userTeams.length > 1 && (
-                            <div className="flex flex-wrap items-center gap-3 mb-5 px-1 py-3 bg-blue-50/60 rounded-xl border border-blue-100">
-                                <div className="flex items-center gap-2 px-2">
-                                    <Layers className="w-5 h-5 text-blue-500" />
-                                    <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Chọn Team</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 flex-wrap">
-                                    <button
-                                        onClick={() => setSelectedTeam('')}
-                                        className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
-                                            !selectedTeam
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                        }`}
-                                    >
-                                        Tất cả
-                                    </button>
-                                    {userTeams.map((team: string) => (
-                                        <button
-                                            key={team}
-                                            onClick={() => setSelectedTeam(team)}
-                                            className={`px-5 py-2 text-sm font-black rounded-lg transition-all whitespace-nowrap ${
-                                                selectedTeam === team
-                                                    ? 'bg-blue-600 text-white shadow-md'
-                                                    : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                            }`}
-                                        >
-                                            {team}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        <TrafficReportSection
-                            key={`${submitCount}-${reportDate}`}
-                            values={traffic}
-                            channels={trafficChannels}
-                            availableChannels={availableChannels}
-                            onChange={handleTrafficChange}
-                            onChannelChange={handleChannelChange}
-                            onPlatformEvidenceChange={(evMap) => setPlatformEvidences(evMap)}
-                            onEntriesChange={setEntryDetails}
-                            readOnly={isReadOnly}
-                            initialEvidences={historicalEvidences}
-                            initialEntries={entryDetails}
-                        />
-
-                    </div>
-                )}
-            </div>
-
-
-
+            {/* Nút submit — Luôn hiện */}
             {!(showOnlyTraffic && availableChannels.length === 0) && (
                 <div className="flex justify-center pt-8 border-t border-gray-100">
                     <button
@@ -878,7 +970,10 @@ const ChecklistContainer = ({
                         className="flex items-center gap-2 bg-[#dbeafe] text-blue-600 px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:bg-blue-200 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         <Send className="w-4 h-4" />
-                        {loading ? 'Đang gửi...' : isReadOnly ? (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : 'ĐÃ BÁO CÁO XONG') : 'GỬI BÁO CÁO'}
+                        {loading ? 'Đang gửi...' : 
+                         (isReadOnly || reportedTeams.includes(selectedTeam)) ? 
+                         (reportDate < localCalendarYMD() ? 'CHỈ XEM (NGÀY ĐÃ QUA)' : `ĐÃ BÁO CÁO XONG ${selectedTeam || ''}`) : 
+                         'GỬI BÁO CÁO'}
                     </button>
                 </div>
             )}

@@ -74,7 +74,18 @@ export const socialApi = {
   },
 
   accounts: {
-    list: () => apiClient.get<SocialAccount[]>('/social/accounts').then((r) => r.data),
+    // Cache 5 phút — danh sách tài khoản ít thay đổi, tránh gọi lại mỗi lần vào trang
+    _cache: null as { data: SocialAccount[]; at: number } | null,
+    async list(force = false): Promise<SocialAccount[]> {
+      const TTL = 5 * 60 * 1000;
+      if (!force && this._cache && Date.now() - this._cache.at < TTL) {
+        return this._cache.data;
+      }
+      const data = await apiClient.get<SocialAccount[]>('/social/accounts').then((r) => r.data);
+      this._cache = { data, at: Date.now() };
+      return data;
+    },
+    invalidate() { this._cache = null; },
     disconnect: (id: string) => apiClient.delete(`/social/accounts/${id}`).then((r) => r.data),
     getPages: (id: string, refresh = false) =>
       apiClient.get<FacebookPage[]>(`/social/accounts/${id}/pages?refresh=${refresh}`).then((r) => r.data),

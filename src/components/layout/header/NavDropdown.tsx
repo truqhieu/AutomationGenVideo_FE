@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { NavMenu } from "./types";
@@ -33,6 +34,7 @@ export default function NavDropdown({
     isItemActive,
 }: NavDropdownProps) {
     const highlighted = isActive || isOpen;
+    const router = useRouter();
 
     return (
         <div className="relative flex items-stretch" onMouseEnter={onMenuEnter} onMouseLeave={onMenuLeave}>
@@ -134,9 +136,13 @@ export default function NavDropdown({
                                                     return (
                                                         <div
                                                             key={item.label}
-                                                            onMouseEnter={() =>
-                                                                onSubPanelKeyChange(hasSubPanel ? item.href : null)
-                                                            }
+                                                            onMouseEnter={() => {
+                                                                onSubPanelKeyChange(hasSubPanel ? item.href : null);
+                                                                // Prefetch trang khi hover để load nhanh hơn khi click
+                                                                if (!hasSubPanel && item.href) {
+                                                                    router.prefetch(item.href);
+                                                                }
+                                                            }}
                                                         >
                                                             {hasSubPanel ? (
                                                                 /* Item có sub-panel: render div, không navigate */

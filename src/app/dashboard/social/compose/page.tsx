@@ -180,8 +180,9 @@ export default function ComposePage() {
 
   useEffect(() => {
     setMounted(true);
+    // Dùng cache (5 phút) — tránh gọi API lại mỗi lần vào trang compose
     socialApi.accounts.list().then(setAccounts).catch(() => {});
-    socialApi.drafts.list().then(setDrafts).catch(() => {});
+    // Drafts chỉ load khi user mở modal — không cần load ngay khi mount
 
     const now = new Date();
     now.setHours(now.getHours() + 1);
@@ -780,7 +781,11 @@ export default function ComposePage() {
                 ))}
               </div>
               <div className="flex items-center gap-3">
-                <motion.button whileHover={{ scale: 1.02 }} onClick={() => setShowDraftsModal(true)} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-700 text-[13px] font-bold shadow-sm">
+                <motion.button whileHover={{ scale: 1.02 }} onClick={() => {
+                  setShowDraftsModal(true);
+                  // Lazy load drafts khi user thực sự mở modal
+                  if (drafts.length === 0) socialApi.drafts.list().then(setDrafts).catch(() => {});
+                }} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-700 text-[13px] font-bold shadow-sm">
                   <Save className="w-4 h-4" /> Nháp ({drafts.length})
                 </motion.button>
                 <div className="flex shadow-sm rounded-xl overflow-hidden">

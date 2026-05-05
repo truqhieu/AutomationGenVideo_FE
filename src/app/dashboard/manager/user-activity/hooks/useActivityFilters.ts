@@ -35,6 +35,7 @@ interface UseActivityFiltersReturn {
  * filter state are available.
  */
 export function useActivityFilters(): UseActivityFiltersReturn {
+    /** Mặc định "All" để lần gọi API đầu không gửi team=... — có đủ teamContributions cho dropdown Global/VN. */
     const [activeTeam, setActiveTeam] = React.useState("All");
     const [selectedDate, setSelectedDate] = React.useState(new Date());
     const [searchName, setSearchName] = React.useState("");
