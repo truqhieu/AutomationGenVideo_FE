@@ -11,6 +11,7 @@ import { useNavMenus } from "./use-nav-menus";
 import UserBlock from "./UserBlock";
 import NavDropdown from "./NavDropdown";
 import MobileDrawer from "./MobileDrawer";
+import NotificationBell from "@/components/social/NotificationBell";
 
 export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderProps) {
     const pathname = usePathname() || "";
@@ -187,6 +188,11 @@ export default function HeaderInner({ user, onLogout, allowedMenuIds }: HeaderPr
                                 <Settings className="w-4 h-4" />
                             </Link>
                         )}
+
+                        {/* Notification Bell */}
+                        <div className="hidden md:flex items-center">
+                            <NotificationBell />
+                        </div>
 
                         <div className="hidden md:block w-px h-5 bg-white/10 mx-1.5" />
 

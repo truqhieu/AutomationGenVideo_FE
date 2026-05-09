@@ -3,12 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, RefreshCw, Type, Image as ImageIcon, Smartphone, Monitor,
-  MapPin, Globe, Smile, UploadCloud, MessageCircle, Share2,
+  MapPin, Globe, Smile, MessageCircle, Share2,
   MoreHorizontal, ChevronDown, Save, Send, Clock, List, AlertCircle, ThumbsUp, X, Calendar as CalendarIcon,
   Loader2, Sparkles, Layers, Hash,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { socialApi, SocialAccount, SocialPlatform, PLATFORM_META } from '@/lib/api/social';
+import { useSocialAccounts, useInvalidateAccounts } from '@/hooks/useSocialAccounts';
+import PublishProgressModal from './PublishProgressModal';
+import HashtagPanel from './HashtagPanel';
+import MediaLibraryModal from './MediaLibraryModal';
+import PlatformPreview from './PlatformPreview';
+import TemplateManager from './TemplateManager';
 import toast from 'react-hot-toast';
 
 const containerVariants = {
@@ -22,7 +28,6 @@ const itemVariants = {
 };
 
 export default function ComposePage() {
-  const fileInputRef    = useRef<HTMLInputElement>(null);
   const isDraggingRef   = useRef(false);
   const dragStartXRef   = useRef(0);
   const dragStartWRef   = useRef(0);
@@ -52,7 +57,8 @@ export default function ComposePage() {
   };
   
   // Core Data & UI State
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const { data: accounts = [] } = useSocialAccounts();
+  const invalidateAccounts = useInvalidateAccounts();
   const [drafts, setDrafts] = useState<any[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,14 +73,17 @@ export default function ComposePage() {
   const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('FACEBOOK');
   const [mounted, setMounted] = useState(false);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [perPlatformMode, setPerPlatformMode] = useState(false);
+  const [perPlatformMessages, setPerPlatformMessages] = useState<Partial<Record<SocialPlatform, string>>>({});
 
   // --- PORTED LOGIC FROM VCB-TOOL ---
   
   // Hashtag State
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return ['VienChiBao', 'TrangSuc', 'PhongThuy', 'VangBac', 'QuaTang'];
+    if (typeof window === 'undefined') return ['a1', 'a2', 'a3', 'a4', 'a5'];
     const saved = localStorage.getItem('custom_hashtags');
-    return saved ? JSON.parse(saved) : ['VienChiBao', 'TrangSuc', 'PhongThuy', 'VangBac', 'QuaTang'];
+    return saved ? JSON.parse(saved) : ['a1', 'a2', 'a3', 'a4', 'a5'];
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
@@ -180,13 +189,20 @@ export default function ComposePage() {
 
   useEffect(() => {
     setMounted(true);
-    // Dùng cache (5 phút) — tránh gọi API lại mỗi lần vào trang compose
-    socialApi.accounts.list().then(setAccounts).catch(() => {});
-    // Drafts chỉ load khi user mở modal — không cần load ngay khi mount
-
     const now = new Date();
     now.setHours(now.getHours() + 1);
     setScheduledAt(now.toISOString().slice(0, 16));
+
+    // Đọc prefill data từ Repost (history page)
+    const prefill = localStorage.getItem('compose_prefill');
+    if (prefill) {
+      try {
+        const data = JSON.parse(prefill);
+        if (data.message) setMessage(data.message);
+        if (data.mediaUrls?.length) { setMediaUrls(data.mediaUrls); setPostMode('image'); }
+        localStorage.removeItem('compose_prefill');
+      } catch {}
+    }
   }, []);
 
   // Filter accounts based on SEARCH and POST MODE
@@ -230,21 +246,21 @@ export default function ComposePage() {
   const handleAiOptimize = async () => {
     if (!message.trim()) return toast.error('Vui lòng nhập nội dung trước');
     setIsAiProcessing(true);
-    // Mocking AI response
-    setTimeout(() => {
-      const lines = message.split('\n');
-      let improved = "✨ [AI Optimized]: " + lines[0] + " ✨\n\n";
-      if (lines.length > 1) {
-          improved += lines.slice(1).join('\n') + "\n\n";
-      }
-      improved += "👉 Đừng quên để lại bình luận phía dưới nhé!\n✅ Nhắn tin ngay để được tư vấn chi tiết.";
-      setMessage(improved);
+    try {
+      const firstPlatform = selectedAccountIds.length > 0
+        ? accounts.find(a => selectedAccountIds.includes(a.id))?.platform as SocialPlatform | undefined
+        : undefined;
+      const { hashtags: suggestedTags, source } = await socialApi.hashtag.suggest(message, firstPlatform);
+      const currentTags = hashtags;
+      const newTags = suggestedTags.map(h => h.replace(/^#+/, '').trim()).filter(h => h && !currentTags.includes(h));
+      setHashtags(prev => Array.from(new Set([...prev, ...newTags])).slice(0, 30));
+      toast.success(`AI gợi ý ${suggestedTags.length} hashtag (nguồn: ${source === 'ai' ? '🤖 AI' : '🔑 Keyword'})`, { duration: 3000 });
+    } catch {
+      toast.error('Không lấy được gợi ý hashtag, thử lại sau');
+    } finally {
       setIsAiProcessing(false);
-      toast.success('Đã tối ưu nội dung bằng AI');
-    }, 1500);
+    }
   };
-
-  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Hàng chờ: jobId[] sau khi enqueue, null = không có gì đang poll
   const [activeJobIds,   setActiveJobIds]   = useState<string[] | null>(null);
@@ -304,11 +320,12 @@ export default function ComposePage() {
     return () => clearInterval(timer);
   }, [publishStartedAt, publishProgress.phase]);
 
-  // Poll queue status mỗi 3 giây khi có activeJobIds
+  // Poll queue status mỗi 3 giây khi có activeJobIds, dừng khi tab ẩn
   useEffect(() => {
     if (!activeJobIds || activeJobIds.length === 0) return;
 
     const poll = async () => {
+      if (document.visibilityState === 'hidden') return; // dừng khi tab ẩn
       try {
         const { jobs } = await socialApi.queue.pollStatus(activeJobIds);
 
@@ -318,63 +335,44 @@ export default function ComposePage() {
             if (!jobId) return ch;
             const job = jobs.find(j => j.id === jobId);
             if (!job) return ch;
-
             if (job.status === 'COMPLETED') return { ...ch, status: 'success' as const, queuePosition: null };
             if (job.status === 'FAILED')    return { ...ch, status: 'fail' as const, error: job.error_msg ?? undefined, queuePosition: null };
-            // PENDING với queuePosition null → worker đang xử lý (claimed)
             const isProcessing = job.queuePosition === null;
-            return {
-              ...ch,
-              status: isProcessing ? 'posting' as const : 'pending' as const,
-              queuePosition: job.queuePosition,
-            };
+            return { ...ch, status: isProcessing ? 'posting' as const : 'pending' as const, queuePosition: job.queuePosition };
           });
           return { ...prev, channels: newChannels };
         });
 
-        // Dừng poll khi tất cả đã xong
         const allDone = jobs.every(j => j.status === 'COMPLETED' || j.status === 'FAILED' || j.status === 'CANCELLED');
         if (allDone) {
           setActiveJobIds(null);
           setPublishing(false);
           setPublishProgress(prev => ({ ...prev, phase: 'done' }));
-          const allSuccess = jobs.every(j => j.status === 'COMPLETED');
-          if (allSuccess) {
+          if (jobs.every(j => j.status === 'COMPLETED')) {
             toast.success('Đã đăng bài thành công!');
             setMessage(''); setMediaUrls([]); setHashtags([]); setSelectedAccountIds([]);
           } else {
             toast.error('Một số kênh đăng bài thất bại');
           }
         }
-      } catch { /* bỏ qua lỗi mạng tạm thời khi poll */ }
+      } catch { /* bỏ qua lỗi mạng tạm thời */ }
     };
 
-    poll(); // gọi ngay 1 lần
+    poll();
     const timer = setInterval(poll, 3000);
-    return () => clearInterval(timer);
+
+    // Resume poll ngay khi user quay lại tab
+    const onVisible = () => { if (document.visibilityState === 'visible') poll(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeJobIds]);
 
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploadingMedia(true);
-    try {
-      const { socialApi: api } = await import('@/lib/api/social');
-      const uploaded = await api.upload.media(Array.from(files));
-      const newUrls = uploaded.map((u: any) => u.url);
-      setMediaUrls(prev => Array.from(new Set([...prev, ...newUrls])));
-      if (postMode === 'text') setPostMode('image');
-      toast.success(`Đã upload ${newUrls.length} file`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Upload thất bại');
-    } finally {
-      setUploadingMedia(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   const handlePublish = async () => {
     if (activeTab === 'draft') {
@@ -564,7 +562,7 @@ export default function ComposePage() {
                 <motion.button 
                   whileHover={{ rotate: 180 }}
                   transition={{ duration: 0.4 }}
-                  onClick={() => socialApi.accounts.list().then(setAccounts)}
+                  onClick={() => invalidateAccounts()}
                   className="text-slate-400 hover:text-slate-600"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -835,6 +833,14 @@ export default function ComposePage() {
                   <button className="flex items-center gap-1.5 text-slate-600 text-[13px] font-bold bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full">
                     <Globe className="w-4 h-4" /> Công khai
                   </button>
+                  <TemplateManager
+                    currentMessage={message}
+                    currentHashtags={hashtags}
+                    onApply={(text, tags) => {
+                      setMessage(text);
+                      if (tags.length) setHashtags(prev => Array.from(new Set([...prev, ...tags])));
+                    }}
+                  />
                   <motion.button
                     onClick={handleAiOptimize}
                     disabled={isAiProcessing}
@@ -870,58 +876,17 @@ export default function ComposePage() {
               </div>
             </motion.div>
 
-            {/* Ported: Hashtag Helper */}
-            <motion.div layout className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded-lg ${hashtags.length === 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
-                       <Hash className="w-4 h-4" />
-                    </div>
-                    <span className="text-slate-800 font-extrabold text-[13px]">Hashtag Mục tiêu *</span>
-                 </div>
-                 <button onClick={addSuggestedHashtag} className="text-blue-600 text-xs font-bold hover:underline">+ Thêm gợi ý</button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 p-3 bg-slate-50/50 rounded-xl border border-slate-100 min-h-[48px]">
-                {hashtags.map(tag => (
-                  <span key={tag} className="flex items-center gap-1.5 bg-white border border-blue-100 text-blue-600 text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
-                    #{tag}
-                    <X onClick={() => removeHashtag(tag)} className="w-3 h-3 hover:text-red-500 cursor-pointer" />
-                  </span>
-                ))}
-                <input 
-                  type="text" 
-                  placeholder={hashtags.length === 0 ? "Nhập hashtag và nhấn Space..." : "Thêm..."}
-                  value={hashtagInput}
-                  onChange={e => setHashtagInput(e.target.value)}
-                  onKeyDown={handleHashtagKeyDown}
-                  className="flex-1 bg-transparent border-none outline-none text-[13px] text-slate-700 min-w-[100px]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Gợi ý nhanh:</span>
-                 <div className="flex flex-wrap gap-2">
-                    {suggestedHashtags.map(tag => (
-                      <div key={tag} className="relative group">
-                        <button 
-                          onClick={() => addHashtag(tag)}
-                          disabled={hashtags.includes(tag)}
-                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${hashtags.includes(tag) ? 'bg-slate-100 border-slate-100 text-slate-300' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600 shadow-sm'}`}
-                        >
-                          #{tag}
-                        </button>
-                        {!hashtags.includes(tag) && (
-                          <X 
-                            onClick={(e) => removeSuggestedHashtag(tag, e)} 
-                            className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-sm"
-                          />
-                        )}
-                      </div>
-                    ))}
-                 </div>
-              </div>
-            </motion.div>
+            <HashtagPanel
+              hashtags={hashtags}
+              suggestedHashtags={suggestedHashtags}
+              hashtagInput={hashtagInput}
+              onAdd={addHashtag}
+              onRemove={removeHashtag}
+              onInputChange={setHashtagInput}
+              onKeyDown={handleHashtagKeyDown}
+              onAddSuggested={addSuggestedHashtag}
+              onRemoveSuggested={removeSuggestedHashtag}
+            />
 
             {/* Upload Section */}
             <div className="space-y-4">
@@ -944,21 +909,19 @@ export default function ComposePage() {
                   })}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Upload từ máy */}
+              {/* Chỉ còn Thư viện media — upload video trực tiếp trong modal thư viện */}
+              <div>
                 <motion.div
-                  whileHover={{ borderColor: '#3b82f6', backgroundColor: '#f8fafc' }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer group shadow-sm"
+                  whileHover={{ borderColor: '#8b5cf6', backgroundColor: '#faf5ff' }}
+                  onClick={() => setShowLibrary(true)}
+                  className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer group shadow-sm"
                 >
-                  <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple hidden />
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-400 group-hover:text-blue-500 transition-all">
-                    {uploadingMedia ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-6 h-6" />}
+                  <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3 text-slate-400 group-hover:text-purple-500 transition-all group-hover:bg-purple-50">
+                    <Layers className="w-7 h-7" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-800 text-center">Tải từ máy tính</h4>
-                  <p className="text-xs text-slate-500 mt-1 text-center">Ảnh, Video tối đa 2GB</p>
+                  <h4 className="text-sm font-bold text-slate-800 text-center">Chọn từ thư viện media</h4>
+                  <p className="text-xs text-slate-500 mt-1 text-center">Chọn file đã upload trước</p>
                 </motion.div>
-
               </div>
             </div>
 
@@ -1237,170 +1200,23 @@ export default function ComposePage() {
           </div>
         </motion.div>
 
-        {/* PROGRESS MODAL */}
-        <AnimatePresence>
-          {publishProgress.show && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6"
-            >
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-[2rem] w-full max-w-[500px] overflow-hidden shadow-2xl"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="p-8 space-y-6">
-                  {(() => {
-                    const doneCount  = publishProgress.channels.filter(c => c.status === 'success' || c.status === 'fail').length;
-                    const totalCount = publishProgress.channels.length;
-                    const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+        <PublishProgressModal
+          publishProgress={publishProgress}
+          postingPcts={postingPcts}
+          elapsedSeconds={elapsedSeconds}
+          onClose={() => setPublishProgress(p => ({ ...p, show: false }))}
+        />
 
-                    // ── Ước tính thời gian ──────────────────────────────────
-                    const fmtTime = (s: number) => {
-                      if (s <= 0) return '< 1s';
-                      const m = Math.floor(s / 60);
-                      const sec = s % 60;
-                      if (m === 0) return `${sec}s`;
-                      return sec === 0 ? `${m}p` : `${m}p ${sec}s`;
-                    };
-
-                    // ETA dựa trên tốc độ thực tế
-                    const PLATFORM_AVG: Record<string, number> = {
-                      FACEBOOK: 25, INSTAGRAM: 65, TIKTOK: 50, YOUTUBE: 100, THREADS: 20, ZALO: 30,
-                    };
-                    const PLATFORM_SLOTS: Record<string, number> = {
-                      FACEBOOK: 6, INSTAGRAM: 3, TIKTOK: 2, YOUTUBE: 2, THREADS: 4, ZALO: 5,
-                    };
-                    const remainingCount = totalCount - doneCount;
-                    let etaSec: number | null = null;
-                    if (publishProgress.phase !== 'done') {
-                      if (doneCount > 0 && elapsedSeconds > 0) {
-                        // Ước tính từ tốc độ thực (elapsed / done × remaining / concurrency)
-                        const avgPerJob  = elapsedSeconds / doneCount;
-                        const concurrency = Math.max(1, Math.min(15, remainingCount));
-                        etaSec = Math.round((avgPerJob * remainingCount) / concurrency);
-                      } else if (totalCount > 0) {
-                        // Ước tính tĩnh trước khi có job hoàn thành
-                        const byPlatform: Record<string, number> = {};
-                        publishProgress.channels.forEach(ch => {
-                          byPlatform[ch.platform] = (byPlatform[ch.platform] || 0) + 1;
-                        });
-                        etaSec = Math.max(
-                          ...Object.entries(byPlatform).map(([p, n]) =>
-                            Math.ceil(n / (PLATFORM_SLOTS[p] || 3)) * (PLATFORM_AVG[p] || 30)
-                          )
-                        );
-                      }
-                    }
-                    return (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="text-xl font-black text-slate-900">
-                              {publishProgress.phase === 'done' ? 'Kết quả hoàn tất' : 'Đang xử lý đăng bài'}
-                            </h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                              {publishProgress.phase === 'done'
-                                ? `${publishProgress.channels.filter(c => c.status === 'success').length} thành công, ${publishProgress.channels.filter(c => c.status === 'fail').length} lỗi`
-                                : 'Vui lòng không đóng trình duyệt lúc này'}
-                            </p>
-                          </div>
-                          {publishProgress.phase === 'done' && (
-                            <button onClick={() => setPublishProgress(p => ({ ...p, show: false }))} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-                              <X className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Overall progress bar */}
-                        {publishProgress.phase !== 'done' && totalCount > 0 && (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[12px] font-bold text-slate-500">
-                              <span>{doneCount}/{totalCount} kênh</span>
-                              <motion.span
-                                key={overallPct}
-                                initial={{ opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-blue-600"
-                              >
-                                {overallPct}%
-                              </motion.span>
-                            </div>
-                            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                              <motion.div
-                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                                initial={{ width: '0%' }}
-                                animate={{ width: `${overallPct}%` }}
-                                transition={{ duration: 0.5, ease: 'easeOut' }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {publishProgress.channels.map(ch => {
-                      const meta = PLATFORM_META[ch.platform as SocialPlatform] || PLATFORM_META.FACEBOOK;
-                      const pct = Math.round(postingPcts[ch.id] ?? 0);
-                      const isActive = ch.status === 'posting' || ch.status === 'success' || ch.status === 'fail';
-                      return (
-                        <div key={ch.id} className={`flex flex-col gap-2 p-4 rounded-2xl border transition-all ${ch.status === 'success' ? 'bg-green-50 border-green-100' : ch.status === 'fail' ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${meta.color} shadow-sm flex-shrink-0`}>
-                              {meta.emoji}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-slate-800 truncate">{ch.name}</p>
-                              <p className={`text-[10px] font-black uppercase tracking-wider ${ch.status === 'success' ? 'text-green-600' : ch.status === 'fail' ? 'text-red-600' : ch.status === 'posting' ? 'text-blue-600' : 'text-slate-400'}`}>
-                                {ch.status === 'posting'  ? `Đang xử lý... ${pct}%`
-                                  : ch.status === 'success' ? 'Thành công'
-                                  : ch.status === 'fail'    ? 'Thất bại'
-                                  : ch.queuePosition        ? `Hàng chờ #${ch.queuePosition}`
-                                  : 'Đang chờ xử lý'}
-                              </p>
-                              {ch.error && <p className="text-[9px] text-red-400 mt-0.5 italic">{ch.error}</p>}
-                            </div>
-                            <div className="flex-shrink-0">
-                              {ch.status === 'posting' && <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />}
-                              {ch.status === 'success' && <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">✓</div>}
-                              {ch.status === 'fail' && <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">!</div>}
-                            </div>
-                          </div>
-
-                          {/* Per-channel progress bar */}
-                          {isActive && (
-                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                              <motion.div
-                                className={`h-full rounded-full ${ch.status === 'success' ? 'bg-green-500' : ch.status === 'fail' ? 'bg-red-400' : 'bg-blue-500'}`}
-                                initial={{ width: '0%' }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ duration: ch.status === 'posting' ? 0.3 : 0.4, ease: 'easeOut' }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {publishProgress.phase === 'done' && (
-                    <button 
-                      onClick={() => setPublishProgress(p => ({ ...p, show: false }))}
-                      className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all"
-                    >
-                      Xác nhận
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* MEDIA LIBRARY MODAL */}
+        <MediaLibraryModal
+          open={showLibrary}
+          onClose={() => setShowLibrary(false)}
+          onSelect={(urls) => {
+            setMediaUrls(prev => Array.from(new Set([...prev, ...urls])));
+            if (postMode === 'text') setPostMode('image');
+            toast.success(`Đã thêm ${urls.length} file từ thư viện`);
+          }}
+        />
 
         {/* DRAFTS MODAL */}
         <AnimatePresence>
