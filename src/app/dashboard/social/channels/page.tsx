@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, CheckCircle, ChevronDown, ChevronUp, AlertTriangle, Clock } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { socialApi, SocialAccount, SocialPlatform } from '@/lib/api/social';
@@ -53,6 +53,10 @@ const ALL_PLATFORMS: SocialPlatform[] = ['FACEBOOK', 'INSTAGRAM', 'TIKTOK', 'THR
 export default function ChannelsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Tất cả');
   const { data: accounts = [], isLoading: loading, error } = useSocialAccounts();
+  const [expiringAccounts, setExpiringAccounts] = useState<any[]>([]);
+  useEffect(() => {
+    socialApi.accounts.expiring().then(setExpiringAccounts).catch(() => {});
+  }, []);
   const invalidateAccounts = useInvalidateAccounts();
   const [connecting, setConnecting] = useState<SocialPlatform | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
@@ -69,8 +73,7 @@ export default function ChannelsPage() {
 
   const loadAccounts = useCallback(async () => {
     await invalidateAccounts();
-    return accounts;
-  }, [invalidateAccounts, accounts]);
+  }, [invalidateAccounts]);
 
   // Ref để lưu số lượng accounts trước khi connect (dùng cho polling fallback)
   const accountCountBeforeConnect = useRef(0);
@@ -79,17 +82,72 @@ export default function ChannelsPage() {
   const connectingRef = useRef<SocialPlatform | null>(null);
   useEffect(() => { connectingRef.current = connecting; }, [connecting]);
 
-  const refreshAfterOAuth = useCallback(() => loadAccounts(), [loadAccounts]);
+  /**
+   * Refresh sau OAuth thành công:
+   * - Lần 1: ngay lập tức → hiển thị account chính
+   * - Poll mỗi 2s (Facebook): cập nhật UI liên tục cho đến khi count ổn định 2 lần liên tiếp
+   *   → đảm bảo TẤT CẢ Pages được lưu xong mới dừng, không dừng giữa chừng
+   */
+  const refreshAfterOAuth = useCallback((platform?: SocialPlatform) => {
+    // Lần 1: refresh ngay lập tức
+    invalidateAccounts();
+
+    // Chỉ Facebook mới có Pages cần quét thêm
+    if (platform !== 'FACEBOOK') return;
+
+    let attempts         = 0;
+    const MAX_ATTEMPTS   = 10;  // tối đa 10 × 2s = 20 giây
+    let lastCount        = 0;
+    let stableCount      = 0;   // số lần liên tiếp count không đổi
+    const STABLE_NEEDED  = 2;   // cần ổn định 2 lần liên tiếp mới dừng
+
+    const scanTimer = setInterval(async () => {
+      attempts++;
+      try {
+        const fresh = await socialApi.accounts.list();
+        const currentCount = fresh.length;
+
+        // Luôn cập nhật UI với data mới nhất
+        invalidateAccounts();
+
+        if (currentCount === lastCount && lastCount > 0) {
+          stableCount++;
+          // Count ổn định đủ số lần → tất cả Pages đã lưu xong
+          if (stableCount >= STABLE_NEEDED) {
+            clearInterval(scanTimer);
+            toast.success('✅ Đã quét xong tất cả Pages và Instagram!', { duration: 3000 });
+            return;
+          }
+        } else {
+          // Count vừa tăng → reset stable counter, tiếp tục poll
+          stableCount = 0;
+          lastCount = currentCount;
+        }
+      } catch { /* silent */ }
+
+      if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(scanTimer);
+        invalidateAccounts();
+      }
+    }, 2000);
+
+    return () => clearInterval(scanTimer);
+  }, [invalidateAccounts]);
 
   useEffect(() => {
     const handleOAuth = (payload: { type?: string; error?: string }) => {
       if (!payload?.type) return;
       if (payload.type.endsWith('-oauth-success')) {
-        toast.success('Kết nối thành công! Đang tải dữ liệu...');
+        // Trích platform từ message type (vd: "facebook-oauth-success" → "FACEBOOK")
+        const platform = payload.type.replace('-oauth-success', '').toUpperCase() as SocialPlatform;
+        const isFacebook = platform === 'FACEBOOK';
+        toast.success(isFacebook
+          ? 'Kết nối thành công! Đang quét Pages và Instagram...'
+          : 'Kết nối thành công! Đang tải dữ liệu...'
+        );
         setConnecting(null);
-        // Dọn polling timer nếu có
         if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
-        refreshAfterOAuth();
+        refreshAfterOAuth(platform);
       } else if (payload.type.endsWith('-oauth-error')) {
         toast.error(`Kết nối thất bại: ${payload.error || 'Lỗi không xác định'}`);
         setConnecting(null);
@@ -138,26 +196,26 @@ export default function ChannelsPage() {
           pollTimerRef.current = setInterval(async () => {
             pollCount++;
             try {
+              // invalidateAccounts trigger React Query refetch → component tự re-render với data mới
               await invalidateAccounts();
-              const data = accounts;
-              const platformAccounts = data.filter(a => a.platform === platform);
-
-              const hasNewAccount = data.length > accountCountBeforeConnect.current ||
+              // Dùng API trực tiếp thay vì stale closure `accounts`
+              const freshAccounts = await socialApi.accounts.list();
+              const platformAccounts = freshAccounts.filter(a => a.platform === platform);
+              const hasNewAccount = freshAccounts.length > accountCountBeforeConnect.current ||
                 platformAccounts.some(a => !snapshotIds.has(a.id));
 
               if (hasNewAccount) {
                 if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
                 setConnecting(null);
                 toast.success('Kết nối thành công!');
-                refreshAfterOAuth();
+                refreshAfterOAuth(platform);
               } else if (pollCount >= 8) {
                 if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
                 setConnecting(null);
-                await invalidateAccounts();
-                const hasAny = accounts.filter(a => a.platform === platform).some(a => !snapshotIds.has(a.id));
+                const hasAny = freshAccounts.filter(a => a.platform === platform).some(a => !snapshotIds.has(a.id));
                 if (hasAny) {
                   toast.success('Kết nối thành công!');
-                  refreshAfterOAuth();
+                  refreshAfterOAuth(platform);
                 } else {
                   toast('Nhấn "Làm mới" để tải lại danh sách tài khoản.', { icon: 'ℹ️' });
                 }
@@ -209,6 +267,9 @@ export default function ChannelsPage() {
     setCollapsed((prev) => ({ ...prev, [accountId]: !prev[accountId] }));
 
   const [igCollapsed, setIgCollapsed] = useState(false);
+  // pagesExpanded: accountId → true/false (true = xem tất cả pages)
+  const [pagesExpanded, setPagesExpanded] = useState<Record<string, boolean>>({});
+  const PAGES_PER_ROW = 4; // số page mặc định hiển thị (1 hàng)
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const visiblePlatforms = activeTab === 'Tất cả' ? ALL_PLATFORMS : [activeTab as SocialPlatform];
@@ -232,6 +293,26 @@ export default function ChannelsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white">
+
+      {/* Token expiry warning banner */}
+      {expiringAccounts.length > 0 && (
+        <div className="mx-8 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-800 mb-1">{expiringAccounts.length} tài khoản sắp hết hạn token</p>
+            <div className="flex flex-wrap gap-2">
+              {expiringAccounts.map((acc: any) => (
+                <span key={acc.id} className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
+                  <Clock className="w-3 h-3" />
+                  {acc.name}
+                  <span className="text-amber-500">· {acc.days_until_expiry <= 0 ? 'Đã hết hạn' : `còn ${acc.days_until_expiry} ngày`}</span>
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-amber-600 mt-1.5">Vào kênh đó, gỡ kết nối và kết nối lại để gia hạn token.</p>
+          </div>
+        </div>
+      )}
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 px-8 pt-6 pb-4 text-sm border-b border-slate-200">
@@ -366,8 +447,27 @@ export default function ChannelsPage() {
                     className="overflow-hidden"
                   >
                   <div className="px-8 py-5">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm font-semibold text-slate-600">
+                        Instagram Business ({displayAccts.length})
+                      </p>
+                      {displayAccts.length > PAGES_PER_ROW && (
+                        <button
+                          onClick={() => setPagesExpanded(prev => ({ ...prev, instagram: !prev['instagram'] }))}
+                          className="flex items-center gap-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 transition-colors"
+                        >
+                          {pagesExpanded['instagram'] ? (
+                            <><ChevronUp className="w-3.5 h-3.5" /> Thu gọn</>
+                          ) : (
+                            <><ChevronDown className="w-3.5 h-3.5" /> Xem thêm {displayAccts.length - PAGES_PER_ROW} account</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-4 gap-4 w-full">
-                      {displayAccts.map((account: SocialAccount) => {
+                      {(pagesExpanded['instagram'] ? displayAccts : displayAccts.slice(0, PAGES_PER_ROW)).map((account: SocialAccount) => {
                         const bgColor = letterColor(account.name);
                         const extra = account.extra_data as any;
                         return (
@@ -375,27 +475,22 @@ export default function ChannelsPage() {
                             key={account.id}
                             className="flex items-center gap-4 px-5 py-5 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all w-full"
                           >
-                            {/* Avatar: ảnh thật nếu có, fallback letter */}
                             {account.avatar_url ? (
                               <img
                                 src={account.avatar_url}
                                 alt={account.name}
-                                className="w-20 h-20 rounded-2xl object-cover flex-shrink-0 shadow-md border-2 border-white"
+                                className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 shadow-md border-2 border-white"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement)?.style.removeProperty('display'); }}
                               />
                             ) : null}
-                            {/* Letter fallback */}
-                            <div
-                              className={`w-20 h-20 ${bgColor} rounded-2xl flex items-center justify-center text-white font-bold text-3xl flex-shrink-0 shadow-md ${account.avatar_url ? 'hidden' : ''}`}
-                            >
+                            <div className={`w-14 h-14 ${bgColor} rounded-2xl flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 shadow-md ${account.avatar_url ? 'hidden' : ''}`}>
                               {account.name.charAt(0).toUpperCase()}
                             </div>
-
                             <div className="flex-1 min-w-0">
-                              <p className="text-lg font-bold text-slate-900 truncate leading-snug">{account.name}</p>
+                              <p className="text-sm font-bold text-slate-900 truncate leading-snug">{account.name}</p>
                               {account.username && (
-                                <div className="flex items-center gap-1 mt-1">
-                                  <span className="w-3.5 h-3.5 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="w-3 h-3 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
                                   <p className="text-xs text-pink-600 font-semibold truncate">@{account.username}</p>
                                 </div>
                               )}
@@ -403,9 +498,8 @@ export default function ChannelsPage() {
                                 {extra?.pageId ? `Page: ${extra.pageId}` : 'Direct OAuth'}
                               </p>
                             </div>
-
                             <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                              <CheckCircle className="w-5 h-5 text-emerald-500" />
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
                               <button
                                 onClick={() => handleDisconnect(account)}
                                 disabled={disconnecting === account.id}
@@ -418,6 +512,20 @@ export default function ChannelsPage() {
                         );
                       })}
                     </div>
+
+                    {/* Nút expand ở dưới */}
+                    {displayAccts.length > PAGES_PER_ROW && (
+                      <button
+                        onClick={() => setPagesExpanded(prev => ({ ...prev, instagram: !prev['instagram'] }))}
+                        className="mt-3 w-full py-2.5 text-xs font-bold text-slate-500 hover:text-pink-600 border border-slate-200 hover:border-pink-200 rounded-xl bg-slate-50 hover:bg-pink-50 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {pagesExpanded['instagram'] ? (
+                          <><ChevronUp className="w-3.5 h-3.5" /> Thu gọn</>
+                        ) : (
+                          <><ChevronDown className="w-3.5 h-3.5" /> Xem tất cả {displayAccts.length} Instagram account</>
+                        )}
+                      </button>
+                    )}
                   </div>
                   </motion.div>
                 )}
@@ -483,40 +591,71 @@ export default function ChannelsPage() {
                               className="overflow-hidden border-t border-slate-100 bg-slate-50/50"
                             >
                               <div className="px-8 py-5">
-                                <p className="text-sm font-semibold text-slate-600 mb-4">
-                                  Các Fanpage được quản lý: ({pages.length})
-                                </p>
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-4">
+                                  <p className="text-sm font-semibold text-slate-600">
+                                    Các Fanpage được quản lý: ({pages.length})
+                                  </p>
+                                  {pages.length > PAGES_PER_ROW && (
+                                    <button
+                                      onClick={() => setPagesExpanded(prev => ({ ...prev, [account.id]: !prev[account.id] }))}
+                                      className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                                    >
+                                      {pagesExpanded[account.id] ? (
+                                        <><ChevronUp className="w-3.5 h-3.5" /> Thu gọn</>
+                                      ) : (
+                                        <><ChevronDown className="w-3.5 h-3.5" /> Xem thêm {pages.length - PAGES_PER_ROW} page</>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Pages grid — mặc định 1 hàng (PAGES_PER_ROW), expand khi click */}
                                 <div className="grid grid-cols-4 gap-4 w-full">
-                                  {pages.map((page) => {
+                                  {(pagesExpanded[account.id] ? pages : pages.slice(0, PAGES_PER_ROW)).map((page) => {
                                     const bgColor = letterColor(page.name);
                                     return (
                                       <div
                                         key={page.id}
-                                        className="flex items-center gap-5 px-7 py-7 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all w-full"
+                                        className="flex items-center gap-4 px-5 py-5 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all w-full"
                                       >
                                         {page.avatar_url ? (
                                           <img
                                             src={page.avatar_url}
                                             alt={page.name}
-                                            className="w-20 h-20 rounded-2xl object-cover flex-shrink-0 shadow-md border-2 border-white"
+                                            className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 shadow-md border-2 border-white"
                                             onError={(e) => {
                                               e.currentTarget.style.display = 'none';
                                               (e.currentTarget.nextSibling as HTMLElement)?.style.removeProperty('display');
                                             }}
                                           />
                                         ) : null}
-                                        <div className={`w-20 h-20 ${bgColor} rounded-2xl flex items-center justify-center text-white font-bold text-3xl flex-shrink-0 shadow-md ${page.avatar_url ? 'hidden' : ''}`}>
+                                        <div className={`w-14 h-14 ${bgColor} rounded-2xl flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 shadow-md ${page.avatar_url ? 'hidden' : ''}`}>
                                           {page.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                          <p className="text-lg font-bold text-slate-900 truncate leading-snug">{page.name}</p>
-                                          <p className="text-sm text-slate-400 mt-1.5 truncate">FB Page ID: {page.username}</p>
+                                          <p className="text-sm font-bold text-slate-900 truncate leading-snug">{page.name}</p>
+                                          <p className="text-xs text-slate-400 mt-1 truncate">ID: {page.username}</p>
                                         </div>
-                                        <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 self-start mt-0.5" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 self-start mt-0.5" />
                                       </div>
                                     );
                                   })}
                                 </div>
+
+                                {/* Nút expand ở dưới nếu nhiều pages */}
+                                {pages.length > PAGES_PER_ROW && (
+                                  <button
+                                    onClick={() => setPagesExpanded(prev => ({ ...prev, [account.id]: !prev[account.id] }))}
+                                    className="mt-3 w-full py-2.5 text-xs font-bold text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-200 rounded-xl bg-slate-50 hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5"
+                                  >
+                                    {pagesExpanded[account.id] ? (
+                                      <><ChevronUp className="w-3.5 h-3.5" /> Thu gọn</>
+                                    ) : (
+                                      <><ChevronDown className="w-3.5 h-3.5" /> Xem tất cả {pages.length} page</>
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </motion.div>
                           )}

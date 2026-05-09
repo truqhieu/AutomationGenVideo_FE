@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, RefreshCw, Type, Image as ImageIcon, Smartphone, Monitor,
-  MapPin, Globe, Smile, UploadCloud, MessageCircle, Share2,
+  MapPin, Globe, Smile, MessageCircle, Share2,
   MoreHorizontal, ChevronDown, Save, Send, Clock, List, AlertCircle, ThumbsUp, X, Calendar as CalendarIcon,
   Loader2, Sparkles, Layers, Hash,
 } from 'lucide-react';
@@ -12,6 +12,9 @@ import { socialApi, SocialAccount, SocialPlatform, PLATFORM_META } from '@/lib/a
 import { useSocialAccounts, useInvalidateAccounts } from '@/hooks/useSocialAccounts';
 import PublishProgressModal from './PublishProgressModal';
 import HashtagPanel from './HashtagPanel';
+import MediaLibraryModal from './MediaLibraryModal';
+import PlatformPreview from './PlatformPreview';
+import TemplateManager from './TemplateManager';
 import toast from 'react-hot-toast';
 
 const containerVariants = {
@@ -25,7 +28,6 @@ const itemVariants = {
 };
 
 export default function ComposePage() {
-  const fileInputRef    = useRef<HTMLInputElement>(null);
   const isDraggingRef   = useRef(false);
   const dragStartXRef   = useRef(0);
   const dragStartWRef   = useRef(0);
@@ -71,14 +73,17 @@ export default function ComposePage() {
   const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('FACEBOOK');
   const [mounted, setMounted] = useState(false);
   const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [perPlatformMode, setPerPlatformMode] = useState(false);
+  const [perPlatformMessages, setPerPlatformMessages] = useState<Partial<Record<SocialPlatform, string>>>({});
 
   // --- PORTED LOGIC FROM VCB-TOOL ---
   
   // Hashtag State
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return ['VienChiBao', 'TrangSuc', 'PhongThuy', 'VangBac', 'QuaTang'];
+    if (typeof window === 'undefined') return ['a1', 'a2', 'a3', 'a4', 'a5'];
     const saved = localStorage.getItem('custom_hashtags');
-    return saved ? JSON.parse(saved) : ['VienChiBao', 'TrangSuc', 'PhongThuy', 'VangBac', 'QuaTang'];
+    return saved ? JSON.parse(saved) : ['a1', 'a2', 'a3', 'a4', 'a5'];
   });
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
@@ -184,11 +189,20 @@ export default function ComposePage() {
 
   useEffect(() => {
     setMounted(true);
-    // Drafts chỉ load khi user mở modal — không cần load ngay khi mount
-
     const now = new Date();
     now.setHours(now.getHours() + 1);
     setScheduledAt(now.toISOString().slice(0, 16));
+
+    // Đọc prefill data từ Repost (history page)
+    const prefill = localStorage.getItem('compose_prefill');
+    if (prefill) {
+      try {
+        const data = JSON.parse(prefill);
+        if (data.message) setMessage(data.message);
+        if (data.mediaUrls?.length) { setMediaUrls(data.mediaUrls); setPostMode('image'); }
+        localStorage.removeItem('compose_prefill');
+      } catch {}
+    }
   }, []);
 
   // Filter accounts based on SEARCH and POST MODE
@@ -232,21 +246,21 @@ export default function ComposePage() {
   const handleAiOptimize = async () => {
     if (!message.trim()) return toast.error('Vui lòng nhập nội dung trước');
     setIsAiProcessing(true);
-    // Mocking AI response
-    setTimeout(() => {
-      const lines = message.split('\n');
-      let improved = "✨ [AI Optimized]: " + lines[0] + " ✨\n\n";
-      if (lines.length > 1) {
-          improved += lines.slice(1).join('\n') + "\n\n";
-      }
-      improved += "👉 Đừng quên để lại bình luận phía dưới nhé!\n✅ Nhắn tin ngay để được tư vấn chi tiết.";
-      setMessage(improved);
+    try {
+      const firstPlatform = selectedAccountIds.length > 0
+        ? accounts.find(a => selectedAccountIds.includes(a.id))?.platform as SocialPlatform | undefined
+        : undefined;
+      const { hashtags: suggestedTags, source } = await socialApi.hashtag.suggest(message, firstPlatform);
+      const currentTags = hashtags;
+      const newTags = suggestedTags.map(h => h.replace(/^#+/, '').trim()).filter(h => h && !currentTags.includes(h));
+      setHashtags(prev => Array.from(new Set([...prev, ...newTags])).slice(0, 30));
+      toast.success(`AI gợi ý ${suggestedTags.length} hashtag (nguồn: ${source === 'ai' ? '🤖 AI' : '🔑 Keyword'})`, { duration: 3000 });
+    } catch {
+      toast.error('Không lấy được gợi ý hashtag, thử lại sau');
+    } finally {
       setIsAiProcessing(false);
-      toast.success('Đã tối ưu nội dung bằng AI');
-    }, 1500);
+    }
   };
-
-  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Hàng chờ: jobId[] sau khi enqueue, null = không có gì đang poll
   const [activeJobIds,   setActiveJobIds]   = useState<string[] | null>(null);
@@ -359,25 +373,6 @@ export default function ComposePage() {
   }, [activeJobIds]);
 
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploadingMedia(true);
-    try {
-      const { socialApi: api } = await import('@/lib/api/social');
-      const uploaded = await api.upload.media(Array.from(files));
-      const newUrls = uploaded.map((u: any) => u.url);
-      setMediaUrls(prev => Array.from(new Set([...prev, ...newUrls])));
-      if (postMode === 'text') setPostMode('image');
-      toast.success(`Đã upload ${newUrls.length} file`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Upload thất bại');
-    } finally {
-      setUploadingMedia(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   const handlePublish = async () => {
     if (activeTab === 'draft') {
@@ -838,6 +833,14 @@ export default function ComposePage() {
                   <button className="flex items-center gap-1.5 text-slate-600 text-[13px] font-bold bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full">
                     <Globe className="w-4 h-4" /> Công khai
                   </button>
+                  <TemplateManager
+                    currentMessage={message}
+                    currentHashtags={hashtags}
+                    onApply={(text, tags) => {
+                      setMessage(text);
+                      if (tags.length) setHashtags(prev => Array.from(new Set([...prev, ...tags])));
+                    }}
+                  />
                   <motion.button
                     onClick={handleAiOptimize}
                     disabled={isAiProcessing}
@@ -906,21 +909,19 @@ export default function ComposePage() {
                   })}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Upload từ máy */}
+              {/* Chỉ còn Thư viện media — upload video trực tiếp trong modal thư viện */}
+              <div>
                 <motion.div
-                  whileHover={{ borderColor: '#3b82f6', backgroundColor: '#f8fafc' }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer group shadow-sm"
+                  whileHover={{ borderColor: '#8b5cf6', backgroundColor: '#faf5ff' }}
+                  onClick={() => setShowLibrary(true)}
+                  className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer group shadow-sm"
                 >
-                  <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple hidden />
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-400 group-hover:text-blue-500 transition-all">
-                    {uploadingMedia ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-6 h-6" />}
+                  <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3 text-slate-400 group-hover:text-purple-500 transition-all group-hover:bg-purple-50">
+                    <Layers className="w-7 h-7" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-800 text-center">Tải từ máy tính</h4>
-                  <p className="text-xs text-slate-500 mt-1 text-center">Ảnh, Video tối đa 2GB</p>
+                  <h4 className="text-sm font-bold text-slate-800 text-center">Chọn từ thư viện media</h4>
+                  <p className="text-xs text-slate-500 mt-1 text-center">Chọn file đã upload trước</p>
                 </motion.div>
-
               </div>
             </div>
 
@@ -1204,6 +1205,17 @@ export default function ComposePage() {
           postingPcts={postingPcts}
           elapsedSeconds={elapsedSeconds}
           onClose={() => setPublishProgress(p => ({ ...p, show: false }))}
+        />
+
+        {/* MEDIA LIBRARY MODAL */}
+        <MediaLibraryModal
+          open={showLibrary}
+          onClose={() => setShowLibrary(false)}
+          onSelect={(urls) => {
+            setMediaUrls(prev => Array.from(new Set([...prev, ...urls])));
+            if (postMode === 'text') setPostMode('image');
+            toast.success(`Đã thêm ${urls.length} file từ thư viện`);
+          }}
         />
 
         {/* DRAFTS MODAL */}

@@ -5,12 +5,13 @@ import {
   BarChart3, CheckCircle, XCircle, Clock, Send, Calendar,
   Image as ImageIcon, ChevronDown, ChevronUp, Search,
   RefreshCw, Copy, RotateCcw, Filter, X, ArrowUpDown,
-  TrendingUp, ChevronLeft, ChevronRight,
+  TrendingUp, ChevronLeft, ChevronRight, Repeat2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { socialApi, SocialPost, PLATFORM_META, SocialPlatform } from '@/lib/api/social';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:3000';
 
@@ -101,6 +102,7 @@ function ActivityChart({ posts }: { posts: SocialPost[] }) {
 const PAGE_SIZE = 20;
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [posts, setPosts]         = useState<SocialPost[]>([]);
   const [stats, setStats]         = useState<any>(null);
   const [loading, setLoading]     = useState(true);
@@ -190,6 +192,15 @@ export default function HistoryPage() {
     } finally {
       setActionId(null);
     }
+  };
+
+  const handleRepost = (post: SocialPost) => {
+    localStorage.setItem('compose_prefill', JSON.stringify({
+      message: post.message,
+      mediaUrls: post.media_urls || [],
+    }));
+    router.push('/dashboard/social/compose');
+    toast.success('Đang mở trang soạn bài với nội dung đã sao chép');
   };
 
   const clearFilters = () => {
@@ -516,6 +527,17 @@ export default function HistoryPage() {
                                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                               >
                                 <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Repost */}
+                            {isOk && (
+                              <button
+                                onClick={() => handleRepost(post)}
+                                title="Đăng lại bài này"
+                                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-[11px] font-bold hover:bg-emerald-100 transition-colors"
+                              >
+                                <Repeat2 className="w-3 h-3" /> Đăng lại
                               </button>
                             )}
 
