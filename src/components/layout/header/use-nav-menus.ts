@@ -325,6 +325,18 @@ export function useNavMenus(
                             },
                         ],
                     },
+                    {
+                        section: "KÊNH VIỄN CHÍ BẢO",
+                        color: "blue" as const,
+                        items: [
+                            {
+                                label: "Channel Viễn Chí Bảo",
+                                href: "/dashboard/ai/channels",
+                                icon: Globe,
+                                description: "Quản lý và theo dõi toàn bộ kênh MXH của Viễn Chí Bảo",
+                            },
+                        ],
+                    },
                 ],
             },
         ],
