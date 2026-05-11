@@ -15,6 +15,7 @@ import HashtagPanel from './HashtagPanel';
 import MediaLibraryModal from './MediaLibraryModal';
 import PlatformPreview from './PlatformPreview';
 import TemplateManager from './TemplateManager';
+import { useTaskStore } from '@/store/taskStore';
 import toast from 'react-hot-toast';
 
 const containerVariants = {
@@ -108,6 +109,8 @@ export default function ComposePage() {
     uploadPct: 0,
     channels: []
   });
+
+  const { addTask, updateTask, tasks } = useTaskStore();
 
   // Limits
   const PLATFORM_LIMITS: Record<string, number> = { 
@@ -343,8 +346,21 @@ export default function ComposePage() {
           return { ...prev, channels: newChannels };
         });
 
-        const allDone = jobs.every(j => j.status === 'COMPLETED' || j.status === 'FAILED' || j.status === 'CANCELLED');
-        if (allDone) {
+          const allDone = jobs.every(j => j.status === 'COMPLETED' || j.status === 'FAILED' || j.status === 'CANCELLED');
+          
+          // Cập nhật task chạy ngầm
+          const mainTaskId = `post-${activeJobIds[0]}`;
+          const completedCount = jobs.filter(j => j.status === 'COMPLETED' || j.status === 'FAILED').length;
+          const totalCount = jobs.length;
+          const totalProgress = (completedCount / totalCount) * 100;
+          
+          updateTask(mainTaskId, { 
+            progress: totalProgress, 
+            status: allDone ? (jobs.some(j => j.status === 'FAILED') ? 'error' : 'success') : 'processing',
+            message: `Đã xong ${completedCount}/${totalCount} kênh`
+          });
+
+          if (allDone) {
           setActiveJobIds(null);
           setPublishing(false);
           setPublishProgress(prev => ({ ...prev, phase: 'done' }));
@@ -372,16 +388,18 @@ export default function ComposePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeJobIds]);
 
-  // Cảnh báo người dùng nếu họ định đóng/f5 trang khi đang đăng bài
+  // Cảnh báo người dùng nếu họ định đóng/f5 trang khi đang có tác vụ chạy ngầm
   useEffect(() => {
-    if (!publishing) return;
+    const hasActiveTasks = tasks.some(t => t.status === 'uploading' || t.status === 'processing' || t.status === 'pending');
+    if (!hasActiveTasks) return;
+    
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = ''; // Required for modern browsers to show the default warning
+      e.returnValue = 'Hệ thống đang xử lý bài đăng của bạn. Bạn có chắc muốn rời đi không?';
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [publishing]);
+  }, [tasks]);
 
   const handlePublish = async () => {
     if (activeTab === 'draft') {
@@ -484,6 +502,15 @@ export default function ComposePage() {
       }));
 
       const { jobIds } = await socialApi.queue.enqueue(jobs);
+
+      // Thêm vào background task manager
+      addTask({
+        id: `post-${jobIds[0]}`,
+        name: `Đăng bài: ${message.slice(0, 20)}...`,
+        status: 'pending',
+        progress: 0,
+        type: 'post'
+      });
 
       // Map jobId → channelId để polling effect có thể đối chiếu
       const idMap: Record<string, string> = {};

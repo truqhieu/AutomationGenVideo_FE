@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import Header from '@/components/layout/Header';
+import { BackgroundTaskManager } from '@/components/social/BackgroundTaskManager';
 
 export default function DashboardLayout({
   children,
@@ -99,6 +100,7 @@ export default function DashboardLayout({
       <main className="flex-1 p-6">
         {children}
       </main>
+      <BackgroundTaskManager />
     </div>
   );
 }

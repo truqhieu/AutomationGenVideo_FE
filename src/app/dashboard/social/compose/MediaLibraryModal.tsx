@@ -5,6 +5,7 @@ import { X, Image as ImageIcon, Film, Search, Loader2, Trash2, CheckSquare, Chev
 import { PLATFORM_META, SocialPlatform } from '@/lib/api/social';
 import { motion, AnimatePresence } from 'framer-motion';
 import { socialApi, MediaLibraryItem } from '@/lib/api/social';
+import { useTaskStore } from '@/store/taskStore';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -80,6 +81,8 @@ export default function MediaLibraryModal({ open, onClose, onSelect, maxSelect =
     });
   };
 
+  const { addTask, updateTask } = useTaskStore();
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -89,14 +92,37 @@ export default function MediaLibraryModal({ open, onClose, onSelect, maxSelect =
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const isVideo = file.type.startsWith('video/');
+        const taskId = `upload-${Date.now()}-${i}`;
+
+        addTask({
+          id: taskId,
+          name: `Upload: ${file.name}`,
+          status: 'uploading',
+          progress: 0,
+          type: 'upload'
+        });
+
         toast.loading(
           `[${i + 1}/${files.length}] ${isVideo ? '🎬 Đang tải lên (chia nhỏ)' : '🖼 Đang lưu'} ${file.name}…`,
           { id: 'lib-upload' },
         );
-        if (isVideo) {
-          await socialApi.upload.chunked(file, (pct) => setUploadPct(pct));
-        } else {
-          await socialApi.library.upload(file, (pct) => setUploadPct(pct));
+
+        try {
+          if (isVideo) {
+            await socialApi.upload.chunked(file, (pct) => {
+              setUploadPct(pct);
+              updateTask(taskId, { progress: pct, status: pct < 100 ? 'uploading' : 'processing' });
+            });
+          } else {
+            await socialApi.library.upload(file, (pct) => {
+              setUploadPct(pct);
+              updateTask(taskId, { progress: pct });
+            });
+          }
+          updateTask(taskId, { status: 'success', progress: 100 });
+        } catch (err: any) {
+          updateTask(taskId, { status: 'error', message: err.message });
+          throw err;
         }
       }
       toast.success(`✅ Đã lưu ${files.length} file vào thư viện (DB)`, { id: 'lib-upload', duration: 3000 });
@@ -255,11 +281,33 @@ export default function MediaLibraryModal({ open, onClose, onSelect, maxSelect =
                     >
                       {/* Thumbnail */}
                       {isVideo ? (
-                        <div className="w-full h-full bg-slate-900 flex items-center justify-center">
-                          <video src={item.url} className="w-full h-full object-cover opacity-70" muted />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Film className="w-6 h-6 text-white drop-shadow" />
-                          </div>
+                        <div className="relative w-full h-full bg-slate-800 flex items-center justify-center overflow-hidden">
+                          {item.thumbnail_url ? (
+                            <img
+                              src={item.thumbnail_url}
+                              alt={item.originalname}
+                              className="w-full h-full object-cover group-hover:opacity-0 transition-opacity duration-300"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 group-hover:opacity-0 transition-opacity">
+                              <Film className="w-8 h-8 mb-1" />
+                              <span className="text-[10px] uppercase font-medium">Video</span>
+                            </div>
+                          )}
+                          
+                          <video
+                            src={`${item.url}#t=0.5`}
+                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${item.thumbnail_url ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+                            preload="metadata"
+                            muted
+                            playsInline
+                            onMouseOver={e => (e.target as HTMLVideoElement).play()}
+                            onMouseOut={e => {
+                              const v = e.target as HTMLVideoElement;
+                              v.pause();
+                              v.currentTime = 0.5;
+                            }}
+                          />
                         </div>
                       ) : (
                         <img
