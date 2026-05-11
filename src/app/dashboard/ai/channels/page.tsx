@@ -299,7 +299,7 @@ export default function ChannelAnalyticsPage() {
                                     const cfg = Object.entries(PLATFORM_CONFIG).find(([k]) => p.includes(k))?.[1] ?? PLATFORM_CONFIG.all;
                                     return (
                                         <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                            <td className="py-2.5 px-3 text-white font-medium">{ch.display_name}</td>
+                                            <td className="py-2.5 px-3 text-white font-medium">{(ch.display_name||"").trim() || "—"}</td>
                                             <td className="py-2.5 px-3">
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${cfg.bg} text-white`}>
                                                     {cfg.icon}{ch.platform}
