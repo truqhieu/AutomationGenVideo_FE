@@ -23,6 +23,7 @@ import {
     Languages,
     Globe,
     Bot,
+    Settings,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
@@ -334,6 +335,12 @@ export function useNavMenus(
                                 href: "/dashboard/ai/channels",
                                 icon: Globe,
                                 description: "Quản lý và theo dõi toàn bộ kênh MXH của Viễn Chí Bảo",
+                            },
+                            {
+                                label: "Cấu hình Business",
+                                href: "/dashboard/ai/settings",
+                                icon: Settings,
+                                description: "Kết nối tài khoản Facebook, TikTok, Instagram, YouTube",
                             },
                         ],
                     },
