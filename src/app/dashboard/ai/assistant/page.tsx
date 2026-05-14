@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Send, Plus, MessageSquare, Trash2, Loader2, Pencil, Check, X, Sparkles, BarChart2, TrendingUp, Users, Zap, Settings, Sun, Moon, Monitor, ChevronUp, Send as SendIcon, Bell, FileSpreadsheet, FileText, Clock } from "lucide-react";
+import { Send, Plus, MessageSquare, Trash2, Loader2, Pencil, Check, X, Sparkles, BarChart2, TrendingUp, Users, Zap, Settings, Sun, Moon, Monitor, ChevronUp, Send as SendIcon, Bell, FileText, Clock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 import DynamicDashboard from "@/components/ai-assistant/DynamicDashboard";
@@ -59,6 +59,7 @@ export default function VCBAssistantPage() {
     const [loadingMsgs, setLoadingMsgs] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState("");
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [settingsTab, setSettingsTab] = useState<"appearance" | "telegram">("appearance");
     const [theme, setTheme] = useState<Theme>("light");
@@ -249,68 +250,105 @@ export default function VCBAssistantPage() {
         <div className={`flex h-[calc(100vh-64px)] overflow-hidden ${bg}`}>
 
             {/* ── Sidebar ── */}
-            <aside className={`w-64 shrink-0 flex flex-col border-r overflow-hidden ${sidebarBg}`}>
-                {/* Header */}
-                <div className="p-4 border-b border-gray-100">
-                    <button onClick={newConversation}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm font-medium transition-colors border border-violet-100">
-                        <Plus size={16} /> Cuộc trò chuyện mới
-                    </button>
-                </div>
+            <aside className={`shrink-0 flex flex-col border-r transition-[width] duration-250 ease-in-out ${sidebarBg} ${sidebarOpen ? "w-[260px]" : "w-[52px]"}`}>
 
-                {/* Conversation list */}
-                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-                    {loadingConvs ? (
-                        <div className="flex justify-center pt-8">
-                            <Loader2 size={16} className="text-gray-400 animate-spin" />
+                {/* ── COLLAPSED VIEW ── */}
+                {!sidebarOpen && (
+                    <div className="flex flex-col items-center h-full py-2">
+                        {/* Toggle */}
+                        <button onClick={() => setSidebarOpen(true)} title="Mở sidebar"
+                            className={`w-9 h-9 flex items-center justify-center rounded-lg mb-1 transition-colors ${isDark ? "text-gray-400 hover:bg-white/10" : "text-gray-500 hover:bg-gray-100"}`}>
+                            <PanelLeftOpen size={17} />
+                        </button>
+                        {/* New chat */}
+                        <button onClick={newConversation} title="Cuộc trò chuyện mới"
+                            className={`w-9 h-9 flex items-center justify-center rounded-lg mb-3 transition-colors ${isDark ? "text-gray-400 hover:bg-white/10" : "text-gray-500 hover:bg-gray-100"}`}>
+                            <Plus size={17} />
+                        </button>
+                        {/* Conversations as dots */}
+                        <div className="flex-1 flex flex-col items-center gap-0.5 overflow-hidden">
+                            {loadingConvs
+                                ? <Loader2 size={14} className="text-gray-400 animate-spin mt-2" />
+                                : conversations.slice(0, 10).map((conv) => (
+                                    <button key={conv.id} onClick={() => selectConversation(conv.id)} title={conv.title}
+                                        className={`w-9 h-8 flex items-center justify-center rounded-lg transition-colors ${activeId === conv.id
+                                            ? isDark ? "bg-white/15 text-violet-400" : "bg-violet-50 text-violet-600"
+                                            : isDark ? "text-gray-500 hover:bg-white/10 hover:text-gray-300" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                        }`}>
+                                        <MessageSquare size={14} />
+                                    </button>
+                                ))
+                            }
                         </div>
-                    ) : conversations.length > 0 ? (
-                        <>
-                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider px-2 pb-2">Lịch sử</p>
-                            {conversations.map((conv) => (
-                                <div key={conv.id}
-                                    onClick={() => selectConversation(conv.id)}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors group cursor-pointer ${activeId === conv.id
-                                        ? "bg-violet-50 text-violet-700 border border-violet-200"
-                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                                    }`}>
-                                    <MessageSquare size={13} className="shrink-0 opacity-50" />
+                        {/* Avatar */}
+                        <div className={`mt-2 pt-2 border-t w-full flex justify-center ${footerBorder}`}>
+                            <button onClick={() => setSidebarOpen(true)} title={user?.full_name}
+                                className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold text-white">
+                                {firstName[0]?.toUpperCase()}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                                    {editingId === conv.id ? (
-                                        <input
-                                            value={editTitle}
-                                            onChange={(e) => setEditTitle(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === "Enter") saveTitle(conv.id); if (e.key === "Escape") setEditingId(null); }}
-                                            className="flex-1 bg-white border border-violet-300 rounded px-1.5 text-xs text-gray-800 outline-none"
-                                            autoFocus onClick={(e) => e.stopPropagation()}
-                                        />
-                                    ) : (
-                                        <span className="truncate flex-1 text-xs">{conv.title}</span>
-                                    )}
+                {/* ── OPEN VIEW ── */}
+                {sidebarOpen && (<>
+                    {/* Header row */}
+                    <div className="flex items-center justify-between px-3 pt-3 pb-2">
+                        <button onClick={newConversation}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-1 mr-1 ${isDark ? "text-gray-300 hover:bg-white/8" : "text-gray-700 hover:bg-gray-100"}`}>
+                            <Plus size={16} className={isDark ? "text-gray-400" : "text-gray-500"} />
+                            Cuộc trò chuyện mới
+                        </button>
+                        <button onClick={() => setSidebarOpen(false)} title="Đóng sidebar"
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg shrink-0 transition-colors ${isDark ? "text-gray-400 hover:bg-white/10" : "text-gray-500 hover:bg-gray-100"}`}>
+                            <PanelLeftClose size={17} />
+                        </button>
+                    </div>
 
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Conversation list */}
+                    <div className="flex-1 overflow-y-auto px-2 pb-2">
+                        {loadingConvs ? (
+                            <div className="flex justify-center pt-8"><Loader2 size={16} className="text-gray-400 animate-spin" /></div>
+                        ) : conversations.length > 0 ? (
+                            <>
+                                <p className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Gần đây</p>
+                                {conversations.map((conv) => (
+                                    <div key={conv.id} onClick={() => selectConversation(conv.id)}
+                                        className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${activeId === conv.id
+                                            ? isDark ? "bg-white/10 text-white" : "bg-gray-100 text-gray-900"
+                                            : isDark ? "text-gray-400 hover:bg-white/8 hover:text-gray-200" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        }`}>
                                         {editingId === conv.id ? (
-                                            <>
-                                                <Check size={12} className="text-emerald-500 cursor-pointer" onClick={() => saveTitle(conv.id)} />
-                                                <X size={12} className="text-gray-400 cursor-pointer" onClick={() => setEditingId(null)} />
-                                            </>
+                                            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === "Enter") saveTitle(conv.id); if (e.key === "Escape") setEditingId(null); }}
+                                                className="flex-1 bg-white border border-violet-300 rounded px-1.5 text-xs text-gray-800 outline-none"
+                                                autoFocus onClick={(e) => e.stopPropagation()} />
                                         ) : (
-                                            <>
-                                                <Pencil size={11} className="text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => { setEditingId(conv.id); setEditTitle(conv.title); }} />
-                                                <Trash2 size={11} className="text-gray-400 cursor-pointer hover:text-red-500" onClick={(e) => deleteConversation(conv.id, e)} />
-                                            </>
+                                            <span className="truncate flex-1 text-sm">{conv.title}</span>
                                         )}
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                            {editingId === conv.id ? (
+                                                <>
+                                                    <Check size={12} className="text-emerald-500 cursor-pointer" onClick={() => saveTitle(conv.id)} />
+                                                    <X size={12} className="text-gray-400 cursor-pointer" onClick={() => setEditingId(null)} />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Pencil size={11} className={`cursor-pointer ${isDark ? "text-gray-600 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"}`} onClick={() => { setEditingId(conv.id); setEditTitle(conv.title); }} />
+                                                    <Trash2 size={11} className="text-gray-400 cursor-pointer hover:text-red-500" onClick={(e) => deleteConversation(conv.id, e)} />
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </>
-                    ) : (
-                        <p className="text-xs text-gray-400 text-center pt-8">Chưa có hội thoại nào</p>
-                    )}
-                </div>
+                                ))}
+                            </>
+                        ) : (
+                            <p className={`text-xs text-center pt-8 ${isDark ? "text-gray-600" : "text-gray-400"}`}>Chưa có hội thoại nào</p>
+                        )}
+                    </div>
 
-                {/* User footer + Settings */}
-                <div className={`border-t ${footerBorder} relative`} ref={settingsRef}>
+                    {/* Footer + Settings */}
+                    <div className={`border-t ${footerBorder} relative`} ref={settingsRef}>
                     {/* Settings Panel — pop up phía trên */}
                     {showSettings && (
                         <div className={`absolute bottom-full left-0 right-0 mb-1 mx-2 rounded-2xl border shadow-xl overflow-hidden z-50 ${isDark ? "bg-[#1e2030] border-white/10" : "bg-white border-gray-200"}`}
@@ -491,6 +529,7 @@ export default function VCBAssistantPage() {
                         <ChevronUp size={13} className={`shrink-0 transition-transform ${showSettings ? "rotate-180" : ""} ${isDark ? "text-gray-500" : "text-gray-400"}`} />
                     </button>
                 </div>
+                </>)}
             </aside>
 
             {/* ── Main ── */}
