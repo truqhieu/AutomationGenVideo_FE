@@ -218,7 +218,6 @@ export default function ConnectionSettingsPage() {
                                                 <span className="text-xs text-gray-400">/ {p.total}</span>
                                             </div>
                                             <ProgressBar value={p.has_data} max={p.total} color={color}/>
-                                            <p className="text-[10px] text-gray-400 mt-1">{fmt(p.total_views)} views</p>
                                         </div>
                                     );
                                 })}
