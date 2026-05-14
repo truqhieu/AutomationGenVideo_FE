@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { 
-    Search, ChevronRight, AlertTriangle, Cloud, 
+import {
+    Search, ChevronRight, AlertTriangle, Cloud,
     CheckCircle2, RefreshCw, XCircle, TrendingUp,
-    Plus, AlertCircle, Loader2, X
+    Plus, AlertCircle, Loader2, X, Database, Wifi, WifiOff,
+    Facebook, Instagram, Youtube, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { apiClient } from "@/lib/api-client";
 
@@ -40,6 +41,34 @@ const PLATFORMS = [
   )},
 ];
 
+const PLATFORM_COLORS: Record<string, string> = {
+    Facebook: '#1877f2', TikTok: '#111827', YouTube: '#dc2626',
+    Instagram: '#e1306c', Threads: '#111827', Zalo: '#0068ff', Khác: '#6b7280',
+};
+
+function CoverageBadge({ pct }: { pct: number }) {
+    const color = pct >= 70 ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+        : pct >= 30 ? 'bg-amber-100 text-amber-700 border-amber-200'
+        : 'bg-red-100 text-red-700 border-red-200';
+    return <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${color}`}>{pct}%</span>;
+}
+
+function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+    const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    return (
+        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+        </div>
+    );
+}
+
+function fmt(n: any) {
+    const v = Number(n) || 0;
+    if (v >= 1_000_000) return (v/1_000_000).toFixed(1)+'M';
+    if (v >= 1_000) return (v/1_000).toFixed(1)+'K';
+    return String(v);
+}
+
 export default function ConnectionSettingsPage() {
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +76,13 @@ export default function ConnectionSettingsPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [oauthToast, setOauthToast] = useState<{type: 'success'|'error'; message: string} | null>(null);
+
+    // Coverage state
+    const [coverage, setCoverage] = useState<any>(null);
+    const [coverageLoading, setCoverageLoading] = useState(true);
+    const [coverageTab, setCoverageTab] = useState<'with'|'without'>('without');
+    const [expandedPlatform, setExpandedPlatform] = useState<string|null>(null);
+    const [coverageSearch, setCoverageSearch] = useState('');
 
     useEffect(() => {
         const oauthStatus = searchParams.get('oauth');
@@ -66,17 +102,19 @@ export default function ConnectionSettingsPage() {
         const fetchConnections = async () => {
             try {
                 const { data } = await apiClient.get('/business-connections');
-                if (data && Array.isArray(data)) {
-                    setConnections(data);
-                }
-            } catch (error) {
-                console.error("Error fetching connections:", error);
-            } finally {
-                setLoading(false);
-            }
+                if (data && Array.isArray(data)) setConnections(data);
+            } catch (error) { console.error("Error fetching connections:", error); }
+            finally { setLoading(false); }
         };
         fetchConnections();
     }, [oauthToast]);
+
+    useEffect(() => {
+        apiClient.get('/ai/channel-coverage')
+            .then(({ data }) => setCoverage(data))
+            .catch(() => {})
+            .finally(() => setCoverageLoading(false));
+    }, []);
 
     return (
         <div className="min-h-screen bg-white text-gray-800 p-6 font-sans">
@@ -131,66 +169,138 @@ export default function ConnectionSettingsPage() {
                 <span className="text-blue-600 font-medium">Cấu hình kết nối</span>
             </div>
 
-            {/* Alert Banner */}
-            {connections.length > 0 && (
-                <div className="bg-orange-50 border border-orange-100 rounded-md p-3 mb-6 flex items-start gap-2 text-sm text-orange-800">
-                    <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-                    <p>
-                        <span className="font-bold">Có {connections.filter(c => !c.is_active || c.sync_status === 'Chưa đồng bộ').length} kênh</span> đang tạm dừng đồng bộ do mất quyền truy cập, dữ liệu trong báo cáo có thể chưa được cập nhật. Vui lòng cấp lại quyền để tiếp tục đồng bộ!
-                    </p>
-                </div>
-            )}
 
-            {/* KPI Row */}
-            <div className="grid grid-cols-5 gap-0 border border-gray-200 rounded-lg bg-white overflow-hidden mb-6 shadow-sm">
-                
-                <div className="p-4 border-r border-gray-200">
-                    <div className="flex items-center gap-1.5 text-blue-600 mb-1 text-xs font-semibold">
-                        <Cloud className="w-4 h-4" />
-                        Kênh đã kết nối
-                    </div>
-                    <div className="text-3xl font-bold text-gray-900">{connections.length}</div>
+            {/* ── CHANNEL COVERAGE SECTION ── */}
+            <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                    <Database size={16} className="text-violet-600"/>
+                    <h2 className="text-sm font-bold text-gray-800">Phủ sóng dữ liệu kênh — tháng này</h2>
+                    {coverageLoading && <Loader2 size={13} className="animate-spin text-gray-400"/>}
                 </div>
 
-                <div className="p-4 border-r border-gray-200">
-                    <div className="flex items-center gap-1.5 text-green-600 mb-1 text-xs font-semibold">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Đồng bộ thành công
-                    </div>
-                    <div className="text-3xl font-bold text-gray-900">{connections.filter(c => c.sync_status === 'Thành công').length}</div>
-                </div>
+                {!coverageLoading && coverage && (
+                    <>
+                        {/* Summary KPIs */}
+                        <div className="grid grid-cols-4 gap-3 mb-4">
+                            {[
+                                { label: 'Tổng kênh', value: coverage.summary.total_channels, color: '#7c3aed', icon: <Database size={15}/> },
+                                { label: 'Đã có dữ liệu', value: coverage.summary.has_data, color: '#059669', icon: <Wifi size={15}/> },
+                                { label: 'Chưa có dữ liệu', value: coverage.summary.no_data, color: '#dc2626', icon: <WifiOff size={15}/> },
+                                { label: 'Tổng views', value: fmt(coverage.summary.total_views), color: '#0ea5e9', icon: <TrendingUp size={15}/> },
+                            ].map((k, i) => (
+                                <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: k.color + '15', color: k.color }}>{k.icon}</div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium">{k.label}</p>
+                                        <p className="text-2xl font-bold text-gray-900">{k.value}</p>
+                                    </div>
+                                    {i === 1 && <CoverageBadge pct={coverage.summary.coverage_pct} />}
+                                </div>
+                            ))}
+                        </div>
 
-                <div className="p-4 border-r border-gray-200 bg-[#fffdf0]">
-                    <div className="flex items-center gap-1.5 text-yellow-600 mb-1 text-xs font-semibold">
-                        <RefreshCw className="w-4 h-4" />
-                        Đang đồng bộ
-                    </div>
-                    <div className="text-3xl font-bold text-gray-900">{connections.filter(c => c.sync_status === 'Đang đồng bộ').length}</div>
-                </div>
+                        {/* By platform */}
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Theo nền tảng</p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                {(coverage.by_platform || []).filter((p: any) => p.platform !== 'Khác').map((p: any) => {
+                                    const color = PLATFORM_COLORS[p.platform] || '#6b7280';
+                                    return (
+                                        <div key={p.platform}
+                                            onClick={() => setExpandedPlatform(expandedPlatform === p.platform ? null : p.platform)}
+                                            className="cursor-pointer rounded-xl border border-gray-100 bg-gray-50 hover:bg-violet-50 hover:border-violet-200 transition-all p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-semibold text-gray-700">{p.platform}</span>
+                                                <CoverageBadge pct={p.coverage_pct}/>
+                                            </div>
+                                            <div className="flex items-baseline gap-1 mb-1.5">
+                                                <span className="text-lg font-bold" style={{ color }}>{p.has_data}</span>
+                                                <span className="text-xs text-gray-400">/ {p.total}</span>
+                                            </div>
+                                            <ProgressBar value={p.has_data} max={p.total} color={color}/>
+                                            <p className="text-[10px] text-gray-400 mt-1">{fmt(p.total_views)} views</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                <div className="p-4 border-r border-gray-200">
-                    <div className="flex items-center gap-1.5 text-red-500 mb-1 text-xs font-semibold">
-                        <XCircle className="w-4 h-4" />
-                        Đồng bộ thất bại
-                    </div>
-                    <div className="text-3xl font-bold text-gray-900">{connections.filter(c => c.sync_status === 'Thất bại').length}</div>
-                </div>
+                        {/* Channel detail tabs */}
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                            {/* Tab header */}
+                            <div className="flex border-b border-gray-100">
+                                <button onClick={() => setCoverageTab('without')}
+                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${coverageTab === 'without' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                                    <WifiOff size={14}/> Chưa có dữ liệu
+                                    <span className="bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full font-bold">{coverage.summary.no_data}</span>
+                                </button>
+                                <button onClick={() => setCoverageTab('with')}
+                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${coverageTab === 'with' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                                    <Wifi size={14}/> Đã có dữ liệu
+                                    <span className="bg-emerald-100 text-emerald-600 text-xs px-1.5 py-0.5 rounded-full font-bold">{coverage.summary.has_data}</span>
+                                </button>
+                                <div className="flex-1 flex justify-end items-center pr-4">
+                                    <input value={coverageSearch} onChange={e => setCoverageSearch(e.target.value)}
+                                        placeholder="Tìm kênh..."
+                                        className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-violet-400 w-40"/>
+                                </div>
+                            </div>
 
-                <div className="p-4">
-                    <div className="flex items-center gap-1.5 text-purple-600 mb-1 text-xs font-semibold">
-                        <TrendingUp className="w-4 h-4" />
-                        Tỉ lệ kéo thành công
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-gray-900">
-                            {connections.length > 0 
-                                ? Math.round((connections.filter(c => c.sync_status === 'Thành công').length / connections.length) * 100)
-                                : 0}%
-                        </span>
-                        <span className="text-xs text-gray-500">/ 30 ngày qua</span>
-                    </div>
-                </div>
+                            {/* Table */}
+                            <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-gray-50">
+                                        <tr className="border-b border-gray-200">
+                                            <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kênh</th>
+                                            <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nền tảng</th>
+                                            <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+                                            <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Owner</th>
+                                            {coverageTab === 'with' && <>
+                                                <th className="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Views</th>
+                                                <th className="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Videos</th>
+                                                <th className="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Followers</th>
+                                            </>}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(coverageTab === 'with' ? coverage.channels_with_data : coverage.channels_no_data)
+                                            .filter((c: any) => !coverageSearch ||
+                                                (c.name || '').toLowerCase().includes(coverageSearch.toLowerCase()) ||
+                                                (c.team || '').toLowerCase().includes(coverageSearch.toLowerCase()) ||
+                                                (c.owner || '').toLowerCase().includes(coverageSearch.toLowerCase()))
+                                            .slice(0, 100)
+                                            .map((ch: any, i: number) => {
+                                                const color = PLATFORM_COLORS[ch.platform_norm] || '#6b7280';
+                                                return (
+                                                    <tr key={i} className={`border-b border-gray-100 hover:bg-violet-50/30 transition-colors ${i%2===0?'':'bg-gray-50/30'}`}>
+                                                        <td className="py-2.5 px-4 font-medium text-gray-800 max-w-[180px] truncate">{ch.name || '—'}</td>
+                                                        <td className="py-2.5 px-3">
+                                                            <span className="text-xs font-medium px-2 py-0.5 rounded-md border" style={{ color, borderColor: color + '40', background: color + '10' }}>
+                                                                {ch.platform_norm}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-xs text-gray-600">{ch.team || <span className="text-gray-300">—</span>}</td>
+                                                        <td className="py-2.5 px-3 text-xs text-gray-600">{ch.owner || <span className="text-gray-300">—</span>}</td>
+                                                        {coverageTab === 'with' && <>
+                                                            <td className="py-2.5 px-3 text-right font-bold text-violet-700 text-sm">{fmt(ch.views)}</td>
+                                                            <td className="py-2.5 px-3 text-right text-xs text-gray-600">{ch.videos}</td>
+                                                            <td className="py-2.5 px-3 text-right text-xs text-gray-500">{fmt(ch.followers)}</td>
+                                                        </>}
+                                                    </tr>
+                                                );
+                                            })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
 
+                {!coverageLoading && !coverage && (
+                    <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-6 text-center text-gray-400 text-sm">
+                        Không tải được dữ liệu coverage. Backend có thể chưa restart.
+                    </div>
+                )}
             </div>
 
             {/* Toolbar */}
