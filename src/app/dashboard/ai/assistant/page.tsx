@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Send, Plus, MessageSquare, Trash2, Loader2, Pencil, Check, X, Sparkles, BarChart2, TrendingUp, Users, Zap, Settings, Sun, Moon, Monitor, Palette, ChevronUp } from "lucide-react";
+import { Send, Plus, MessageSquare, Trash2, Loader2, Pencil, Check, X, Sparkles, BarChart2, TrendingUp, Users, Zap, Settings, Sun, Moon, Monitor, ChevronUp, Send as SendIcon, Bell, FileSpreadsheet, FileText, Clock } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 import DynamicDashboard from "@/components/ai-assistant/DynamicDashboard";
@@ -60,8 +60,21 @@ export default function VCBAssistantPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState("");
     const [showSettings, setShowSettings] = useState(false);
+    const [settingsTab, setSettingsTab] = useState<"appearance" | "telegram">("appearance");
     const [theme, setTheme] = useState<Theme>("light");
     const [chatStyle, setChatStyle] = useState<ChatStyle>("default");
+
+    // Telegram config state
+    const [tgBotToken, setTgBotToken] = useState("");
+    const [tgChatId, setTgChatId] = useState("");
+    const [tgScheduleHour, setTgScheduleHour] = useState("8");
+    const [tgScheduleMin, setTgScheduleMin] = useState("0");
+    const [tgFormats, setTgFormats] = useState<string[]>(["text"]);
+    const [tgReportTypes, setTgReportTypes] = useState<string[]>(["ads", "traffic"]);
+    const [tgActive, setTgActive] = useState(true);
+    const [tgSaving, setTgSaving] = useState(false);
+    const [tgSendingNow, setTgSendingNow] = useState(false);
+    const [tgStatus, setTgStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -77,6 +90,47 @@ export default function VCBAssistantPage() {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
+
+    // Load Telegram config khi mở settings
+    useEffect(() => {
+        if (!showSettings || settingsTab !== "telegram") return;
+        apiClient.get("/telegram-report/config").then(({ data }) => {
+            if (!data) return;
+            setTgBotToken(data.bot_token ?? "");
+            setTgChatId(data.chat_id ?? "");
+            const parts = (data.schedule ?? "0 8 * * *").split(" ");
+            setTgScheduleMin(parts[0] ?? "0");
+            setTgScheduleHour(parts[1] ?? "8");
+            setTgFormats(data.formats ?? ["text"]);
+            setTgReportTypes(data.report_types ?? ["ads", "traffic"]);
+            setTgActive(data.is_active ?? true);
+        }).catch(() => {});
+    }, [showSettings, settingsTab]);
+
+    const saveTgConfig = async () => {
+        setTgSaving(true); setTgStatus(null);
+        try {
+            await apiClient.post("/telegram-report/config", {
+                bot_token: tgBotToken, chat_id: tgChatId,
+                schedule: `${tgScheduleMin} ${tgScheduleHour} * * *`,
+                formats: tgFormats, report_types: tgReportTypes, is_active: tgActive,
+            });
+            setTgStatus({ ok: true, msg: "Đã lưu cấu hình!" });
+        } catch { setTgStatus({ ok: false, msg: "Lưu thất bại, thử lại." }); }
+        finally { setTgSaving(false); }
+    };
+
+    const sendTgNow = async () => {
+        setTgSendingNow(true); setTgStatus(null);
+        try {
+            const { data } = await apiClient.post("/telegram-report/send-now");
+            setTgStatus({ ok: data.ok, msg: data.message });
+        } catch { setTgStatus({ ok: false, msg: "Gửi thất bại." }); }
+        finally { setTgSendingNow(false); }
+    };
+
+    const toggleFormat = (f: string) => setTgFormats(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+    const toggleType   = (t: string) => setTgReportTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
     // Apply theme
     const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
