@@ -309,7 +309,7 @@ export function useNavMenus(
                     },
                 ],
             },
-            {
+            ...(isManagerOrAdmin ? [{
                 id: "ai",
                 label: "AI",
                 activePathPrefixes: ["/dashboard/ai"],
@@ -345,7 +345,7 @@ export function useNavMenus(
                         ],
                     },
                 ],
-            },
+            }] : []),
         ],
         [isManagerOrAdmin, isManagement, isAdmin, isLeader, isManager],
     );
