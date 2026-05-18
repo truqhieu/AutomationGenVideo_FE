@@ -24,8 +24,24 @@ function resolveMediaUrl(url: string): string {
   return url;
 }
 
+/** Chuyển Google Drive download URL → embed URL để browser stream được video */
+function toStreamableUrl(url: string): string {
+  if (!url) return url;
+  // https://drive.google.com/uc?export=download&id=FILE_ID → https://drive.google.com/file/d/FILE_ID/preview
+  const ucMatch = url.match(/drive\.google\.com\/uc[^?]*\?.*[?&]id=([a-zA-Z0-9_-]+)/);
+  if (ucMatch) return `https://drive.google.com/file/d/${ucMatch[1]}/preview`;
+  // https://drive.google.com/file/d/FILE_ID/... (đã đúng format)
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+  return url;
+}
+
+function isDriveUrl(url: string): boolean {
+  return url.includes('drive.google.com');
+}
+
 function isVideoUrl(url: string): boolean {
-  return /\.(mp4|mov|avi|webm|mkv)(\?|$)/i.test(url);
+  return /\.(mp4|mov|avi|webm|mkv)(\?|$)/i.test(url) || isDriveUrl(url);
 }
 
 
@@ -476,7 +492,18 @@ export default function HistoryPage() {
                       {post.media_urls.map((url, i) => {
                         const resolved = resolveMediaUrl(url);
                         const isVideo  = isVideoUrl(url);
+                        const isDrive  = isDriveUrl(url);
                         return isVideo ? (
+                          isDrive ? (
+                            <iframe
+                              key={i}
+                              src={toStreamableUrl(url)}
+                              className="w-full"
+                              style={{ height: '480px', border: 'none' }}
+                              allow="autoplay"
+                              allowFullScreen
+                            />
+                          ) : (
                           <video
                             key={i}
                             src={resolved}
@@ -488,6 +515,7 @@ export default function HistoryPage() {
                                 '<p class="text-xs text-slate-400 p-6 text-center">File không còn trên server</p>';
                             }}
                           />
+                          )
                         ) : (
                           <a key={i} href={resolved} target="_blank" rel="noopener noreferrer">
                             <img
