@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Trash2, RefreshCw, RotateCcw, Plus, Clock, CheckCircle, XCircle, AlertCircle, LayoutGrid } from 'lucide-react';
+import { Calendar, Trash2, RefreshCw, RotateCcw, Plus, Clock, CheckCircle, XCircle, AlertCircle, LayoutGrid, Link2Off } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { socialApi, SocialPost, PLATFORM_META } from '@/lib/api/social';
@@ -167,14 +167,60 @@ export default function SchedulePage() {
                                   </span>
                                 </div>
                                 <p className="text-sm text-slate-700 line-clamp-2">{post.message}</p>
-                                <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                                  {post.scheduled_at && (
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="w-3 h-3" />
-                                      {new Date(post.scheduled_at).toLocaleString('vi')}
-                                    </span>
+                                <div className="flex flex-col gap-1.5 mt-2">
+                                  {/* Thời gian lên lịch */}
+                                  <div className="flex items-center gap-3 text-xs text-slate-400">
+                                    {post.scheduled_at && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {new Date(post.scheduled_at).toLocaleString('vi')}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Banner retry — hiện khi PENDING + có lỗi */}
+                                  {post.status === 'PENDING' && post.error_msg && (
+                                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                      <RefreshCw className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-amber-700">
+                                          Đăng thất bại — đang tự động thử lại (lần {(post.retry_count ?? 0)}/3)
+                                          {post.next_retry_at && (
+                                            <span className="font-normal">
+                                              {' · '}Lần kế lúc{' '}
+                                              <strong>{new Date(post.next_retry_at).toLocaleString('vi', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</strong>
+                                            </span>
+                                          )}
+                                        </p>
+                                        {/authenticate|token|oauth|permission|invalid|unsupported state/i.test(post.error_msg) ? (
+                                          <p className="text-[11px] text-amber-600 mt-0.5 flex items-center gap-1">
+                                            <Link2Off className="w-3 h-3 flex-shrink-0" />
+                                            Token Facebook hết hạn/bị thu hồi —{' '}
+                                            <Link href="/dashboard/social/accounts" className="underline font-semibold hover:text-amber-800">
+                                              Kết nối lại tài khoản
+                                            </Link>
+                                            {' '}để tránh tiếp tục thất bại
+                                          </p>
+                                        ) : (
+                                          <p className="text-[11px] text-amber-500 mt-0.5 truncate">{post.error_msg}</p>
+                                        )}
+                                      </div>
+                                    </div>
                                   )}
-                                  {post.error_msg && <span className="text-red-400 truncate">{post.error_msg}</span>}
+
+                                  {/* Lỗi FAILED (không retry nữa) */}
+                                  {post.status === 'FAILED' && post.error_msg && (
+                                    <div className="flex items-start gap-1.5 text-xs text-red-400">
+                                      {/authenticate|token|oauth|permission|invalid|unsupported state/i.test(post.error_msg) ? (
+                                        <>
+                                          <Link2Off className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                          <span>Token hết hạn — <Link href="/dashboard/social/accounts" className="underline font-semibold hover:text-red-600">Kết nối lại</Link> rồi bấm thử lại</span>
+                                        </>
+                                      ) : (
+                                        <span className="truncate">{post.error_msg}</span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex gap-1 flex-shrink-0">

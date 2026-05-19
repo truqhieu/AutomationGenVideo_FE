@@ -11,8 +11,8 @@ import toast from 'react-hot-toast';
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** urls: mảng URL được chọn; thumbMap: url → thumbnail_url (để hiện thumbnail đúng) */
-  onSelect: (urls: string[], thumbMap?: Record<string, string>) => void;
+  /** urls: mảng URL được chọn; thumbMap: url → thumbnail_url; idMap: url → library item id */
+  onSelect: (urls: string[], thumbMap?: Record<string, string>, idMap?: Record<string, string>) => void;
   maxSelect?: number;
 }
 
@@ -162,14 +162,19 @@ export default function MediaLibraryModal({ open, onClose, onSelect, maxSelect =
   const handleConfirm = () => {
     if (selected.size === 0) { toast.error('Chưa chọn file nào'); return; }
     const urls = Array.from(selected);
-    // Gom thumbnail_url của các item đã chọn để compose page dùng đúng thumbnail
     const thumbMap: Record<string, string> = {};
+    const idMap: Record<string, string> = {};
     items.forEach(item => {
-      if (selected.has(item.url) && item.thumbnail_url) {
-        thumbMap[item.url] = item.thumbnail_url;
+      if (selected.has(item.url)) {
+        if (item.thumbnail_url) thumbMap[item.url] = item.thumbnail_url;
+        idMap[item.url] = item.id;
       }
     });
-    onSelect(urls, Object.keys(thumbMap).length > 0 ? thumbMap : undefined);
+    onSelect(
+      urls,
+      Object.keys(thumbMap).length > 0 ? thumbMap : undefined,
+      Object.keys(idMap).length > 0 ? idMap : undefined,
+    );
     onClose();
   };
 
@@ -316,18 +321,18 @@ export default function MediaLibraryModal({ open, onClose, onSelect, maxSelect =
                       {/* Thumbnail */}
                       {isVideo ? (
                         <div className="relative w-full h-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                          {item.thumbnail_url ? (
+                          {/* Film icon luôn hiện làm nền — thumbnail sẽ phủ lên nếu load thành công */}
+                          <div className={`absolute inset-0 flex flex-col items-center justify-center text-slate-500 ${item.storage !== 'google_drive' ? 'group-hover:opacity-0 transition-opacity' : ''}`}>
+                            <Film className="w-8 h-8 mb-1" />
+                            <span className="text-[10px] uppercase font-medium">Video</span>
+                          </div>
+                          {item.thumbnail_url && (
                             <img
                               src={item.thumbnail_url}
                               alt={item.originalname}
-                              className={`w-full h-full object-cover transition-opacity duration-300 ${item.storage !== 'google_drive' ? 'group-hover:opacity-0' : ''}`}
+                              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${item.storage !== 'google_drive' ? 'group-hover:opacity-0' : ''}`}
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
-                          ) : (
-                            <div className={`absolute inset-0 flex flex-col items-center justify-center text-slate-500 ${item.storage !== 'google_drive' ? 'group-hover:opacity-0 transition-opacity' : ''}`}>
-                              <Film className="w-8 h-8 mb-1" />
-                              <span className="text-[10px] uppercase font-medium">Video</span>
-                            </div>
                           )}
 
                           {/* Chỉ render video element cho storage nội bộ — Drive URL không dùng được làm video src */}

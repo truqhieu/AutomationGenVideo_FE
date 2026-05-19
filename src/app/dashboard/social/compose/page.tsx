@@ -84,6 +84,8 @@ export default function ComposePage() {
   const [libraryMode, setLibraryMode] = useState<'media' | 'thumb'>('media');
   // Map url → thumbnail_url cho các media chọn từ thư viện (để hiện đúng thumbnail Drive)
   const [mediaThumbs, setMediaThumbs] = useState<Record<string, string>>({});
+  // Map url → library item id (để gọi API previewFrame/setThumbnail cho Drive video)
+  const [mediaLibraryIds, setMediaLibraryIds] = useState<Record<string, string>>({});
   const [perPlatformMessages, setPerPlatformMessages] = useState<Partial<Record<SocialPlatform, string>>>({});
 
   // --- PORTED LOGIC FROM VCB-TOOL ---
@@ -856,6 +858,8 @@ export default function ComposePage() {
                 {/* Ảnh bìa video */}
                 {(() => {
                   const videoUrl = mediaUrls.find(u => /\.(mp4|mov|avi|mkv|webm)$/i.test(u) || u.includes('drive.google.com'));
+                  const isDriveVideo = !!videoUrl?.includes('drive.google.com');
+                  const driveLibraryId = videoUrl ? (mediaLibraryIds[videoUrl] || null) : null;
                   if (!videoUrl) {
                     return (
                       <div className="flex flex-col items-center justify-center py-10 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
@@ -904,10 +908,13 @@ export default function ComposePage() {
                         <div className="flex flex-col gap-2 flex-1">
                           <button
                             onClick={() => setShowFramePicker(true)}
-                            className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-sm font-bold text-blue-700 transition-colors"
+                            disabled={isDriveVideo && !driveLibraryId}
+                            className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-sm font-bold text-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isDriveVideo && !driveLibraryId ? 'Video Drive chưa có ID thư viện — thêm từ thư viện media' : undefined}
                           >
                             <Film className="w-4 h-4" />
                             Chọn frame từ video
+                            {isDriveVideo && <span className="text-[10px] font-normal text-blue-500 ml-1">(server-side)</span>}
                           </button>
                           <button
                             onClick={() => { setLibraryMode('thumb'); setShowLibrary(true); }}
@@ -930,6 +937,7 @@ export default function ComposePage() {
                       {/* VideoFramePicker modal */}
                       <VideoFramePicker
                         videoUrl={videoUrl}
+                        mediaLibraryId={driveLibraryId || undefined}
                         open={showFramePicker}
                         onClose={() => setShowFramePicker(false)}
                         onConfirm={(url) => { setThumbUrl(url); setShowFramePicker(false); }}
@@ -1419,16 +1427,26 @@ export default function ComposePage() {
         <MediaLibraryModal
           open={showLibrary}
           onClose={() => setShowLibrary(false)}
-          onSelect={(urls, thumbMap) => {
+          onSelect={(urls, thumbMap, idMap) => {
             if (libraryMode === 'thumb') {
               setThumbUrl(urls[0] || '');
               toast.success('Đã đặt ảnh bìa!');
             } else {
               setMediaUrls(prev => Array.from(new Set([...prev, ...urls])));
-              // Lưu thumbnail_url kèm theo để hiện đúng ảnh xem trước cho Drive video
               if (thumbMap) setMediaThumbs(prev => ({ ...prev, ...thumbMap }));
+              if (idMap) setMediaLibraryIds(prev => ({ ...prev, ...idMap }));
+              // Nếu chọn video Drive và chưa có ảnh bìa → tự động dùng thumbnail FFmpeg
+              if (thumbMap && !thumbUrl) {
+                const firstVideoThumb = urls.find(u => u.includes('drive.google.com') && thumbMap[u]);
+                if (firstVideoThumb) {
+                  setThumbUrl(thumbMap[firstVideoThumb]);
+                  toast.success('Đã tự động đặt ảnh bìa từ video!');
+                }
+              }
               if (postMode === 'text') setPostMode('image');
-              toast.success(`Đã thêm ${urls.length} file từ thư viện`);
+              if (!thumbMap || !urls.some(u => u.includes('drive.google.com') && thumbMap?.[u])) {
+                toast.success(`Đã thêm ${urls.length} file từ thư viện`);
+              }
             }
           }}
           maxSelect={libraryMode === 'thumb' ? 1 : 10}

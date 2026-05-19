@@ -30,6 +30,8 @@ export interface SocialPost {
   executed_at?: string;
   error_msg?: string;
   thumb_url?: string;
+  retry_count?: number;
+  next_retry_at?: string;
   created_at: string;
   account?: { name: string; username?: string; avatar_url?: string; platform: SocialPlatform };
   user?: { id: string; full_name: string; team?: string; image_url?: string };
@@ -271,6 +273,10 @@ export const socialApi = {
       apiClient.get('/social/library/stats').then((r) => r.data),
     remove: (id: string) => apiClient.delete(`/social/library/${id}`).then((r) => r.data),
     postHistory: (id: string) => apiClient.get(`/social/library/${id}/posts`).then((r) => r.data),
+    previewFrame: (id: string, timeSeconds: number): Promise<{ previewUrl: string }> =>
+      apiClient.post(`/social/library/${id}/preview-frame`, { timeSeconds }).then((r) => r.data),
+    setThumbnailAt: (id: string, timeSeconds: number): Promise<{ thumbnail_url: string }> =>
+      apiClient.post(`/social/library/${id}/set-thumbnail`, { timeSeconds }).then((r) => r.data),
     upload: (file: File, onProgress?: (pct: number) => void): Promise<MediaLibraryItem> =>
       withUploadQueue(async () => {
         const form = new FormData();
