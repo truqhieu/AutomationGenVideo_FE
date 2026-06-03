@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface PersonalHistory {
     history: any[];
@@ -114,9 +115,6 @@ const mapReportItem = (item: any) => {
         task_progress: item.task_progress || null,
         trafficToday: item.trafficToday || null,
         is_zero_kpi: item.is_zero_kpi || false,
-        /**
-         * Có ít nhất 1 kênh tracked (owner) mới bắt buộc traffic. API mới gửi boolean; fallback channelCount khi có số.
-         */
         needsTraffic:
             typeof item.needsTraffic === "boolean"
                 ? item.needsTraffic
@@ -182,144 +180,134 @@ export function useActivityData({
     searchName,
     activeTab,
 }: UseActivityDataParams): UseActivityDataReturn {
-    const [reports, setReports] = React.useState<any[]>([]);
-    const [summary, setSummary] = React.useState<any>(null);
-    const [rankings, setRankings] = React.useState<any>(null);
-    const [teamContributions, setTeamContributions] = React.useState<any[]>([]);
-    const [groupContributions, setGroupContributions] = React.useState<any>(null);
-    const [reportOutstandings, setReportOutstandings] = React.useState<any[]>([]);
-    const [kpiMeta, setKpiMeta] = React.useState<KpiMeta | null>(null);
-    const [loading, setLoading] = React.useState(true);
-    const [userRole, setUserRole] = React.useState<string | null>(null);
-    const [userTeam, setUserTeam] = React.useState<string | null>(null);
-    const [personalHistory, setPersonalHistory] = React.useState<PersonalHistory>({
-        history: [],
-        teamStats: null,
-        companyStats: null,
-        userActivity: null,
-        members: [],
-    });
-    const recoveredQueryRef = useRef<string | null>(null);
-    const reportsAbortRef = useRef<AbortController | null>(null);
-    const historyAbortRef = useRef<AbortController | null>(null);
-    const latestReportsReqIdRef = useRef(0);
-    const latestHistoryReqIdRef = useRef(0);
+    const queryClient = useQueryClient();
+    const [reportOutstandings, setReportOutstandings] = useState<any[]>([]);
 
-    // Store latest searchName/userRole in refs so fetchHistory doesn't depend on them directly.
-    // This prevents re-fetching on every keystroke (Rule 5.15 - useRef for transient values).
-    const searchNameRef = useRef(searchName);
-    const userRoleRef = useRef(userRole);
-    searchNameRef.current = searchName;
-    userRoleRef.current = userRole;
+    const startDateStr = useMemo(() => {
+        if (!dateRange?.start) return "";
+        const s = dateRange.start;
+        return `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}-${String(s.getDate()).padStart(2, "0")}`;
+    }, [dateRange?.start]);
 
-    const fetchReports = useCallback(async (showLoading = true) => {
-        if (!user?.email) return;
-        reportsAbortRef.current?.abort();
-        const controller = new AbortController();
-        reportsAbortRef.current = controller;
-        const requestId = ++latestReportsReqIdRef.current;
-        if (showLoading) setLoading(true);
-        try {
+    const endDateStr = useMemo(() => {
+        if (!dateRange?.end) return "";
+        const e = dateRange.end;
+        return `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}-${String(e.getDate()).padStart(2, "0")}`;
+    }, [dateRange?.end]);
+
+    // 1. Primary Query: Fetch Combined User Activities and KPIs
+    const activityQuery = useQuery({
+        queryKey: ["userActivity", user?.email, startDateStr, endDateStr, activeTeam, timeType],
+        queryFn: async ({ signal }) => {
+            if (!user?.email) return null;
             const params = new URLSearchParams();
-            if (dateRange?.start) {
-                const s = dateRange.start;
-                params.append("startDate", `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}-${String(s.getDate()).padStart(2, "0")}`);
-            }
-            if (dateRange?.end) {
-                const e = dateRange.end;
-                params.append("endDate", `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, "0")}-${String(e.getDate()).padStart(2, "0")}`);
-            }
+            if (startDateStr) params.append("startDate", startDateStr);
+            if (endDateStr) params.append("endDate", endDateStr);
             if (activeTeam !== "All") params.append("team", activeTeam);
             params.append("requesterEmail", user.email);
             if (timeType) params.append("timeType", timeType);
 
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/user-activity?${params.toString()}`;
-            const applyPayload = (data: any) => {
-                if (data.userRole) setUserRole(data.userRole.toLowerCase());
-                setUserTeam(data.userTeam || (user as any)?.team || null);
-                setReports((data.reports || []).map(mapReportItem));
-                setSummary(data.summary || null);
-                setRankings(data.rankings || null);
-                setTeamContributions(data.teamContributions || []);
-                setGroupContributions(data.groupContributions || null);
-                setReportOutstandings(data.reportOutstandings || []);
-                setKpiMeta(data.meta || null);
-            };
-
-            const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+            const response = await fetch(url, { cache: "no-store", signal });
+            if (!response.ok) throw new Error("Failed to fetch user activity reports");
             let data = await response.json();
 
+            // Handle suspicious empty first load logic
             const hasKpiInDb = Number(data?.meta?.kpiTotalInDb || 0) > 0;
             const filteredKpiCount = Number(data?.meta?.kpiFilteredForMonth || 0);
             const reportCount = Array.isArray(data?.reports) ? data.reports.length : 0;
-            const isSuspiciousEmptyFirstLoad =
-                hasKpiInDb &&
-                filteredKpiCount === 0 &&
-                reportCount === 0;
+            const isSuspiciousEmptyFirstLoad = hasKpiInDb && filteredKpiCount === 0 && reportCount === 0;
 
-            const queryKey = params.toString();
-            if (isSuspiciousEmptyFirstLoad && recoveredQueryRef.current !== queryKey) {
-                recoveredQueryRef.current = queryKey;
+            if (isSuspiciousEmptyFirstLoad) {
                 try {
                     await fetch(
                         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/clear-activity-cache`,
-                        { method: "POST", cache: "no-store", signal: controller.signal },
+                        { method: "POST", cache: "no-store", signal },
                     );
-                    const retryResponse = await fetch(url, { cache: "no-store", signal: controller.signal });
-                    data = await retryResponse.json();
+                    const retryResponse = await fetch(url, { cache: "no-store", signal });
+                    if (retryResponse.ok) {
+                        data = await retryResponse.json();
+                    }
                 } catch (recoveryError) {
                     console.warn("Activity recovery refetch failed:", recoveryError);
                 }
             }
+            return data;
+        },
+        enabled: !!user?.email,
+        staleTime: 60 * 1000, // 1 minute stale time
+        refetchInterval: 90 * 1000, // Refetch in background every 90 seconds
+    });
 
-            if (!controller.signal.aborted && requestId === latestReportsReqIdRef.current) {
-                applyPayload(data);
-            }
-        } catch (error) {
-            if ((error as any)?.name !== "AbortError") {
-                console.error("Failed to fetch reports:", error);
-            }
-        } finally {
-            if (showLoading && requestId === latestReportsReqIdRef.current && !controller.signal.aborted) {
-                setLoading(false);
-            }
-        }
-    }, [user?.email, dateRange, activeTeam, timeType]);
+    const userRole = useMemo(() => {
+        return activityQuery.data?.userRole ? activityQuery.data.userRole.toLowerCase() : null;
+    }, [activityQuery.data?.userRole]);
 
-    // fetchHistory intentionally only depends on user?.email — searchName/userRole
-    // are read from refs so the effect doesn't re-run on every keystroke (Rule 5.15).
-    const fetchHistory = useCallback(async () => {
-        if (!user?.email) return;
-        historyAbortRef.current?.abort();
-        const controller = new AbortController();
-        historyAbortRef.current = controller;
-        const requestId = ++latestHistoryReqIdRef.current;
-        try {
+    // 2. Secondary Query: Fetch Personal History (only when tab is "personal")
+    const historyQuery = useQuery({
+        queryKey: ["personalHistory", user?.email, searchName, userRole],
+        queryFn: async ({ signal }) => {
+            if (!user?.email) return null;
             const params = new URLSearchParams();
             params.append("email", user.email);
-            const role = userRoleRef.current;
-            if (searchNameRef.current && (role === "admin" || role === "manager" || role === "leader")) {
-                params.append("name", searchNameRef.current);
+            if (searchName && (userRole === "admin" || userRole === "manager" || userRole === "leader")) {
+                params.append("name", searchName);
             }
             const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/lark/personal-history?${params.toString()}`;
-            const response = await fetch(url, { cache: "no-store", signal: controller.signal });
-            const data = await response.json();
-            if (!controller.signal.aborted && requestId === latestHistoryReqIdRef.current) {
-                setPersonalHistory({
-                    history: data?.history ?? [],
-                    teamStats: data?.teamStats ?? null,
-                    companyStats: data?.companyStats ?? null,
-                    userActivity: data?.userActivity ?? null,
-                    members: data?.members ?? [],
-                });
-            }
-        } catch (error) {
-            if ((error as any)?.name !== "AbortError") {
-                console.error("Failed to fetch personal history:", error);
-            }
-        }
-    }, [user?.email]);
+            const response = await fetch(url, { cache: "no-store", signal });
+            if (!response.ok) throw new Error("Failed to fetch personal history");
+            return await response.json();
+        },
+        enabled: !!user?.email && activeTab === "personal",
+        staleTime: 60 * 1000,
+    });
 
+    // Synchronize reportOutstandings with query data
+    useEffect(() => {
+        if (activityQuery.data?.reportOutstandings) {
+            setReportOutstandings(activityQuery.data.reportOutstandings);
+        }
+    }, [activityQuery.data?.reportOutstandings]);
+
+    // Memoize mapped reports and summaries
+    const reports = useMemo(() => {
+        return (activityQuery.data?.reports || []).map(mapReportItem);
+    }, [activityQuery.data?.reports]);
+
+    const summary = useMemo(() => activityQuery.data?.summary || null, [activityQuery.data?.summary]);
+    const rankings = useMemo(() => activityQuery.data?.rankings || null, [activityQuery.data?.rankings]);
+    const teamContributions = useMemo(() => activityQuery.data?.teamContributions || [], [activityQuery.data?.teamContributions]);
+    const groupContributions = useMemo(() => activityQuery.data?.groupContributions || null, [activityQuery.data?.groupContributions]);
+    const kpiMeta = useMemo(() => activityQuery.data?.meta || null, [activityQuery.data?.meta]);
+    const userTeam = useMemo(() => activityQuery.data?.userTeam || user?.team || null, [activityQuery.data?.userTeam, user?.team]);
+
+    const personalHistory = useMemo(() => {
+        const data = historyQuery.data;
+        return {
+            history: data?.history ?? [],
+            teamStats: data?.teamStats ?? null,
+            companyStats: data?.companyStats ?? null,
+            userActivity: data?.userActivity ?? null,
+            members: data?.members ?? [],
+        };
+    }, [historyQuery.data]);
+
+    // Manual refetch functions mapped to React Query refetch API
+    const fetchReports = useCallback(async (showLoading = true) => {
+        if (showLoading) {
+            await activityQuery.refetch();
+        } else {
+            await queryClient.invalidateQueries({
+                queryKey: ["userActivity", user?.email, startDateStr, endDateStr, activeTeam, timeType]
+            });
+        }
+    }, [activityQuery, queryClient, user?.email, startDateStr, endDateStr, activeTeam, timeType]);
+
+    const fetchHistory = useCallback(async () => {
+        await historyQuery.refetch();
+    }, [historyQuery]);
+
+    // Handle updating outstanding report status
     const handleUpdateStatus = useCallback(async (id: string, status: string) => {
         try {
             const response = await fetch(
@@ -336,54 +324,28 @@ export function useActivityData({
                         r.id === id ? { ...r, status, approval_status: status, approved_by: user?.full_name } : r,
                     ),
                 );
+                // Also invalidate query cache in background to keep data in sync
+                queryClient.invalidateQueries({ queryKey: ["userActivity"] });
             }
         } catch (error) {
             console.error("Failed to update status:", error);
         }
-    }, [user?.full_name]);
-
-    React.useEffect(() => {
-        const POLL_INTERVAL = 90_000;
-        fetchReports(true);
-        let intervalId: ReturnType<typeof setInterval> | null = setInterval(() => fetchReports(false), POLL_INTERVAL);
-
-        const onVisibilityChange = () => {
-            if (document.hidden) {
-                if (intervalId !== null) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                }
-            } else {
-                fetchReports(false);
-                if (intervalId === null) {
-                    intervalId = setInterval(() => fetchReports(false), POLL_INTERVAL);
-                }
-            }
-        };
-
-        document.addEventListener("visibilitychange", onVisibilityChange);
-        return () => {
-            if (intervalId !== null) clearInterval(intervalId);
-            document.removeEventListener("visibilitychange", onVisibilityChange);
-        };
-    }, [fetchReports]);
-
-    React.useEffect(() => {
-        if (activeTab === "personal") {
-            fetchHistory();
-        }
-    }, [activeTab, fetchHistory]);
-
-    React.useEffect(() => {
-        return () => {
-            reportsAbortRef.current?.abort();
-            historyAbortRef.current?.abort();
-        };
-    }, []);
+    }, [user?.full_name, queryClient]);
 
     return {
-        reports, summary, rankings, teamContributions, groupContributions,
-        reportOutstandings, kpiMeta, loading, userRole, userTeam, personalHistory,
-        fetchReports, fetchHistory, handleUpdateStatus,
+        reports,
+        summary,
+        rankings,
+        teamContributions,
+        groupContributions,
+        reportOutstandings,
+        kpiMeta,
+        loading: activityQuery.isLoading,
+        userRole,
+        userTeam,
+        personalHistory,
+        fetchReports,
+        fetchHistory,
+        handleUpdateStatus,
     };
 }
