@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useState, useCallback, useMemo, useDeferred
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import ActivityKPIs from "./components/ActivityKPIs";
+import AdminActivityKPIs from "./components/AdminActivityKPIs";
 import ActivityFilters from "./components/ActivityFilters";
 import UserActivityCard from "./components/UserActivityCard";
 import ReportCard from "./components/ReportCard";
@@ -630,7 +631,16 @@ const UserActivityPageContent = () => {
                                     2) rồi đồng bộ lại.
                                 </div>
                             )}
-                            {loading && !summary ? (
+                            {isAdminUser ? (
+                                <AdminActivityKPIs
+                                    reports={checklistFilteredReports}
+                                    loading={loading}
+                                    onViewDifficulties={() => {
+                                        setActiveTab("performance");
+                                        window.scrollTo({ top: 300, behavior: "smooth" });
+                                    }}
+                                />
+                            ) : loading && !summary ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {Array.from({ length: 4 }).map((_, i) => (
                                         <div
@@ -668,7 +678,121 @@ const UserActivityPageContent = () => {
                             <DashboardAnalytics startDate={dashboardStartISO} endDate={dashboardEndISO} activeTeam={activeTeam} />
                         </div>
                     ) : activeTab === "performance" ? (
-                        loading ? (
+                        isAdminUser ? (
+                            /* Admin: hiệu suất hiển thị giống checklist (ReportCard 2 cột) */
+                            <div
+                                className="space-y-6 animate-in fade-in duration-700 w-full"
+                            >
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="flex items-center px-6 py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                                                <FileText className="w-5 h-5 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[17px] font-black text-slate-900 uppercase tracking-tight">
+                                                    Báo cáo ngày / Daily Checklist
+                                                </h3>
+                                                <p className="text-[12px] text-slate-500 font-medium mt-0.5">
+                                                    Theo dõi báo cáo hàng ngày của các thành viên trong team
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
+                                    {loading ? (
+                                        Array.from({ length: 6 }).map((_, i) => (
+                                            <div key={i} className="bg-white rounded-2xl border border-slate-200 h-[300px] animate-pulse">
+                                                <div className="p-5 space-y-4">
+                                                    <div className="flex justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 rounded-xl bg-slate-100" />
+                                                            <div className="space-y-2">
+                                                                <div className="h-4 w-24 bg-slate-100 rounded" />
+                                                                <div className="h-3 w-16 bg-slate-50 rounded" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="h-7 w-20 bg-slate-100 rounded-full" />
+                                                    </div>
+                                                    <div className="h-12 bg-slate-50 rounded-xl" />
+                                                    <div className="space-y-2">
+                                                        <div className="h-3 bg-slate-50 rounded" />
+                                                        <div className="h-3 bg-slate-50 rounded" />
+                                                        <div className="h-3 w-3/4 bg-slate-50 rounded" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : checklistFilteredReports.length > 0 ? (
+                                        pagedChecklistReports.map((report, idx) => (
+                                            <div
+                                                key={report.id || idx}
+                                                className="animate-in fade-in slide-in-from-bottom-2 duration-400 fill-mode-both"
+                                                style={{ animationDelay: `${idx * 60}ms` }}
+                                            >
+                                                <ReportCard report={report} />
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-full py-24 bg-white rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-3">
+                                            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">
+                                                <FileText className="w-8 h-8 text-slate-200" />
+                                            </div>
+                                            <p className="text-slate-400 font-black uppercase text-xs tracking-[0.2em]">
+                                                Không tìm thấy báo cáo nào
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {!loading && totalChecklistPages > 1 && (
+                                    <div className="flex items-center justify-center gap-3 pb-6">
+                                        <button
+                                            onClick={() => setChecklistPage((p) => Math.max(1, p - 1))}
+                                            disabled={checklistPage === 1}
+                                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all ${checklistPage === 1 ? "opacity-30 cursor-not-allowed border-slate-100 text-slate-300" : "bg-white text-blue-600 border-slate-200 hover:border-blue-400 hover:shadow-md"}`}
+                                        >
+                                            <ChevronLeft className="w-5 h-5" />
+                                        </button>
+                                        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                                            {(() => {
+                                                const totalPages = totalChecklistPages;
+                                                const pages: (number | string)[] = [];
+                                                for (let i = 1; i <= totalPages; i++) {
+                                                    if (i === 1 || i === totalPages || (i >= checklistPage - 1 && i <= checklistPage + 1)) {
+                                                        pages.push(i);
+                                                    } else if (i === checklistPage - 2 || i === checklistPage + 2) {
+                                                        pages.push("...");
+                                                    }
+                                                }
+                                                return Array.from(new Set(pages)).map((p, idx) => {
+                                                    if (p === "...") return <span key={`dots-${idx}`} className="w-8 text-center text-slate-300 font-bold text-sm">...</span>;
+                                                    const isCurrent = p === checklistPage;
+                                                    return (
+                                                        <button
+                                                            key={p}
+                                                            onClick={() => setChecklistPage(p as number)}
+                                                            className={`w-9 h-9 rounded-lg font-black text-[12px] transition-all ${isCurrent ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:bg-slate-50 hover:text-slate-900"}`}
+                                                        >
+                                                            {p}
+                                                        </button>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                        <button
+                                            onClick={() => setChecklistPage((p) => Math.min(totalChecklistPages, p + 1))}
+                                            disabled={checklistPage === totalChecklistPages}
+                                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all ${checklistPage === totalChecklistPages ? "opacity-30 cursor-not-allowed border-slate-100 text-slate-300" : "bg-white text-blue-600 border-slate-200 hover:border-blue-400 hover:shadow-md"}`}
+                                        >
+                                            <ChevronRight className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : loading ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-7">
                                 {Array.from({ length: 10 }).map((_, i) => (
                                     <CardSkeleton key={i} />

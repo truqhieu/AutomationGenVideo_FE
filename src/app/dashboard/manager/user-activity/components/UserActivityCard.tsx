@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React from 'react';
-import { Calendar, AlertCircle, FileText, Target, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Target, CheckCircle2 } from 'lucide-react';
 
 interface UserActivity {
     name: string;
@@ -56,7 +56,7 @@ const getAvatarUrl = (url: string | null, name: string) => {
     return url;
 };
 
-const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive, timeType }: UserActivityCardProps) => {
+const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive }: UserActivityCardProps) => {
     const dailyGoal = Number(data.dailyGoal) || 0;
     const done = Number(data.done) || 0;
 
