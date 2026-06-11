@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React from 'react';
-import { AlertCircle, Target, CheckCircle2, UserCircle, Users, Clock, CalendarDays, TrendingUp, Banknote, Circle, Briefcase, Sun, MousePointerClick, CircleDollarSign, CheckCircle2Icon, User } from 'lucide-react';
+import { AlertCircle, Target, CheckCircle2, Users, CalendarDays, TrendingUp, Sun, MousePointerClick, CircleDollarSign, CheckCircle2Icon, User } from 'lucide-react';
 
 interface UserActivity {
     name: string;
@@ -70,35 +70,40 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive 
 
     const statusStyles = {
         neutral: {
-            card: `border-red-500 border-[3px] bg-red-100/40 ${canClick ? 'hover:bg-red-100/60 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.08)]' : ''}`,
-            avatar: 'border-slate-200 ring-2 ring-slate-100',
+            card: `border-red-400 border-2 bg-gradient-to-b from-red-50/90 to-red-100/60 ${canClick ? 'hover:from-red-50 hover:to-red-100/80 transition-all shadow-[0_8px_30px_rgba(239,68,68,0.12)]' : ''}`,
+            avatar: 'ring-[3px] ring-red-400/70',
             icon: 'text-slate-500',
             badge: 'bg-slate-600 text-white',
             text: 'text-slate-800',
             doneRow: 'text-slate-800',
-            glow: canClick ? 'hover:shadow-red-300/40' : '',
-            accent: 'bg-red-100/60'
+            glow: canClick ? 'hover:shadow-red-300/50' : '',
+            accent: 'bg-red-50/80 border-red-200/60',
+            metricText: 'text-rose-600',
+            progressGrad: 'bg-gradient-to-r from-red-400 to-rose-500',
         },
         completed: {
-            card: `border-emerald-500 border-[3px] bg-emerald-100/70 ${canClick ? 'hover:bg-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.1)]' : ''}`,
-            avatar: 'border-emerald-500 ring-4 ring-emerald-100',
+            card: `border-emerald-400 border-2 bg-gradient-to-b from-emerald-50/90 to-emerald-100/70 ${canClick ? 'hover:from-emerald-50 hover:to-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.12)]' : ''}`,
+            avatar: 'ring-[3px] ring-emerald-400/70',
             icon: 'text-emerald-500',
             badge: 'bg-emerald-600 text-white',
             text: 'text-emerald-600',
             doneRow: 'text-emerald-700',
-            glow: canClick ? 'hover:shadow-emerald-300/40' : '',
-            accent: 'bg-emerald-100'
+            glow: canClick ? 'hover:shadow-emerald-300/50' : '',
+            accent: 'bg-emerald-50/80 border-emerald-200/60',
+            metricText: 'text-emerald-600',
+            progressGrad: 'bg-gradient-to-r from-emerald-400 to-teal-500',
         },
         exceeded: {
-            // Vượt mục tiêu: cùng nền xanh với đạt mục tiêu (chỉ khác accent tím ở vài ô con)
-            card: `border-emerald-500 border-[3px] bg-emerald-100/70 ${canClick ? 'hover:bg-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.1)]' : ''}`,
-            avatar: 'border-emerald-500 ring-4 ring-emerald-100',
+            card: `border-emerald-400 border-2 bg-gradient-to-b from-emerald-50/90 to-emerald-100/70 ${canClick ? 'hover:from-emerald-50 hover:to-emerald-100/90 transition-all shadow-[0_8px_30px_rgba(16,185,129,0.12)]' : ''}`,
+            avatar: 'ring-[3px] ring-purple-400/70',
             icon: 'text-emerald-600',
             badge: 'bg-emerald-600 text-white',
             text: 'text-emerald-700',
             doneRow: 'text-purple-700',
-            glow: canClick ? 'hover:shadow-emerald-300/40' : '',
-            accent: 'bg-emerald-100'
+            glow: canClick ? 'hover:shadow-emerald-300/50' : '',
+            accent: 'bg-emerald-50/80 border-emerald-200/60',
+            metricText: 'text-purple-600',
+            progressGrad: 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500',
         }
     };
 
@@ -115,8 +120,6 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive 
         return '/vn-flag.png';
     };
     const flagBg = getFlagBg();
-
-    const valueColorClass = statusType === 'neutral' ? 'text-rose-600' : statusType === 'exceeded' ? 'text-purple-600' : 'text-emerald-600';
 
     return (
         <div
@@ -164,7 +167,7 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive 
 
                 {/* Profile Info Row */}
                 <div className="flex items-center justify-center gap-4 w-full mt-1 relative z-20">
-                    <div className={`w-16 h-16 rounded-full border-2 ${style.avatar} p-0.5 bg-white overflow-hidden shadow-inner flex-shrink-0`}>
+                    <div className={`w-[68px] h-[68px] rounded-full ${style.avatar} bg-white overflow-hidden shadow-md flex-shrink-0`}>
                         <Image
                             src={getAvatarUrl(data.avatar, data.name)}
                             alt={data.name}
@@ -216,89 +219,72 @@ const UserActivityCard = React.memo(({ data, onClick, canClick = true, isActive 
                 {/* Divider */}
                 <div className="w-full border-t border-dashed border-slate-200/60" />
 
-                {/* Metrics list */}
-                <div className="w-full grid grid-cols-1 gap-1.5 px-1">
-                    <div className="flex items-center justify-between py-1 border-b border-dashed border-slate-200/40">
-                        <span className="text-[14px] font-semibold text-slate-500 flex items-center gap-1.5">
-                            <CalendarDays className="w-4 h-4 text-slate-400" />
-                            Mục tiêu tháng
-                        </span>
-                        <span className={`text-[15px] font-black ${valueColorClass}`}>
-                            {data.kpi_month ?? 0}
-                        </span>
+                {/* Metrics — 3 mini stat cards */}
+                <div className="w-full grid grid-cols-3 gap-2 px-0.5">
+                    <div className={`flex flex-col items-center py-2.5 px-1 rounded-xl border ${style.accent}`}>
+                        <CalendarDays className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                        <span className={`text-[20px] font-black leading-none ${style.metricText}`}>{data.kpi_month ?? 0}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center leading-tight">MT Tháng</span>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-dashed border-slate-200/40">
-                        <span className="text-[14px] font-semibold text-slate-500 flex items-center gap-1.5">
-                            <Sun className="w-4 h-4 text-slate-400" />
-                            Mục tiêu ngày
-                        </span>
-                        <span className={`text-[15px] font-black ${valueColorClass}`}>
-                            {dailyGoal}
-                        </span>
+                    <div className={`flex flex-col items-center py-2.5 px-1 rounded-xl border ${style.accent}`}>
+                        <Sun className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                        <span className={`text-[20px] font-black leading-none ${style.metricText}`}>{dailyGoal}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center leading-tight">MT Ngày</span>
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                        <span className="text-[14px] font-semibold text-slate-500 flex items-center gap-1.5">
-                            <CheckCircle2Icon className="w-4 h-4 text-slate-400" />
-                            Đã xong
-                        </span>
-                        <span className={`text-[15px] font-black ${valueColorClass}`}>
-                            {done}
-                        </span>
+                    <div className={`flex flex-col items-center py-2.5 px-1 rounded-xl border ${style.accent}`}>
+                        <CheckCircle2Icon className="w-3.5 h-3.5 text-slate-400 mb-1" />
+                        <span className={`text-[20px] font-black leading-none ${
+                            statusType === 'exceeded' ? 'text-purple-600' : style.metricText
+                        }`}>{done}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center leading-tight">Đã Xong</span>
                     </div>
                 </div>
 
                 {/* Monthly Progress */}
-                <div className="w-full flex items-center gap-3 px-1">
-                    <span className={`text-[13px] font-black flex-shrink-0 w-10 text-right ${
-                        statusType === 'neutral' ? 'text-rose-600'
-                        : statusType === 'exceeded' ? 'text-purple-600'
-                        : 'text-emerald-600'
-                    }`}>
-                        {data.monthlyProgress}%
-                    </span>
-                    <div className="h-2 flex-grow bg-slate-200/50 rounded-full overflow-hidden shadow-inner">
+                <div className="w-full px-0.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            Tiến độ tháng
+                        </span>
+                        <span className={`text-[13px] font-black ${
+                            statusType === 'neutral' ? 'text-rose-600'
+                            : statusType === 'exceeded' ? 'text-purple-600'
+                            : 'text-emerald-600'
+                        }`}>{data.monthlyProgress}%</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-200/60 rounded-full overflow-hidden shadow-inner">
                         <div
-                            className={`h-full rounded-full transition-all duration-700 ${
-                                statusType === 'neutral'
-                                    ? 'bg-gradient-to-r from-red-500 to-rose-600'
-                                    : statusType === 'exceeded'
-                                        ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500'
-                                        : 'bg-gradient-to-r from-emerald-500 to-teal-600'
-                            }`}
+                            className={`h-full rounded-full transition-all duration-700 ${style.progressGrad}`}
                             style={{ width: `${Math.min(data.monthlyProgress, 100)}%` }}
                         />
                     </div>
-                    <TrendingUp className={`w-4 h-4 flex-shrink-0 ${
-                        statusType === 'neutral' ? 'text-rose-400'
-                        : statusType === 'exceeded' ? 'text-purple-400'
-                        : 'text-emerald-400'
-                    }`} />
                 </div>
 
                 {/* Traffic & Revenue Footer */}
-                <div className="grid grid-cols-2 w-full gap-3 px-1">
-                    <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-                        <span className="flex items-center justify-center gap-1 text-[11px] font-black text-blue-500 uppercase tracking-widest mb-1">
+                <div className="grid grid-cols-2 w-full gap-2.5 px-0.5">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100/80 p-3 rounded-2xl border border-blue-200/60 shadow-sm text-center">
+                        <span className="flex items-center justify-center gap-1 text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">
                             <MousePointerClick className="w-3.5 h-3.5" />
                             TRAFFIC
                         </span>
-                        <div className="text-[18px] font-black text-blue-800 truncate leading-none">{data.traffic}</div>
+                        <div className="text-[17px] font-black text-blue-800 truncate leading-none">{data.traffic}</div>
                     </div>
-                    <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-sm text-center">
-                        <span className="flex items-center justify-center gap-1 text-[11px] font-black text-emerald-500 uppercase tracking-widest mb-1">
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/80 p-3 rounded-2xl border border-emerald-200/60 shadow-sm text-center">
+                        <span className="flex items-center justify-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">
                             <CircleDollarSign className="w-3.5 h-3.5" />
                             DOANH THU
                         </span>
-                        <div className="text-[18px] font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
+                        <div className="text-[17px] font-black text-emerald-800 truncate leading-none">{data.revenue}</div>
                     </div>
                 </div>
 
                 {/* Report Status Banner — bottom */}
-                <div className="w-full px-1">
-                    <div className={`w-full py-2 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-sm text-center flex items-center justify-center gap-2 transition-all ${
+                <div className="w-full px-0.5">
+                    <div className={`w-full py-2 rounded-xl text-[12px] font-black uppercase tracking-widest shadow-sm text-center flex items-center justify-center gap-2 transition-all border-l-4 ${
                         isReportedOnTime
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-red-50 text-red-600 border border-red-200'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 border-l-emerald-500'
+                            : 'bg-red-50 text-red-600 border border-red-200 border-l-red-500'
                     }`}>
                         {isReportedOnTime
                             ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" />

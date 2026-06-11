@@ -45,7 +45,7 @@ const PerformanceTab = ({
 
     return (
         <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-7">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-7">
                 {filteredReports.slice(0, visibleCount).map((report, idx) => {
                     const isOwnName =
                         report.name && user?.full_name &&

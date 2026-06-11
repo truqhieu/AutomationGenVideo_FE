@@ -110,6 +110,7 @@ function SidebarContent({
 
   const isManagerRole = user?.roles?.includes(UserRole.MANAGER);
   const isAdminRole = user?.roles?.includes(UserRole.ADMIN);
+  const isLeaderRole = user?.roles?.includes(UserRole.LEADER);
 
   // Cleanup hover timeout on unmount
   useEffect(() => {
@@ -134,7 +135,8 @@ function SidebarContent({
       pathname.startsWith('/dashboard/youtube') ||
       pathname.startsWith('/dashboard/ai') ||
       pathname.startsWith('/dashboard/search-video') ||
-      pathname.startsWith('/dashboard/channel-analysis')
+      pathname.startsWith('/dashboard/channel-analysis') ||
+      pathname.startsWith('/dashboard/channels')
     ) {
       return 'social-discovery';
     }
@@ -192,6 +194,7 @@ function SidebarContent({
             items: [
               { label: 'Channels', href: '/dashboard/facebook/channels', icon: Users },
               { label: 'Phân tích kênh', href: '/dashboard/channel-analysis', icon: BarChart3 },
+              { label: 'Kênh nội bộ', href: '/dashboard/channels', icon: BookOpen },
             ]
           },
           {

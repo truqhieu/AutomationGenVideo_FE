@@ -3,7 +3,7 @@
 import Image from "next/image";
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target, Globe, Video, TrendingUp, DollarSign, Tv2 } from 'lucide-react';
+import { Target, Globe, Video, TrendingUp, DollarSign, Tv2, Flame, CheckCircle2 } from 'lucide-react';
 
 interface ActivityKPIsProps {
     summary?: {
@@ -90,11 +90,10 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
         iconColor: string;
         ringTrack: string;
         ringFill: string;
-        pct: string;
         barBg: string;
         barFill: string;
-        tagBg: string;
-        tagText: string;
+        cardBg: string;
+        cardBorder: string;
     }> = {
         blue: {
             gradient: 'from-blue-500 to-blue-600',
@@ -102,11 +101,10 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             iconColor: 'text-blue-500',
             ringTrack: '#dbeafe',
             ringFill: '#3b82f6',
-            pct: 'text-blue-600',
             barBg: 'bg-blue-100',
             barFill: 'bg-gradient-to-r from-blue-400 to-blue-600',
-            tagBg: 'bg-blue-50 border-blue-100',
-            tagText: 'text-blue-600',
+            cardBg: 'from-blue-50/40 to-white',
+            cardBorder: 'border-blue-100',
         },
         violet: {
             gradient: 'from-violet-500 to-purple-600',
@@ -114,11 +112,10 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             iconColor: 'text-violet-500',
             ringTrack: '#ede9fe',
             ringFill: '#8b5cf6',
-            pct: 'text-violet-600',
             barBg: 'bg-violet-100',
             barFill: 'bg-gradient-to-r from-violet-400 to-purple-600',
-            tagBg: 'bg-violet-50 border-violet-100',
-            tagText: 'text-violet-600',
+            cardBg: 'from-violet-50/40 to-white',
+            cardBorder: 'border-violet-100',
         },
         emerald: {
             gradient: 'from-emerald-500 to-teal-600',
@@ -126,11 +123,10 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             iconColor: 'text-emerald-500',
             ringTrack: '#d1fae5',
             ringFill: '#10b981',
-            pct: 'text-emerald-600',
             barBg: 'bg-emerald-100',
             barFill: 'bg-gradient-to-r from-emerald-400 to-teal-500',
-            tagBg: 'bg-emerald-50 border-emerald-100',
-            tagText: 'text-emerald-600',
+            cardBg: 'from-emerald-50/40 to-white',
+            cardBorder: 'border-emerald-100',
         },
         orange: {
             gradient: 'from-orange-400 to-amber-500',
@@ -138,11 +134,10 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
             iconColor: 'text-orange-500',
             ringTrack: '#ffedd5',
             ringFill: '#f97316',
-            pct: 'text-orange-600',
             barBg: 'bg-orange-100',
             barFill: 'bg-gradient-to-r from-orange-400 to-amber-500',
-            tagBg: 'bg-orange-50 border-orange-100',
-            tagText: 'text-orange-600',
+            cardBg: 'from-orange-50/40 to-white',
+            cardBorder: 'border-orange-100',
         },
     };
 
@@ -161,6 +156,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                 const a = accentMap[kpi.accent as AccentKey];
                 const Icon = kpi.icon;
                 const isDone = kpi.percentage >= 100;
+                const isHot = kpi.percentage >= 75 && kpi.percentage < 100;
                 const clampedPct = Math.min(kpi.percentage, 100);
 
                 const globalVal = (groupContributions?.global?.[kpi.groupKey as keyof typeof groupContributions.global] as number) || 0;
@@ -168,7 +164,7 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                 const globalPct = (groupContributions?.global?.[kpi.pctKey as keyof typeof groupContributions.global] as number) || 0;
                 const vnPct = (groupContributions?.vn?.[kpi.pctKey as keyof typeof groupContributions.vn] as number) || 0;
 
-                const ringR = 20;
+                const ringR = 24;
                 const ringCirc = 2 * Math.PI * ringR;
                 const ringOffset = ringCirc * (1 - clampedPct / 100);
                 const ringColor = isDone ? '#10b981' : a.ringFill;
@@ -177,12 +173,15 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                 return (
                     <Card
                         key={idx}
-                        className="relative bg-white border border-slate-200/70 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col"
+                        className={`relative bg-gradient-to-b ${a.cardBg} border ${a.cardBorder} rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col`}
                     >
+                        {/* Colored gradient top stripe */}
+                        <div className={`h-[3px] w-full bg-gradient-to-r ${a.gradient} flex-shrink-0`} />
+
                         <CardContent className="p-0 flex flex-col flex-1">
 
-                            {/* ── Header band ── */}
-                            <div className="flex items-center justify-between px-5 pt-5 pb-4">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 pt-4 pb-3">
                                 <div className="flex items-center gap-2.5">
                                     <div className={`p-2 rounded-xl border ${a.iconBg} flex-shrink-0`}>
                                         <Icon className={`w-4 h-4 ${a.iconColor}`} />
@@ -192,18 +191,28 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     </p>
                                 </div>
 
-                                {/* Completion badge */}
+                                {/* Status badge */}
                                 {!kpi.isChannel && (
-                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${isDone ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : `${a.tagBg} ${a.tagText}`}`}>
-                                        {kpi.percentage}%
-                                    </span>
+                                    isDone ? (
+                                        <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-600">
+                                            <CheckCircle2 className="w-3 h-3" /> DONE
+                                        </span>
+                                    ) : isHot ? (
+                                        <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-50 border-amber-200 text-amber-600">
+                                            <Flame className="w-3 h-3" /> HOT
+                                        </span>
+                                    ) : (
+                                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 border-slate-200 text-slate-500">
+                                            {kpi.percentage}%
+                                        </span>
+                                    )
                                 )}
                             </div>
 
-                            {/* ── Main value + ring ── */}
-                            <div className="flex items-center justify-between px-5 pb-4 gap-3">
+                            {/* Main value + ring */}
+                            <div className="flex items-center justify-between px-5 pb-3 gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-[28px] font-extrabold text-slate-900 leading-none tracking-tight tabular-nums truncate">
+                                    <p className="text-[30px] font-extrabold text-slate-900 leading-none tracking-tight tabular-nums truncate">
                                         {kpi.value}
                                     </p>
                                     <div className={`mt-2 flex items-center gap-1 ${kpi.isChannel ? 'invisible' : ''}`}>
@@ -217,45 +226,45 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     </div>
                                 </div>
 
-                                {/* SVG Ring — hidden for channels */}
+                                {/* Ring with % inside */}
                                 <div className={`flex-shrink-0 ${kpi.isChannel ? 'invisible' : ''}`}>
-                                    <svg width="52" height="52" viewBox="0 0 52 52">
+                                    <svg width="64" height="64" viewBox="0 0 64 64">
                                         <circle
-                                            cx="26" cy="26" r={ringR}
+                                            cx="32" cy="32" r={ringR}
                                             fill="none"
                                             stroke={ringTrack}
-                                            strokeWidth="5"
+                                            strokeWidth="6"
                                         />
                                         <circle
-                                            cx="26" cy="26" r={ringR}
+                                            cx="32" cy="32" r={ringR}
                                             fill="none"
                                             stroke={ringColor}
-                                            strokeWidth="5"
+                                            strokeWidth="6"
                                             strokeDasharray={ringCirc}
                                             strokeDashoffset={ringOffset}
                                             strokeLinecap="round"
-                                            transform="rotate(-90 26 26)"
+                                            transform="rotate(-90 32 32)"
                                             style={{ transition: 'stroke-dashoffset 0.9s cubic-bezier(.4,0,.2,1)' }}
                                         />
-                                        {isDone && (
-                                            <text
-                                                x="26" y="30"
-                                                textAnchor="middle"
-                                                fontSize="10"
-                                                fontWeight="700"
-                                                fill="#10b981"
-                                            >✓</text>
-                                        )}
+                                        <text
+                                            x="32" y="37"
+                                            textAnchor="middle"
+                                            fontSize="12"
+                                            fontWeight="800"
+                                            fill={ringColor}
+                                        >
+                                            {isDone ? '✓' : `${clampedPct}%`}
+                                        </text>
                                     </svg>
                                 </div>
                             </div>
 
-                            {/* ── Progress bar (spacer for channel to keep height aligned) ── */}
+                            {/* Progress bar */}
                             <div className="px-5 pb-4">
                                 {kpi.isChannel ? (
-                                    <div className="h-1.5" />
+                                    <div className="h-2" />
                                 ) : (
-                                    <div className={`w-full h-1.5 rounded-full ${a.barBg} overflow-hidden`}>
+                                    <div className={`w-full h-2 rounded-full ${a.barBg} overflow-hidden shadow-inner`}>
                                         <div
                                             className={`h-full rounded-full ${isDone ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : a.barFill} transition-all duration-700`}
                                             style={{ width: `${clampedPct}%` }}
@@ -264,12 +273,11 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                 )}
                             </div>
 
-                            {/* ── Divider ── */}
+                            {/* Divider */}
                             <div className="mx-5 h-px bg-slate-100" />
 
-                            {/* ── Global / VN breakdown ── */}
-                            <div className="grid grid-cols-2 gap-2.5 p-4">
-                                {/* Global */}
+                            {/* Global / VN breakdown */}
+                            <div className="grid grid-cols-2 gap-2 p-4">
                                 <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5 flex flex-col gap-1">
                                     <div className="flex items-center gap-1.5">
                                         <Globe className="w-3 h-3 text-amber-500 flex-shrink-0" />
@@ -283,7 +291,6 @@ const ActivityKPIs = ({ summary, teamContributions, groupContributions }: Activi
                                     </p>
                                 </div>
 
-                                {/* Vietnam */}
                                 <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5 flex flex-col gap-1">
                                     <div className="flex items-center gap-1.5">
                                         <Image src="/vn-flag.png" alt="VN"

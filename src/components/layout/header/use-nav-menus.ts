@@ -20,6 +20,7 @@ import {
     CalendarDays,
     Bookmark,
     Languages,
+    BookOpen,
 } from "lucide-react";
 import { NavMenu } from "./types";
 
@@ -48,23 +49,23 @@ export function useNavMenus(
                         items: [
                             ...(isAdmin
                                 ? [
-                                      {
-                                          label: "Dashboard Admin",
-                                          href: "/dashboard/admin",
-                                          icon: BarChart3,
-                                          description: "Biểu đồ tổng quan toàn hệ thống",
-                                      },
-                                  ]
+                                    {
+                                        label: "Dashboard Admin",
+                                        href: "/dashboard/admin",
+                                        icon: BarChart3,
+                                        description: "Biểu đồ tổng quan toàn hệ thống",
+                                    },
+                                ]
                                 : []),
                             ...(isLeader
                                 ? [
-                                      {
-                                          label: "Dashboard Leader",
-                                          href: "/dashboard/leader",
-                                          icon: Crown,
-                                          description: "Biểu đồ theo góc nhìn Leader",
-                                      },
-                                  ]
+                                    {
+                                        label: "Dashboard Leader",
+                                        href: "/dashboard/leader",
+                                        icon: Crown,
+                                        description: "Biểu đồ theo góc nhìn Leader",
+                                    },
+                                ]
                                 : []),
                             {
                                 label: "Hiệu suất",
@@ -74,19 +75,19 @@ export function useNavMenus(
                             },
                             ...(isManager
                                 ? [
-                                      {
-                                          label: "Tổng quan nhóm",
-                                          href: "/dashboard/manager/user-activity?tab=dashboard",
-                                          icon: LayoutDashboard,
-                                          description: "Dashboard analytics toàn nhóm",
-                                      },
-                                      {
-                                          label: "Dashboard Tổng",
-                                          href: "/dashboard/manager",
-                                          icon: LayoutGrid,
-                                          description: "Bảng điều khiển quản lý hệ thống",
-                                      },
-                                  ]
+                                    {
+                                        label: "Tổng quan nhóm",
+                                        href: "/dashboard/manager/user-activity?tab=dashboard",
+                                        icon: LayoutDashboard,
+                                        description: "Dashboard analytics toàn nhóm",
+                                    },
+                                    {
+                                        label: "Dashboard Tổng",
+                                        href: "/dashboard/manager",
+                                        icon: LayoutGrid,
+                                        description: "Bảng điều khiển quản lý hệ thống",
+                                    },
+                                ]
                                 : []),
                             {
                                 label: "Bảng xếp hạng",
@@ -165,19 +166,19 @@ export function useNavMenus(
                     },
                     ...(isManagement
                         ? [
-                              {
-                                  section: "QUẢN LÝ",
-                                  color: "slate" as const,
-                                  items: [
-                                      {
-                                          label: "Quản lý Editors",
-                                          href: "/dashboard/editor-management",
-                                          icon: Users,
-                                          description: "Quản lý danh sách Editor trong hệ thống",
-                                      },
-                                  ],
-                              },
-                          ]
+                            {
+                                section: "QUẢN LÝ",
+                                color: "slate" as const,
+                                items: [
+                                    {
+                                        label: "Quản lý Editors",
+                                        href: "/dashboard/editor-management",
+                                        icon: Users,
+                                        description: "Quản lý danh sách Editor trong hệ thống",
+                                    },
+                                ],
+                            },
+                        ]
                         : []),
                 ],
             },
@@ -259,6 +260,7 @@ export function useNavMenus(
                     "/dashboard/channel-analysis",
                     "/dashboard/video-library",
                     "/dashboard/content/generate",
+                    "/dashboard/channels",
                 ],
                 sections: [
                     {
@@ -277,23 +279,29 @@ export function useNavMenus(
                                 icon: BarChart3,
                                 description: "Phân tích sâu dữ liệu kênh",
                             },
+                            // {
+                            //     label: "Channels Team",       // ← thêm
+                            //     href: "/dashboard/channels",
+                            //     icon: BookOpen,
+                            //     description: "Danh sách kênh MXH của team",
+                            // },
                         ],
                     },
                     ...(isManagement
                         ? [
-                              {
-                                  section: "KHÁM PHÁ",
-                                  color: "slate" as const,
-                                  items: [
-                                      {
-                                          label: "Tìm kiếm Video (Hub)",
-                                          href: "/dashboard/search-video",
-                                          icon: Search,
-                                          description: "Tìm kiếm video trên toàn nền tảng",
-                                      },
-                                  ],
-                              },
-                          ]
+                            {
+                                section: "KHÁM PHÁ",
+                                color: "slate" as const,
+                                items: [
+                                    {
+                                        label: "Tìm kiếm Video (Hub)",
+                                        href: "/dashboard/search-video",
+                                        icon: Search,
+                                        description: "Tìm kiếm video trên toàn nền tảng",
+                                    },
+                                ],
+                            },
+                        ]
                         : []),
                     {
                         section: "BỘ SƯU TẬP",
