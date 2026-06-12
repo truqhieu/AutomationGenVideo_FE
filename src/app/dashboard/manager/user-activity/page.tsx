@@ -323,7 +323,7 @@ const UserActivityPageContent = () => {
     // ── Filtered lists ────────────────────────────────────────────────────────
     const filteredPerformanceReports = React.useMemo(() => {
         return reports.filter((r) => {
-            if (Number(r.dailyGoal || 0) === 0 && Number(r.done || 0) === 0) return false;
+            if (r.is_zero_kpi) return false;
             return matchTeam(r.team) && (r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase());
         });
     }, [reports, matchTeam, deferredSearchName]);
