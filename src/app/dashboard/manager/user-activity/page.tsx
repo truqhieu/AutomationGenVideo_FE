@@ -485,8 +485,7 @@ const UserActivityPageContent = () => {
     // Dùng deferredSearchName thay searchName → filter không chặn main thread khi gõ
     const filteredPerformanceReports = React.useMemo(() => {
         return reports.filter((r) => {
-            // Giữ logic ẩn người 0/0: Nếu Mục tiêu ngày (dailyGoal) và Đã xong (done) đều là 0
-            if (Number(r.dailyGoal || 0) === 0 && Number(r.done || 0) === 0) return false;
+            if (r.is_zero_kpi) return false;
             return matchTeam(r.team) && (r.name || "Unknown").toLowerCase().includes(deferredSearchName.toLowerCase());
         });
     }, [reports, matchTeam, deferredSearchName]);
