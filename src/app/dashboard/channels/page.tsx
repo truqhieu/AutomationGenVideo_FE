@@ -45,9 +45,18 @@ const PLATFORMS = [
 ];
 
 const STATUS_MAP: Record<string, { label: string; dot: string; bg: string; text: string }> = {
-  active:   { label: 'Hoạt động', dot: 'bg-emerald-500', bg: 'bg-emerald-50',  text: 'text-emerald-700' },
-  inactive: { label: 'Tạm dừng',  dot: 'bg-slate-400',   bg: 'bg-slate-100',   text: 'text-slate-500'   },
-  pending:  { label: 'Chờ duyệt', dot: 'bg-amber-400',   bg: 'bg-amber-50',    text: 'text-amber-700'   },
+  active:              { label: 'Hoạt động',       dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  'đang hoạt động':    { label: 'Đang hoạt động',  dot: 'bg-emerald-500', bg: 'bg-emerald-100', text: 'text-emerald-800' },
+
+  inactive:            { label: 'Ngừng hoạt động', dot: 'bg-red-500',     bg: 'bg-red-100',     text: 'text-red-800'    },
+  'ngừng hoạt động':   { label: 'Ngừng hoạt động', dot: 'bg-red-500',     bg: 'bg-red-100',     text: 'text-red-800'    },
+
+  'tạm ngừng':         { label: 'Tạm ngừng',       dot: 'bg-orange-400',  bg: 'bg-orange-100',  text: 'text-orange-800' },
+
+  'hủy kênh':          { label: 'Hủy kênh',        dot: 'bg-slate-500',   bg: 'bg-slate-200',   text: 'text-slate-700'  },
+
+  pending:             { label: 'Chờ duyệt',        dot: 'bg-amber-400',   bg: 'bg-amber-100',   text: 'text-amber-800'  },
+  'chờ duyệt':         { label: 'Chờ duyệt',        dot: 'bg-amber-400',   bg: 'bg-amber-100',   text: 'text-amber-800'  },
 };
 
 function getPlatform(v?: string | null) {
@@ -99,7 +108,15 @@ export default function InternalChannelsPage() {
     return okPlat && okSearch;
   });
 
-  const openCreate = () => { setEditTarget(null); setForm(EMPTY_FORM); setShowModal(true); };
+  const openCreate = () => {
+    setEditTarget(null);
+    setForm({
+      ...EMPTY_FORM,
+      owner: (user as any)?.name ?? (user as any)?.username ?? '',
+      email: (user as any)?.email ?? '',
+    });
+    setShowModal(true);
+  };
   const openEdit   = (ch: Channel) => {
     setEditTarget(ch);
     setForm({ name: ch.name, platform: ch.platform ?? 'facebook', channel_id: ch.channel_id ?? '',

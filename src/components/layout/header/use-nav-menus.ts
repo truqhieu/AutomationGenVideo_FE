@@ -279,12 +279,12 @@ export function useNavMenus(
                                 icon: BarChart3,
                                 description: "Phân tích sâu dữ liệu kênh",
                             },
-                            // {
-                            //     label: "Channels Team",       // ← thêm
-                            //     href: "/dashboard/channels",
-                            //     icon: BookOpen,
-                            //     description: "Danh sách kênh MXH của team",
-                            // },
+                            {
+                                label: "Kênh nhóm",
+                                href: "/dashboard/channels",
+                                icon: BookOpen,
+                                description: "Danh sách kênh MXH của team",
+                            },
                         ],
                     },
                     ...(isManagement
