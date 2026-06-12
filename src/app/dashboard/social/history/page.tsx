@@ -128,19 +128,20 @@ function getPostUrl(result?: Record<string, unknown> | null): string | null {
 
 // ── Grid thumbnail item ─────────────────────────────────────────────────────
 function GridItem({ post, onClick }: { post: SocialPost; onClick: (p: SocialPost) => void }) {
+  const [mediaFailed, setMediaFailed] = useState(false);
   const meta = (PLATFORM_META as any)[post.platform] || PLATFORM_META.FACEBOOK;
   const firstMedia = post.media_urls?.[0];
   const isVideo = firstMedia ? isVideoUrl(firstMedia) : false;
   const isDrive = firstMedia ? isDriveUrl(firstMedia) : false;
   const driveFileId = isDrive && firstMedia ? extractDriveFileId(firstMedia) : null;
 
-  const thumbSrc =
+  const thumbSrc = mediaFailed ? null :
     post.thumb_url ||
     (driveFileId ? `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w400` : null) ||
     (!isVideo && firstMedia ? resolveMediaUrl(firstMedia) : null);
 
   // Video thông thường (non-Drive): dùng URL gốc để browser tự render frame đầu
-  const regularVideoSrc = isVideo && !isDrive && firstMedia ? resolveMediaUrl(firstMedia) : null;
+  const regularVideoSrc = !mediaFailed && isVideo && !isDrive && firstMedia ? resolveMediaUrl(firstMedia) : null;
 
   const isOk   = post.status === 'COMPLETED';
   const isFail = post.status === 'FAILED';
@@ -156,7 +157,7 @@ function GridItem({ post, onClick }: { post: SocialPost; onClick: (p: SocialPost
           src={thumbSrc}
           alt=""
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          onError={() => setMediaFailed(true)}
         />
       ) : regularVideoSrc ? (
         // Browser tự hiện frame đầu của video khi preload="metadata"
@@ -166,7 +167,7 @@ function GridItem({ post, onClick }: { post: SocialPost; onClick: (p: SocialPost
           muted
           playsInline
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+          onError={() => setMediaFailed(true)}
         />
       ) : (
         <div className={`w-full h-full flex flex-col items-center justify-center gap-1 ${meta.color} bg-opacity-80`}>
@@ -323,7 +324,7 @@ function PostDetailModal({
             )}
 
             {/* Error */}
-            {post.error_msg && (
+            {post.error_msg && post.status !== 'COMPLETED' && (
               <div className="flex items-start gap-1.5 mb-3 text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                 <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                 <span>{post.error_msg}</span>
@@ -1008,7 +1009,7 @@ export default function HistoryPage() {
                     )}
 
                     {/* Error */}
-                    {post.error_msg && (
+                    {post.error_msg && post.status !== 'COMPLETED' && (
                       <div className="flex items-start gap-1.5 mb-3 text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                         <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                         <span>{post.error_msg}</span>
